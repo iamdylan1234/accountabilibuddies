@@ -19,7 +19,7 @@ export default function SignUpPage() {
     setLoading(true)
     setError('')
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: { user: signedUpUser }, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: `${location.origin}/auth/callback` },
@@ -31,10 +31,8 @@ export default function SignUpPage() {
       return
     }
 
-    // Update profile name after signup
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({ name }).eq('id', user.id)
+    if (signedUpUser) {
+      await supabase.from('profiles').update({ name }).eq('id', signedUpUser.id)
     }
 
     router.push('/dashboard')
