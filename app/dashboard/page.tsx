@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { createChallenge } from './actions'
 import CopyButton from '@/components/layout/CopyButton'
+import DashboardClient from '@/components/dashboard/DashboardClient'
 import type { ChallengeWithProfiles } from '@/types/database'
 
 export default async function DashboardPage() {
@@ -79,10 +80,49 @@ export default async function DashboardPage() {
     )
   }
 
-  // Active challenge — show full dashboard (Task 11)
+  // Active challenge — fetch goals and check-ins, render full dashboard
+  const today = new Date().toISOString().split('T')[0]
+
+  const start = new Date(typedChallenge.start_date)
+  const todayDate = new Date(today)
+  const dayNumber = Math.max(1, Math.floor((todayDate.getTime() - start.getTime()) / 86400000) + 1)
+  const totalDays = Math.floor(
+    (new Date(typedChallenge.end_date).getTime() - start.getTime()) / 86400000
+  ) + 1
+
+  const buddyId = typedChallenge.creator_id === user.id
+    ? typedChallenge.buddy_id
+    : typedChallenge.creator_id
+
+  const [goalsRes, myCheckInsRes, buddyCheckInsRes, reactionsRes] = await Promise.all([
+    supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
+    supabase.from('check_ins').select('*')
+      .eq('user_id', user.id)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
+    supabase.from('check_ins').select('*')
+      .eq('user_id', buddyId!)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
+    supabase.from('reactions').select('*'),
+  ])
+
+  const allGoals = goalsRes.data ?? []
+  const myGoals = allGoals.filter(g => g.user_id === user.id)
+  const buddyGoals = allGoals.filter(g => g.user_id === buddyId)
+
   return (
-    <div className="px-6 py-8">
-      <p className="text-gray-500">Dashboard loading… (implemented in Task 11)</p>
-    </div>
+    <DashboardClient
+      challenge={typedChallenge}
+      myGoals={myGoals}
+      buddyGoals={buddyGoals}
+      myCheckIns={myCheckInsRes.data ?? []}
+      buddyCheckIns={buddyCheckInsRes.data ?? []}
+      reactions={reactionsRes.data ?? []}
+      myId={user.id}
+      today={today}
+      dayNumber={dayNumber}
+      totalDays={totalDays}
+    />
   )
 }
