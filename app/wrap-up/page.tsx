@@ -35,6 +35,9 @@ export default async function WrapUpPage() {
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
+  if (!myProfileRes.data) redirect('/auth/login')
+  if (!buddyId) redirect('/dashboard')
+
   const allGoals = goalsRes.data ?? []
   const buddyProfile = (typedChallenge.creator_id === user.id
     ? typedChallenge.buddy
@@ -46,7 +49,7 @@ export default async function WrapUpPage() {
       buddyGoals={allGoals.filter(g => g.user_id === buddyId)}
       myCheckIns={myCheckInsRes.data ?? []}
       buddyCheckIns={buddyCheckInsRes.data ?? []}
-      myProfile={myProfileRes.data!}
+      myProfile={myProfileRes.data}
       buddyProfile={buddyProfile}
       totalDays={totalDays}
       challengeName={typedChallenge.month_name}

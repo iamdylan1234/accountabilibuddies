@@ -8,6 +8,15 @@ export async function toggleCheckIn(goalId: string, date: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
+  // Verify the goal belongs to this user
+  const { data: goal } = await supabase
+    .from('goals')
+    .select('id')
+    .eq('id', goalId)
+    .eq('user_id', user.id)
+    .single()
+  if (!goal) return
+
   const { data: existing } = await supabase
     .from('check_ins')
     .select('id')
@@ -35,6 +44,15 @@ export async function addReaction(checkInId: string, emoji: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
+  // Verify the check-in belongs to someone else (can't react to your own)
+  const { data: checkIn } = await supabase
+    .from('check_ins')
+    .select('user_id')
+    .eq('id', checkInId)
+    .single()
+  if (!checkIn || checkIn.user_id === user.id) return
+
+  // Upsert: replace existing reaction if there is one
   await supabase.from('reactions').upsert({
     check_in_id: checkInId,
     from_user_id: user.id,

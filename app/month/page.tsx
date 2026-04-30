@@ -33,10 +33,17 @@ export default async function MonthPage() {
 
   const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
-    supabase.from('check_ins').select('*').eq('user_id', user.id),
-    supabase.from('check_ins').select('*').eq('user_id', buddyId!),
+    supabase.from('check_ins').select('*').eq('user_id', user.id)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
+    supabase.from('check_ins').select('*').eq('user_id', buddyId!)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
+
+  if (!myProfileRes.data) redirect('/auth/login')
+  if (!buddyId) redirect('/dashboard')
 
   const allGoals = goalsRes.data ?? []
   const myGoals = allGoals.filter(g => g.user_id === user.id)
@@ -51,7 +58,7 @@ export default async function MonthPage() {
       buddyGoals={buddyGoals}
       myCheckIns={myCheckInsRes.data ?? []}
       buddyCheckIns={buddyCheckInsRes.data ?? []}
-      myProfile={myProfileRes.data!}
+      myProfile={myProfileRes.data}
       buddyProfile={buddyProfile}
       startDate={typedChallenge.start_date}
       endDate={typedChallenge.end_date}

@@ -94,7 +94,9 @@ export default async function DashboardPage() {
     ? typedChallenge.buddy_id
     : typedChallenge.creator_id
 
-  const [goalsRes, myCheckInsRes, buddyCheckInsRes, reactionsRes] = await Promise.all([
+  if (!buddyId) redirect('/dashboard')
+
+  const [goalsRes, myCheckInsRes, buddyCheckInsRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
     supabase.from('check_ins').select('*')
       .eq('user_id', user.id)
@@ -104,8 +106,16 @@ export default async function DashboardPage() {
       .eq('user_id', buddyId!)
       .gte('date', typedChallenge.start_date)
       .lte('date', typedChallenge.end_date),
-    supabase.from('reactions').select('*'),
   ])
+
+  const allCheckInIds = [
+    ...(myCheckInsRes.data ?? []),
+    ...(buddyCheckInsRes.data ?? []),
+  ].map(c => c.id)
+
+  const reactionsRes = allCheckInIds.length > 0
+    ? await supabase.from('reactions').select('*').in('check_in_id', allCheckInIds)
+    : { data: [] }
 
   const allGoals = goalsRes.data ?? []
   const myGoals = allGoals.filter(g => g.user_id === user.id)
