@@ -21,6 +21,7 @@ export default async function SetupPage({ searchParams }: Props) {
     .from('challenge_months')
     .select('*')
     .eq('id', challengeId)
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
     .single()
 
   if (!challenge) redirect('/dashboard')

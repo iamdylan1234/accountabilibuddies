@@ -4,12 +4,13 @@ import { useState } from 'react'
 import type { Goal, GoalType } from '@/types/database'
 
 interface GoalDraft {
+  id: string
   title: string
   type: GoalType
   target_count: string
 }
 
-const emptyGoal = (): GoalDraft => ({ title: '', type: 'daily', target_count: '' })
+const emptyGoal = (): GoalDraft => ({ id: crypto.randomUUID(), title: '', type: 'daily', target_count: '' })
 
 interface Props {
   challengeId: string
@@ -21,6 +22,7 @@ export default function GoalSetupForm({ challengeId, existingGoals, onSubmit }: 
   const [goals, setGoals] = useState<GoalDraft[]>(
     existingGoals.length > 0
       ? existingGoals.map(g => ({
+          id: g.id,
           title: g.title,
           type: g.type,
           target_count: g.target_count?.toString() ?? '',
@@ -63,7 +65,7 @@ export default function GoalSetupForm({ challengeId, existingGoals, onSubmit }: 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {goals.map((goal, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <div key={goal.id} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-gray-400 w-5">#{i + 1}</span>
             <input

@@ -15,6 +15,17 @@ export async function saveGoals(challengeId: string, goals: GoalDraft[]) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
+  // Verify user is a participant in this challenge
+  const { data: challenge } = await supabase
+    .from('challenge_months')
+    .select('id, status')
+    .eq('id', challengeId)
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+    .single()
+
+  if (!challenge) throw new Error('Challenge not found or access denied.')
+  if (challenge.status === 'active') throw new Error('Goals are locked once the challenge is active.')
+
   // Delete existing goals first (allows re-setup before challenge is active)
   await supabase.from('goals').delete()
     .eq('challenge_id', challengeId)
