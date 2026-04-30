@@ -1,0 +1,88 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { createChallenge } from './actions'
+import CopyButton from '@/components/layout/CopyButton'
+import type { ChallengeWithProfiles } from '@/types/database'
+
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  // Find the user's active or pending challenge
+  const { data: challenge } = await supabase
+    .from('challenge_months')
+    .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+    .in('status', ['active', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  // No challenge yet — show create form
+  if (!challenge) {
+    const today = new Date().toISOString().split('T')[0]
+    return (
+      <div className="max-w-md mx-auto mt-20 px-6">
+        <h1 className="text-3xl font-black text-gray-900 mb-2">Start a challenge</h1>
+        <p className="text-gray-500 mb-8">Create a challenge month and invite your buddy.</p>
+        <form action={createChallenge} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Challenge name</label>
+            <input
+              name="month_name"
+              type="text"
+              required
+              defaultValue="May Challenge"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Start date</label>
+            <input
+              name="start_date"
+              type="date"
+              required
+              defaultValue={today}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full py-3 rounded-xl font-bold text-white text-sm"
+            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+          >
+            Create challenge →
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  const typedChallenge = challenge as unknown as ChallengeWithProfiles
+
+  // Challenge exists but no buddy yet
+  if (typedChallenge.status === 'pending') {
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${typedChallenge.invite_token}`
+    return (
+      <div className="max-w-md mx-auto mt-20 px-6">
+        <h1 className="text-3xl font-black text-gray-900 mb-2">{typedChallenge.month_name}</h1>
+        <p className="text-gray-500 mb-8">Waiting for your buddy to join. Share this link:</p>
+        <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
+          <span className="text-sm text-gray-700 break-all flex-1">{inviteUrl}</span>
+          <CopyButton text={inviteUrl} />
+        </div>
+        <p className="text-sm text-gray-400 mt-4">
+          Once your buddy joins and sets their goals, the challenge begins.
+        </p>
+      </div>
+    )
+  }
+
+  // Active challenge — show full dashboard (Task 11)
+  return (
+    <div className="px-6 py-8">
+      <p className="text-gray-500">Dashboard loading… (implemented in Task 11)</p>
+    </div>
+  )
+}
