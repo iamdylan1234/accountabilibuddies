@@ -2812,7 +2812,305 @@ git commit -m "feat: email notifications via Resend with Vercel cron jobs"
 
 ---
 
-## Task 16: Deploy and Smoke Test
+## Task 16: Sunday Weekly Plan
+
+**Files:**
+- Create: `lib/__tests__/weekly-plan.test.ts`
+- Create: `lib/weekly-plan.ts`
+- Create: `components/dashboard/WeeklyPlan.tsx`
+- Modify: `components/dashboard/DashboardClient.tsx`
+
+- [ ] **Step 1: Write failing tests**
+
+Create `lib/__tests__/weekly-plan.test.ts`:
+
+```ts
+import { computeWeeklyPlan, allocateDays } from '../weekly-plan'
+import type { Goal, CheckIn } from '@/types/database'
+
+const baseGoal = (type: Goal['type'], target_count: number | null = null, id = 'g1'): Goal => ({
+  id, challenge_id: 'c1', user_id: 'u1', title: 'Test', type, target_count, created_at: '',
+})
+
+describe('computeWeeklyPlan', () => {
+  it('daily goal needs 7 completions this week', () => {
+    const goal = baseGoal('daily')
+    const result = computeWeeklyPlan(goal, [], 30, 3, '2026-05-03') // Sunday week 3
+    expect(result.neededThisWeek).toBe(7)
+  })
+
+  it('daily goal caps at remaining days in month', () => {
+    const goal = baseGoal('daily')
+    // 3 days left in month, Sunday
+    const result = computeWeeklyPlan(goal, [], 30, 4, '2026-05-24', '2026-05-26')
+    expect(result.neededThisWeek).toBeLessThanOrEqual(3)
+  })
+
+  it('frequency goal distributes remaining completions across remaining weeks', () => {
+    const goal = baseGoal('frequency', 12)
+    const checkIns: CheckIn[] = Array.from({ length: 4 }, (_, i) => ({
+      id: String(i), goal_id: 'g1', user_id: 'u1',
+      date: `2026-05-0${i + 1}`, completed: true, created_at: '',
+    }))
+    // 8 left, 2 remaining weeks → 4 this week
+    const result = computeWeeklyPlan(goal, checkIns, 30, 2, '2026-05-10')
+    expect(result.neededThisWeek).toBe(4)
+  })
+
+  it('frequency goal caps needed at 7', () => {
+    const goal = baseGoal('frequency', 20)
+    // 20 needed, 1 week left → would be 20, capped at 7
+    const result = computeWeeklyPlan(goal, [], 30, 1, '2026-05-24')
+    expect(result.neededThisWeek).toBe(7)
+  })
+
+  it('milestone goal not done returns needed=1', () => {
+    const goal = baseGoal('milestone')
+    const result = computeWeeklyPlan(goal, [], 30, 2, '2026-05-10')
+    expect(result.neededThisWeek).toBe(1)
+  })
+
+  it('milestone goal already done returns needed=0', () => {
+    const goal = baseGoal('milestone')
+    const checkIns: CheckIn[] = [{
+      id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '',
+    }]
+    const result = computeWeeklyPlan(goal, checkIns, 30, 2, '2026-05-10')
+    expect(result.neededThisWeek).toBe(0)
+  })
+})
+
+describe('allocateDays', () => {
+  it('spreads 3 completions across Mon-Sun starting from Monday', () => {
+    const days = allocateDays(3, '2026-05-11') // Monday
+    expect(days).toHaveLength(3)
+    // Should be roughly evenly spaced across the week
+    expect(new Set(days).size).toBe(3)
+  })
+
+  it('allocates every day when needed equals 7', () => {
+    const days = allocateDays(7, '2026-05-11')
+    expect(days).toHaveLength(7)
+  })
+
+  it('returns empty array when needed is 0', () => {
+    expect(allocateDays(0, '2026-05-11')).toHaveLength(0)
+  })
+})
+```
+
+- [ ] **Step 2: Run to confirm tests fail**
+
+```
+npm test -- lib/__tests__/weekly-plan.test.ts
+```
+
+Expected: FAIL — `computeWeeklyPlan` and `allocateDays` not found.
+
+- [ ] **Step 3: Implement lib/weekly-plan.ts**
+
+```ts
+import type { Goal, CheckIn } from '@/types/database'
+
+export interface WeeklyGoalPlan {
+  goal: Goal
+  neededThisWeek: number
+  suggestedDays: string[] // ISO date strings for Mon–Sun of current week
+}
+
+export function computeWeeklyPlan(
+  goal: Goal,
+  checkIns: CheckIn[],
+  totalDays: number,
+  remainingWeeks: number,
+  sundayDate: string,
+  monthEndDate?: string
+): WeeklyGoalPlan {
+  const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
+
+  // Mon of this week
+  const sunday = new Date(sundayDate)
+  const monday = new Date(sunday)
+  monday.setDate(sunday.getDate() - 6)
+
+  let neededThisWeek = 0
+
+  if (goal.type === 'milestone') {
+    neededThisWeek = relevant.length > 0 ? 0 : 1
+  } else if (goal.type === 'daily') {
+    const end = monthEndDate ? new Date(monthEndDate) : new Date(sunday)
+    end.setDate(end.getDate() + 6)
+    const daysThisWeek = Math.min(
+      7,
+      Math.floor((end.getTime() - monday.getTime()) / 86400000) + 1
+    )
+    neededThisWeek = Math.max(0, daysThisWeek)
+  } else {
+    // frequency
+    const target = goal.target_count ?? 1
+    const remaining = Math.max(0, target - relevant.length)
+    const weeks = Math.max(1, remainingWeeks)
+    neededThisWeek = Math.min(7, Math.ceil(remaining / weeks))
+  }
+
+  const suggestedDays = allocateDays(neededThisWeek, monday.toISOString().split('T')[0])
+
+  return { goal, neededThisWeek, suggestedDays }
+}
+
+export function allocateDays(needed: number, weekStartMonday: string): string[] {
+  if (needed === 0) return []
+  const days: string[] = []
+  const start = new Date(weekStartMonday)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    days.push(d.toISOString().split('T')[0])
+  }
+  if (needed >= 7) return days
+  // Evenly space needed completions across 7 days
+  const step = 7 / needed
+  const selected: string[] = []
+  for (let i = 0; i < needed; i++) {
+    selected.push(days[Math.round(i * step)])
+  }
+  return selected
+}
+```
+
+- [ ] **Step 4: Run to confirm tests pass**
+
+```
+npm test -- lib/__tests__/weekly-plan.test.ts
+```
+
+Expected: All tests PASS.
+
+- [ ] **Step 5: Create components/dashboard/WeeklyPlan.tsx**
+
+```tsx
+import type { Goal, CheckIn } from '@/types/database'
+import { computeWeeklyPlan } from '@/lib/weekly-plan'
+
+interface Props {
+  myGoals: Goal[]
+  myCheckIns: CheckIn[]
+  totalDays: number
+  remainingWeeks: number
+  sundayDate: string
+  monthEndDate: string
+}
+
+const DAY_LABELS: Record<string, string> = {
+  '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat',
+}
+
+export default function WeeklyPlan({
+  myGoals, myCheckIns, totalDays, remainingWeeks, sundayDate, monthEndDate,
+}: Props) {
+  const plans = myGoals.map(g =>
+    computeWeeklyPlan(g, myCheckIns, totalDays, remainingWeeks, sundayDate, monthEndDate)
+  ).filter(p => p.neededThisWeek > 0)
+
+  if (plans.length === 0) {
+    return (
+      <div className="mb-6 rounded-2xl p-5 text-white"
+        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+        <p className="font-black text-lg">You're on track! 🎉</p>
+        <p className="text-white/70 text-sm mt-1">All goals are on pace for the month.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl border-2 overflow-hidden"
+      style={{ borderColor: '#F9F871' }}>
+      <div className="px-5 py-4"
+        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+        <p className="font-black text-white text-lg">This Week's Plan 📋</p>
+        <p className="text-white/70 text-sm mt-0.5">
+          Here's what you need to do this week to stay on track.
+        </p>
+      </div>
+      <div className="bg-white divide-y divide-gray-50">
+        {plans.map(({ goal, neededThisWeek, suggestedDays }) => (
+          <div key={goal.id} className="px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-gray-800">{goal.title}</span>
+              <span className="text-xs font-black px-3 py-1 rounded-full text-white"
+                style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+                {goal.type === 'milestone'
+                  ? 'Do it this week!'
+                  : `${neededThisWeek}× this week`}
+              </span>
+            </div>
+            {suggestedDays.length > 0 && goal.type !== 'milestone' && (
+              <div className="flex gap-1.5 flex-wrap">
+                {suggestedDays.map(date => (
+                  <span key={date}
+                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={{ background: '#F9F871', color: '#0077B6' }}>
+                    {DAY_LABELS[String(new Date(date).getDay())]}
+                  </span>
+                ))}
+              </div>
+            )}
+            {goal.type === 'milestone' && (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#F9F871', color: '#0077B6' }}>
+                Wed is a good day
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 6: Add WeeklyPlan to DashboardClient.tsx**
+
+In `components/dashboard/DashboardClient.tsx`, add this import at the top:
+
+```tsx
+import WeeklyPlan from './WeeklyPlan'
+```
+
+After the closing `</div>` of the gradient header block (after `</div>` that wraps the `<p className="text-white/60...">` line), add:
+
+```tsx
+      {/* Sunday weekly plan */}
+      {new Date(today).getDay() === 0 && (
+        <WeeklyPlan
+          myGoals={myGoals}
+          myCheckIns={myCheckIns}
+          totalDays={totalDays}
+          remainingWeeks={Math.max(1, Math.ceil((totalDays - dayNumber) / 7))}
+          sundayDate={today}
+          monthEndDate={challenge.end_date}
+        />
+      )}
+```
+
+- [ ] **Step 7: Run all tests**
+
+```
+npm test
+```
+
+Expected: All tests pass.
+
+- [ ] **Step 8: Commit**
+
+```
+git add lib/weekly-plan.ts lib/__tests__/weekly-plan.test.ts components/dashboard/WeeklyPlan.tsx components/dashboard/DashboardClient.tsx
+git commit -m "feat: Sunday weekly plan with goal allocation"
+```
+
+---
+
+## Task 17: Deploy and Smoke Test
 
 - [ ] **Step 1: Push all changes to GitHub**
 
@@ -2873,6 +3171,7 @@ git push origin main
 | Per-goal drill-down calendar | Task 13 |
 | Scoring logic | Task 12 |
 | Wrap-up screen with winner highlight | Task 14 |
+| Sunday weekly plan with day allocation | Task 16 |
 | Sunday wrap-up email | Task 15 |
 | End of month email + status update | Task 15 |
 | Vercel cron schedule | Task 15 |

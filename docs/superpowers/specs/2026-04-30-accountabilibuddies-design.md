@@ -166,6 +166,16 @@ For frequency goals, each check-in represents one completion. For daily/mileston
 - Goals each person is on track vs behind on
 - Simple motivational message
 
+**Sunday in-app weekly plan (new feature):**
+On Sundays, the dashboard shows a "This Week's Plan" panel above the goal columns. For each goal it calculates how many completions are needed this week to stay on track for the monthly target, and suggests which specific days to do them.
+
+Calculation logic:
+- **Daily goals:** need 7 completions this week (or fewer if the month ends before Sunday)
+- **Frequency goals:** `ceil((target - completions_so_far) / remaining_weeks)` completions needed this week, distributed across the week's days
+- **Milestone goals:** if not yet done, show "Complete this week!" with Wednesday as the suggested day
+
+Day allocation: spread the required completions across the week evenly, skipping days already past (shown Mon–Sun). If more completions are needed than days remain, mark every remaining day.
+
 **End of month email content:**
 - Final scores for both people
 - Per-goal breakdown
