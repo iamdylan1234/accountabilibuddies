@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -29,7 +30,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    const next = searchParams.get('next') ?? '/dashboard'
+    router.push(next)
     router.refresh()
   }
 
