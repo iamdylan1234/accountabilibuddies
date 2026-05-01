@@ -17,7 +17,7 @@ export default function Navbar() {
 
   const navItems = [
     { href: '/dashboard', label: 'Today' },
-    { href: '/month', label: 'Month' },
+    { href: '/week', label: 'This Week' },
     { href: '/wrap-up', label: 'Summary' },
   ]
 
