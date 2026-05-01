@@ -35,7 +35,7 @@ export default function SignUpPage() {
     }
 
     if (signedUpUser) {
-      await supabase.from('profiles').update({ name }).eq('id', signedUpUser.id)
+      await supabase.from('profiles').upsert({ id: signedUpUser.id, name })
     }
 
     router.push('/dashboard')
