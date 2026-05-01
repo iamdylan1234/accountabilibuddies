@@ -47,8 +47,8 @@ export async function GET(request: Request) {
     const [goalsRes, creatorCheckInsRes, buddyCheckInsRes, creatorAuthRes, buddyAuthRes] =
       await Promise.all([
         supabase.from('goals').select('*').eq('challenge_id', challenge.id),
-        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id).gte('date', weekStartStr),
-        supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', weekStartStr),
+        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id).gte('date', weekStartStr).lte('date', todayStr),
+        supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', weekStartStr).lte('date', todayStr),
         supabase.auth.admin.getUserById(challenge.creator_id),
         supabase.auth.admin.getUserById(buddyId),
       ])
@@ -66,6 +66,7 @@ export async function GET(request: Request) {
 
     const creatorEmail = creatorAuthRes.data.user?.email
     const buddyEmail = buddyAuthRes.data.user?.email
+    // Supabase infers a different type from the join — cast to our app type for type-safe field access
     const typedChallenge = challenge as unknown as ChallengeWithProfiles
     const creatorName = typedChallenge.creator?.name ?? 'Friend'
     const buddyName = typedChallenge.buddy?.name ?? 'Friend'

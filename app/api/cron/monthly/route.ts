@@ -38,12 +38,19 @@ export async function GET(request: Request) {
 
   for (const challenge of challenges) {
     const buddyId = challenge.buddy_id
-    if (!buddyId) continue
+    if (!buddyId) continue  // guard FIRST
 
-    await supabase
+    // THEN update status
+    const { error: updateError } = await supabase
       .from('challenge_months')
       .update({ status: 'completed' })
       .eq('id', challenge.id)
+
+    if (updateError) {
+      console.error('Failed to mark challenge completed:', challenge.id, updateError)
+      failed++
+      continue
+    }
 
     const [goalsRes, creatorCheckInsRes, buddyCheckInsRes, creatorAuthRes, buddyAuthRes] =
       await Promise.all([
@@ -72,6 +79,7 @@ export async function GET(request: Request) {
 
     const creatorEmail = creatorAuthRes.data.user?.email
     const buddyEmail = buddyAuthRes.data.user?.email
+    // Supabase infers a different type from the join — cast to our app type for type-safe field access
     const typedChallenge = challenge as unknown as ChallengeWithProfiles
     const creatorName = typedChallenge.creator?.name ?? 'Friend'
     const buddyName = typedChallenge.buddy?.name ?? 'Friend'
