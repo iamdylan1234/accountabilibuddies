@@ -55,8 +55,8 @@ export async function GET(request: Request) {
     const [goalsRes, creatorCheckInsRes, buddyCheckInsRes, creatorAuthRes, buddyAuthRes] =
       await Promise.all([
         supabase.from('goals').select('*').eq('challenge_id', challenge.id),
-        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id),
-        supabase.from('check_ins').select('*').eq('user_id', buddyId),
+        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id).gte('date', challenge.start_date).lte('date', challenge.end_date),
+        supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', challenge.start_date).lte('date', challenge.end_date),
         supabase.auth.admin.getUserById(challenge.creator_id),
         supabase.auth.admin.getUserById(buddyId),
       ])
@@ -64,6 +64,8 @@ export async function GET(request: Request) {
     if (goalsRes.error) console.error('goals query failed:', goalsRes.error)
     if (creatorCheckInsRes.error) console.error('creator check-ins query failed:', creatorCheckInsRes.error)
     if (buddyCheckInsRes.error) console.error('buddy check-ins query failed:', buddyCheckInsRes.error)
+    if (creatorAuthRes.error) console.error('auth lookup failed for creator:', challenge.creator_id, creatorAuthRes.error)
+    if (buddyAuthRes.error) console.error('auth lookup failed for buddy:', buddyId, buddyAuthRes.error)
 
     const allGoals = goalsRes.data ?? []
     const creatorGoals = allGoals.filter(g => g.user_id === challenge.creator_id)
