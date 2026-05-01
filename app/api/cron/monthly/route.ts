@@ -2,8 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 import { sendMonthlyWrapUp } from '@/lib/email'
 import { scoreChallenge } from '@/lib/scoring'
 import { NextResponse } from 'next/server'
+import type { ChallengeWithProfiles } from '@/types/database'
 
 export async function GET(request: Request) {
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+
   if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -15,24 +20,30 @@ export async function GET(request: Request) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const { data: challenges } = await supabase
+  const { data: challenges, error: challengesError } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .eq('status', 'active')
     .eq('end_date', today)
 
-  if (!challenges) return NextResponse.json({ sent: 0 })
+  if (challengesError) {
+    console.error('Failed to fetch challenges:', challengesError)
+    return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 })
+  }
+
+  if (!challenges) return NextResponse.json({ sent: 0, failed: 0 })
 
   let sent = 0
+  let failed = 0
 
   for (const challenge of challenges) {
+    const buddyId = challenge.buddy_id
+    if (!buddyId) continue
+
     await supabase
       .from('challenge_months')
       .update({ status: 'completed' })
       .eq('id', challenge.id)
-
-    const buddyId = challenge.buddy_id
-    if (!buddyId) continue
 
     const [goalsRes, creatorCheckInsRes, buddyCheckInsRes, creatorAuthRes, buddyAuthRes] =
       await Promise.all([
@@ -42,6 +53,10 @@ export async function GET(request: Request) {
         supabase.auth.admin.getUserById(challenge.creator_id),
         supabase.auth.admin.getUserById(buddyId),
       ])
+
+    if (goalsRes.error) console.error('goals query failed:', goalsRes.error)
+    if (creatorCheckInsRes.error) console.error('creator check-ins query failed:', creatorCheckInsRes.error)
+    if (buddyCheckInsRes.error) console.error('buddy check-ins query failed:', buddyCheckInsRes.error)
 
     const allGoals = goalsRes.data ?? []
     const creatorGoals = allGoals.filter(g => g.user_id === challenge.creator_id)
@@ -57,27 +72,38 @@ export async function GET(request: Request) {
 
     const creatorEmail = creatorAuthRes.data.user?.email
     const buddyEmail = buddyAuthRes.data.user?.email
-    const creatorName = (challenge.creator as any)?.name ?? 'Friend'
-    const buddyName = (challenge.buddy as any)?.name ?? 'Friend'
+    const typedChallenge = challenge as unknown as ChallengeWithProfiles
+    const creatorName = typedChallenge.creator?.name ?? 'Friend'
+    const buddyName = typedChallenge.buddy?.name ?? 'Friend'
 
     if (creatorEmail) {
-      await sendMonthlyWrapUp({
-        toEmail: creatorEmail, toName: creatorName, buddyName,
-        myScore: creatorScore, buddyScore, challengeName: challenge.month_name,
-        won: creatorWon, tied,
-      })
-      sent++
+      try {
+        await sendMonthlyWrapUp({
+          toEmail: creatorEmail, toName: creatorName, buddyName,
+          myScore: creatorScore, buddyScore, challengeName: challenge.month_name,
+          won: creatorWon, tied,
+        })
+        sent++
+      } catch (err) {
+        console.error('Failed to send email to', creatorEmail, err)
+        failed++
+      }
     }
 
     if (buddyEmail) {
-      await sendMonthlyWrapUp({
-        toEmail: buddyEmail, toName: buddyName, buddyName: creatorName,
-        myScore: buddyScore, buddyScore: creatorScore, challengeName: challenge.month_name,
-        won: !creatorWon && !tied, tied,
-      })
-      sent++
+      try {
+        await sendMonthlyWrapUp({
+          toEmail: buddyEmail, toName: buddyName, buddyName: creatorName,
+          myScore: buddyScore, buddyScore: creatorScore, challengeName: challenge.month_name,
+          won: !creatorWon && !tied, tied,
+        })
+        sent++
+      } catch (err) {
+        console.error('Failed to send email to', buddyEmail, err)
+        failed++
+      }
     }
   }
 
-  return NextResponse.json({ sent })
+  return NextResponse.json({ sent, failed })
 }

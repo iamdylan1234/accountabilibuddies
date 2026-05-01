@@ -2,8 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 import { sendWeeklyWrapUp } from '@/lib/email'
 import { scoreChallenge } from '@/lib/scoring'
 import { NextResponse } from 'next/server'
+import type { ChallengeWithProfiles } from '@/types/database'
 
 export async function GET(request: Request) {
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+
   if (request.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -16,14 +21,24 @@ export async function GET(request: Request) {
   const today = new Date()
   const todayStr = today.toISOString().split('T')[0]
 
-  const { data: challenges } = await supabase
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - 6)
+  const weekStartStr = weekStart.toISOString().split('T')[0]
+
+  const { data: challenges, error: challengesError } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .eq('status', 'active')
 
-  if (!challenges) return NextResponse.json({ sent: 0 })
+  if (challengesError) {
+    console.error('Failed to fetch challenges:', challengesError)
+    return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 })
+  }
+
+  if (!challenges) return NextResponse.json({ sent: 0, failed: 0 })
 
   let sent = 0
+  let failed = 0
 
   for (const challenge of challenges) {
     const buddyId = challenge.buddy_id
@@ -32,49 +47,57 @@ export async function GET(request: Request) {
     const [goalsRes, creatorCheckInsRes, buddyCheckInsRes, creatorAuthRes, buddyAuthRes] =
       await Promise.all([
         supabase.from('goals').select('*').eq('challenge_id', challenge.id),
-        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id),
-        supabase.from('check_ins').select('*').eq('user_id', buddyId),
+        supabase.from('check_ins').select('*').eq('user_id', challenge.creator_id).gte('date', weekStartStr),
+        supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', weekStartStr),
         supabase.auth.admin.getUserById(challenge.creator_id),
         supabase.auth.admin.getUserById(buddyId),
       ])
 
+    if (goalsRes.error) console.error('goals query failed:', goalsRes.error)
+    if (creatorCheckInsRes.error) console.error('creator check-ins query failed:', creatorCheckInsRes.error)
+    if (buddyCheckInsRes.error) console.error('buddy check-ins query failed:', buddyCheckInsRes.error)
+
     const allGoals = goalsRes.data ?? []
     const creatorGoals = allGoals.filter(g => g.user_id === challenge.creator_id)
     const buddyGoals = allGoals.filter(g => g.user_id === buddyId)
-    const totalDays = Math.floor(
-      (new Date(challenge.end_date).getTime() - new Date(challenge.start_date).getTime()) / 86400000
-    ) + 1
 
-    const creatorScore = scoreChallenge(creatorGoals, creatorCheckInsRes.data ?? [], totalDays)
-    const buddyScore = scoreChallenge(buddyGoals, buddyCheckInsRes.data ?? [], totalDays)
-
-    const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - 6)
-    const weekStartStr = weekStart.toISOString().split('T')[0]
+    const creatorScore = scoreChallenge(creatorGoals, creatorCheckInsRes.data ?? [], 7)
+    const buddyScore = scoreChallenge(buddyGoals, buddyCheckInsRes.data ?? [], 7)
 
     const creatorEmail = creatorAuthRes.data.user?.email
     const buddyEmail = buddyAuthRes.data.user?.email
-    const creatorName = (challenge.creator as any)?.name ?? 'Friend'
-    const buddyName = (challenge.buddy as any)?.name ?? 'Friend'
+    const typedChallenge = challenge as unknown as ChallengeWithProfiles
+    const creatorName = typedChallenge.creator?.name ?? 'Friend'
+    const buddyName = typedChallenge.buddy?.name ?? 'Friend'
 
     if (creatorEmail) {
-      await sendWeeklyWrapUp({
-        toEmail: creatorEmail, toName: creatorName, buddyName,
-        myScore: creatorScore, buddyScore, weekStart: weekStartStr,
-        weekEnd: todayStr, challengeName: challenge.month_name,
-      })
-      sent++
+      try {
+        await sendWeeklyWrapUp({
+          toEmail: creatorEmail, toName: creatorName, buddyName,
+          myScore: creatorScore, buddyScore, weekStart: weekStartStr,
+          weekEnd: todayStr, challengeName: challenge.month_name,
+        })
+        sent++
+      } catch (err) {
+        console.error('Failed to send email to', creatorEmail, err)
+        failed++
+      }
     }
 
     if (buddyEmail) {
-      await sendWeeklyWrapUp({
-        toEmail: buddyEmail, toName: buddyName, buddyName: creatorName,
-        myScore: buddyScore, buddyScore: creatorScore, weekStart: weekStartStr,
-        weekEnd: todayStr, challengeName: challenge.month_name,
-      })
-      sent++
+      try {
+        await sendWeeklyWrapUp({
+          toEmail: buddyEmail, toName: buddyName, buddyName: creatorName,
+          myScore: buddyScore, buddyScore: creatorScore, weekStart: weekStartStr,
+          weekEnd: todayStr, challengeName: challenge.month_name,
+        })
+        sent++
+      } catch (err) {
+        console.error('Failed to send email to', buddyEmail, err)
+        failed++
+      }
     }
   }
 
-  return NextResponse.json({ sent })
+  return NextResponse.json({ sent, failed })
 }
