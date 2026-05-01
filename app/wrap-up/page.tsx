@@ -24,6 +24,8 @@ export default async function WrapUpPage() {
     ? typedChallenge.buddy_id
     : typedChallenge.creator_id
 
+  if (!buddyId) redirect('/dashboard')
+
   const totalDays = Math.floor(
     (new Date(typedChallenge.end_date).getTime() - new Date(typedChallenge.start_date).getTime()) / 86400000
   ) + 1
@@ -33,14 +35,13 @@ export default async function WrapUpPage() {
     supabase.from('check_ins').select('*').eq('user_id', user.id)
       .gte('date', typedChallenge.start_date)
       .lte('date', typedChallenge.end_date),
-    supabase.from('check_ins').select('*').eq('user_id', buddyId!)
+    supabase.from('check_ins').select('*').eq('user_id', buddyId)
       .gte('date', typedChallenge.start_date)
       .lte('date', typedChallenge.end_date),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
   if (!myProfileRes.data) redirect('/auth/login')
-  if (!buddyId) redirect('/dashboard')
 
   const allGoals = goalsRes.data ?? []
   const buddyProfile = (typedChallenge.creator_id === user.id
