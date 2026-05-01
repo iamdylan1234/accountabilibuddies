@@ -113,12 +113,9 @@ export default function DashboardClient({
         className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <p className="text-white/70 text-sm font-semibold uppercase tracking-wide">
-          {challenge.month_name}
-        </p>
-        <h1 className="text-3xl font-black mt-1">Day {dayNumber} of {totalDays}</h1>
-        <p className="text-white/60 text-sm mt-1">
-          {localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        <h1 className="text-3xl font-black">{challenge.month_name}</h1>
+        <p className="text-white/70 text-sm font-semibold mt-1">
+          Day {dayNumber} of {totalDays} · {localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
       </div>
 

@@ -23,6 +23,9 @@ export default function ScoreSummary({
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
+  const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
+  const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
+
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
     const pct = Math.round(scoreGoal(goal, checkIns, totalDays) * 100)
     return (
@@ -53,18 +56,18 @@ export default function ScoreSummary({
         className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <p className="text-white/70 text-sm font-semibold uppercase tracking-wide">
+        <h1 className="text-3xl font-black">{challengeName}</h1>
+        <p className="text-white/70 text-sm font-semibold mt-1">
           {isComplete ? 'Final Results' : 'Full Challenge'}
         </p>
-        <h1 className="text-3xl font-black mt-1">{challengeName}</h1>
       </div>
 
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {[
-          { profile: myProfile, score: myScore, isWinner: !tied && iWon },
-          { profile: buddyProfile, score: buddyScore, isWinner: !tied && !iWon },
-        ].map(({ profile, score, isWinner }) => (
+          { profile: myProfile, score: myScore, daysActive: myDaysActive, isWinner: !tied && iWon },
+          { profile: buddyProfile, score: buddyScore, daysActive: buddyDaysActive, isWinner: !tied && !iWon },
+        ].map(({ profile, score, daysActive, isWinner }) => (
           <div
             key={profile?.id ?? 'buddy'}
             className="rounded-2xl border-2 p-5 text-center"
@@ -80,6 +83,7 @@ export default function ScoreSummary({
             )}
             <p className="text-sm font-bold text-gray-500">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{score}%</p>
+            <p className="text-xs text-gray-400 mt-1">{daysActive}/{totalDays} days active</p>
           </div>
         ))}
       </div>

@@ -78,16 +78,9 @@ export default function WeekView({
         className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <p className="text-white/70 text-sm font-semibold uppercase tracking-wide">
-          {challengeName}
-        </p>
-        <h1 className="text-3xl font-black mt-1">This Week</h1>
-        <p className="text-white/60 text-sm mt-1">
-          {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          {' – '}
-          {todayMidnight.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          {' · '}
-          Day {daysElapsed} of 7
+        <h1 className="text-3xl font-black">{challengeName}</h1>
+        <p className="text-white/70 text-sm font-semibold mt-1">
+          This Week · {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–{todayMidnight.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · Day {daysElapsed} of 7
         </p>
       </div>
 
