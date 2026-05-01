@@ -1,0 +1,59 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import WeekView from '@/components/week/WeekView'
+import type { ChallengeWithProfiles, Profile } from '@/types/database'
+
+export default async function WeekPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const { data: challenge } = await supabase
+    .from('challenge_months')
+    .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+    .in('status', ['active', 'completed'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!challenge) redirect('/dashboard')
+
+  const typedChallenge = challenge as unknown as ChallengeWithProfiles
+  const buddyId = typedChallenge.creator_id === user.id
+    ? typedChallenge.buddy_id
+    : typedChallenge.creator_id
+
+  if (!buddyId) redirect('/dashboard')
+
+  // Fetch last 14 days generously — client will filter to Mon–today locally
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+  const windowStart = fourteenDaysAgo.toISOString().split('T')[0]
+
+  const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
+    supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
+    supabase.from('check_ins').select('*').eq('user_id', user.id).gte('date', windowStart),
+    supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', windowStart),
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  ])
+
+  if (!myProfileRes.data) redirect('/auth/login')
+
+  const allGoals = goalsRes.data ?? []
+  const buddyProfile = (typedChallenge.creator_id === user.id
+    ? typedChallenge.buddy
+    : typedChallenge.creator) as Profile | null
+
+  return (
+    <WeekView
+      myGoals={allGoals.filter(g => g.user_id === user.id)}
+      buddyGoals={allGoals.filter(g => g.user_id === buddyId)}
+      myCheckIns={myCheckInsRes.data ?? []}
+      buddyCheckIns={buddyCheckInsRes.data ?? []}
+      myProfile={myProfileRes.data}
+      buddyProfile={buddyProfile}
+      challengeName={typedChallenge.month_name}
+    />
+  )
+}
