@@ -8,15 +8,6 @@ export async function toggleCheckIn(goalId: string, date: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  // Verify the goal belongs to this user
-  const { data: goal } = await supabase
-    .from('goals')
-    .select('id')
-    .eq('id', goalId)
-    .eq('user_id', user.id)
-    .single()
-  if (!goal) return
-
   const { data: existing } = await supabase
     .from('check_ins')
     .select('id')
@@ -26,14 +17,16 @@ export async function toggleCheckIn(goalId: string, date: string) {
     .single()
 
   if (existing) {
-    await supabase.from('check_ins').delete().eq('id', existing.id)
+    const { error } = await supabase.from('check_ins').delete().eq('id', existing.id)
+    if (error) console.error('[toggleCheckIn] delete error:', error)
   } else {
-    await supabase.from('check_ins').insert({
+    const { error } = await supabase.from('check_ins').insert({
       goal_id: goalId,
       user_id: user.id,
       date,
       completed: true,
     })
+    if (error) console.error('[toggleCheckIn] insert error:', error)
   }
 
   revalidatePath('/dashboard')
