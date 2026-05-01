@@ -1,4 +1,4 @@
-import { scoreGoal, scoreChallenge } from '../scoring'
+import { scoreGoal, scoreChallenge, getWeekStart } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 
 const baseGoal = (type: Goal['type'], target_count: number | null = null): Goal => ({
@@ -59,5 +59,33 @@ describe('scoreChallenge', () => {
 
   it('returns 0 when no goals', () => {
     expect(scoreChallenge([], [], 30)).toBe(0)
+  })
+})
+
+describe('getWeekStart', () => {
+  it('returns Monday when given a Monday', () => {
+    // 2026-04-27 is a Monday
+    const result = getWeekStart(new Date(2026, 3, 27))
+    expect(result).toEqual(new Date(2026, 3, 27))
+  })
+
+  it('returns the previous Monday when given a Wednesday', () => {
+    // 2026-04-29 is a Wednesday → Monday 2026-04-27
+    const result = getWeekStart(new Date(2026, 3, 29))
+    expect(result).toEqual(new Date(2026, 3, 27))
+  })
+
+  it('returns the previous Monday when given a Sunday', () => {
+    // 2026-05-03 is a Sunday → Monday 2026-04-27
+    const result = getWeekStart(new Date(2026, 4, 3))
+    expect(result).toEqual(new Date(2026, 3, 27))
+  })
+
+  it('returns midnight (no time component)', () => {
+    const result = getWeekStart(new Date(2026, 3, 30, 15, 30, 0))
+    expect(result.getHours()).toBe(0)
+    expect(result.getMinutes()).toBe(0)
+    expect(result.getSeconds()).toBe(0)
+    expect(result.getMilliseconds()).toBe(0)
   })
 })
