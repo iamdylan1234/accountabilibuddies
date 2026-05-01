@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Accountabilibuddies',
   description: 'Track goals with your accountability buddy',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
+  manifest: '/manifest.json',
 }
 
 export default async function RootLayout({

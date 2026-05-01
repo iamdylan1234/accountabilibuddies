@@ -1,0 +1,17 @@
+{
+  "name": "Accountabilibuddies",
+  "short_name": "Buddies",
+  "description": "Track goals with your accountability buddy",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#00C9A7",
+  "theme_color": "#0077B6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
