@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useOptimistic, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
@@ -35,6 +36,32 @@ export default function DashboardClient({
   const router = useRouter()
   const supabase = createClient()
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
+  const [, startTransition] = useTransition()
+
+  const [optimisticCheckIns, applyOptimistic] = useOptimistic(
+    myCheckIns,
+    (state: CheckIn[], { goalId, action }: { goalId: string; action: 'add' | 'remove' }) => {
+      if (action === 'remove') {
+        return state.filter(c => !(c.goal_id === goalId && c.date === today))
+      }
+      return [...state, {
+        id: `optimistic-${goalId}`,
+        goal_id: goalId,
+        user_id: myId,
+        date: today,
+        completed: true,
+        created_at: '',
+      }]
+    }
+  )
+
+  function handleToggle(goalId: string) {
+    const existing = optimisticCheckIns.find(c => c.goal_id === goalId && c.date === today)
+    startTransition(async () => {
+      applyOptimistic({ goalId, action: existing ? 'remove' : 'add' })
+      await toggleCheckIn(goalId, today)
+    })
+  }
 
   useEffect(() => {
     const channel = supabase
@@ -63,7 +90,7 @@ export default function DashboardClient({
     return reactions.find(r => r.check_in_id === checkInId) ?? null
   }
 
-  const myDone = myGoals.filter(g => getCheckIn(g.id, myCheckIns)).length
+  const myDone = myGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
   const buddyDone = buddyGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
 
   const [ty, tm, td] = today.split('-').map(Number)
@@ -111,10 +138,11 @@ export default function DashboardClient({
               <GoalCard
                 key={goal.id}
                 goal={goal}
-                checkIn={getCheckIn(goal.id, myCheckIns)}
+                checkIn={getCheckIn(goal.id, optimisticCheckIns)}
                 reaction={null}
                 isMyGoal={true}
                 today={today}
+                onToggle={handleToggle}
               />
             ))}
           </div>
@@ -141,6 +169,7 @@ export default function DashboardClient({
                   reaction={getReaction(checkIn?.id)}
                   isMyGoal={false}
                   today={today}
+                  onToggle={handleToggle}
                 />
               )
             })}
