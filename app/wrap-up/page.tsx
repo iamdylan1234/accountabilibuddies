@@ -30,8 +30,12 @@ export default async function WrapUpPage() {
 
   const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
-    supabase.from('check_ins').select('*').eq('user_id', user.id),
-    supabase.from('check_ins').select('*').eq('user_id', buddyId!),
+    supabase.from('check_ins').select('*').eq('user_id', user.id)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
+    supabase.from('check_ins').select('*').eq('user_id', buddyId!)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 

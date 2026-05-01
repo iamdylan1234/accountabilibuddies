@@ -23,19 +23,44 @@ export default function ScoreSummary({
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
+  function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
+    const pct = Math.round(scoreGoal(goal, checkIns, totalDays) * 100)
+    return (
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
+          <span
+            className="text-sm font-black"
+            style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
+          >
+            {pct}%
+          </span>
+        </div>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-xl mx-auto px-4 py-10">
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Header banner */}
       <div
-        className="rounded-2xl p-6 text-white mb-8"
+        className="rounded-2xl p-6 mb-6 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
         <p className="text-white/70 text-sm font-semibold uppercase tracking-wide">
-          {isComplete ? 'Final Results' : 'Week in Review'}
+          {isComplete ? 'Final Results' : 'Full Challenge'}
         </p>
         <h1 className="text-3xl font-black mt-1">{challengeName}</h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      {/* Score tiles */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
         {[
           { profile: myProfile, score: myScore, isWinner: !tied && iWon },
           { profile: buddyProfile, score: buddyScore, isWinner: !tied && !iWon },
@@ -48,9 +73,13 @@ export default function ScoreSummary({
               background: isWinner ? '#fffde7' : 'white',
             }}
           >
-            {isWinner && <p className="text-xs font-black text-yellow-600 mb-1">🏆 WINNER</p>}
+            {isWinner && (
+              <p className="text-xs font-black text-yellow-600 mb-1">
+                {isComplete ? '🏆 WINNER' : '🏆 WINNING'}
+              </p>
+            )}
             <p className="text-sm font-bold text-gray-500">{profile?.name ?? 'Buddy'}</p>
-            <p className="text-5xl font-black mt-2" style={{ color: '#0077B6' }}>{score}%</p>
+            <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{score}%</p>
           </div>
         ))}
       </div>
@@ -59,27 +88,31 @@ export default function ScoreSummary({
         <p className="text-center text-gray-500 text-sm mb-6 font-semibold">It's a tie! 🤝</p>
       )}
 
-      <h2 className="font-black text-gray-900 mb-3">Your goals this period</h2>
-      <div className="space-y-2 mb-8">
-        {myGoals.map(goal => {
-          const pct = Math.round(scoreGoal(goal, myCheckIns, totalDays) * 100)
-          return (
-            <div key={goal.id} className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-800">{goal.title}</p>
-              </div>
-              <div className="text-sm font-black" style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}>
-                {pct}%
-              </div>
-            </div>
-          )
-        })}
+      {/* Two-column goal cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p className="font-black text-gray-900 mb-3">You</p>
+          <div className="space-y-2">
+            {myGoals.map(goal => (
+              <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} />
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="font-black text-gray-900 mb-3">{buddyProfile?.name ?? 'Buddy'}</p>
+          <div className="space-y-2">
+            {buddyGoals.map(goal => (
+              <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} />
+            ))}
+          </div>
+        </div>
       </div>
 
       {isComplete && (
         <Link
           href="/dashboard"
-          className="block w-full text-center py-3 rounded-xl font-bold text-sm"
+          className="block w-full text-center py-3 rounded-xl font-bold text-sm mt-6"
           style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)', color: 'white' }}
         >
           Start a new challenge →
