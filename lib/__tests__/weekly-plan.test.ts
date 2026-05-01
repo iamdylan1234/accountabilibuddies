@@ -8,15 +8,15 @@ const baseGoal = (type: Goal['type'], target_count: number | null = null, id = '
 describe('computeWeeklyPlan', () => {
   it('daily goal needs 7 completions this week', () => {
     const goal = baseGoal('daily')
-    const result = computeWeeklyPlan(goal, [], 30, 3, '2026-05-03') // Sunday week 3
+    const result = computeWeeklyPlan(goal, [], 3, '2026-05-03') // Sunday week 3
     expect(result.neededThisWeek).toBe(7)
   })
 
   it('daily goal caps at remaining days in month', () => {
     const goal = baseGoal('daily')
-    // 3 days left in month, Sunday
-    const result = computeWeeklyPlan(goal, [], 30, 4, '2026-05-24', '2026-05-26')
-    expect(result.neededThisWeek).toBeLessThanOrEqual(3)
+    // Sunday 2026-05-24, monthEnd 2026-05-26 → nextMonday=May 25, end=May 26 → 2 days
+    const result = computeWeeklyPlan(goal, [], 4, '2026-05-24', '2026-05-26')
+    expect(result.neededThisWeek).toBe(2)
   })
 
   it('frequency goal distributes remaining completions across remaining weeks', () => {
@@ -26,20 +26,20 @@ describe('computeWeeklyPlan', () => {
       date: `2026-05-0${i + 1}`, completed: true, created_at: '',
     }))
     // 8 left, 2 remaining weeks → 4 this week
-    const result = computeWeeklyPlan(goal, checkIns, 30, 2, '2026-05-10')
+    const result = computeWeeklyPlan(goal, checkIns, 2, '2026-05-10')
     expect(result.neededThisWeek).toBe(4)
   })
 
   it('frequency goal caps needed at 7', () => {
     const goal = baseGoal('frequency', 20)
     // 20 needed, 1 week left → would be 20, capped at 7
-    const result = computeWeeklyPlan(goal, [], 30, 1, '2026-05-24')
+    const result = computeWeeklyPlan(goal, [], 1, '2026-05-24')
     expect(result.neededThisWeek).toBe(7)
   })
 
   it('milestone goal not done returns needed=1', () => {
     const goal = baseGoal('milestone')
-    const result = computeWeeklyPlan(goal, [], 30, 2, '2026-05-10')
+    const result = computeWeeklyPlan(goal, [], 2, '2026-05-10')
     expect(result.neededThisWeek).toBe(1)
   })
 
@@ -48,7 +48,7 @@ describe('computeWeeklyPlan', () => {
     const checkIns: CheckIn[] = [{
       id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '',
     }]
-    const result = computeWeeklyPlan(goal, checkIns, 30, 2, '2026-05-10')
+    const result = computeWeeklyPlan(goal, checkIns, 2, '2026-05-10')
     expect(result.neededThisWeek).toBe(0)
   })
 })

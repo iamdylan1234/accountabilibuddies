@@ -1,10 +1,9 @@
 import type { Goal, CheckIn } from '@/types/database'
-import { computeWeeklyPlan } from '@/lib/weekly-plan'
+import { computeWeeklyPlan, parseDate } from '@/lib/weekly-plan'
 
 interface Props {
   myGoals: Goal[]
   myCheckIns: CheckIn[]
-  totalDays: number
   remainingWeeks: number
   sundayDate: string
   monthEndDate: string
@@ -15,10 +14,10 @@ const DAY_LABELS: Record<string, string> = {
 }
 
 export default function WeeklyPlan({
-  myGoals, myCheckIns, totalDays, remainingWeeks, sundayDate, monthEndDate,
+  myGoals, myCheckIns, remainingWeeks, sundayDate, monthEndDate,
 }: Props) {
   const plans = myGoals.map(g =>
-    computeWeeklyPlan(g, myCheckIns, totalDays, remainingWeeks, sundayDate, monthEndDate)
+    computeWeeklyPlan(g, myCheckIns, remainingWeeks, sundayDate, monthEndDate)
   ).filter(p => p.neededThisWeek > 0)
 
   if (plans.length === 0) {
@@ -53,22 +52,16 @@ export default function WeeklyPlan({
                   : `${neededThisWeek}× this week`}
               </span>
             </div>
-            {suggestedDays.length > 0 && goal.type !== 'milestone' && (
+            {suggestedDays.length > 0 && (
               <div className="flex gap-1.5 flex-wrap">
                 {suggestedDays.map(date => (
                   <span key={date}
                     className="text-xs font-semibold px-2 py-0.5 rounded-full"
                     style={{ background: '#F9F871', color: '#0077B6' }}>
-                    {DAY_LABELS[String(new Date(date).getDay())]}
+                    {DAY_LABELS[String(parseDate(date).getDay())]}
                   </span>
                 ))}
               </div>
-            )}
-            {goal.type === 'milestone' && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: '#F9F871', color: '#0077B6' }}>
-                Wed is a good day
-              </span>
             )}
           </div>
         ))}

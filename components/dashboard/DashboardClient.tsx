@@ -82,11 +82,14 @@ export default function DashboardClient({
       </div>
 
       {/* Sunday weekly plan */}
-      {new Date(today).getDay() === 0 && (
+      {(() => {
+        const [y, m, d] = today.split('-').map(Number)
+        const todayDayOfWeek = new Date(y, m - 1, d).getDay()
+        return todayDayOfWeek === 0
+      })() && (
         <WeeklyPlan
           myGoals={myGoals}
           myCheckIns={myCheckIns}
-          totalDays={totalDays}
           remainingWeeks={Math.max(1, Math.ceil((totalDays - dayNumber) / 7))}
           sundayDate={today}
           monthEndDate={challenge.end_date}

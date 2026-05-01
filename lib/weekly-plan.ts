@@ -6,10 +6,18 @@ export interface WeeklyGoalPlan {
   suggestedDays: string[] // ISO date strings for Mon–Sun of current week
 }
 
+export function parseDate(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d) // local midnight — no UTC shift
+}
+
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function computeWeeklyPlan(
   goal: Goal,
   checkIns: CheckIn[],
-  totalDays: number,
   remainingWeeks: number,
   sundayDate: string,
   monthEndDate?: string
@@ -17,7 +25,7 @@ export function computeWeeklyPlan(
   const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
 
   // Mon of this week
-  const sunday = new Date(sundayDate)
+  const sunday = parseDate(sundayDate)
   const monday = new Date(sunday)
   monday.setDate(sunday.getDate() - 6)
 
@@ -27,10 +35,11 @@ export function computeWeeklyPlan(
     neededThisWeek = relevant.length > 0 ? 0 : 1
   } else if (goal.type === 'daily') {
     if (monthEndDate) {
-      const end = new Date(monthEndDate)
-      // Days remaining from today (sunday) through end of month, capped at 7
-      const daysRemaining = Math.floor((end.getTime() - sunday.getTime()) / 86400000) + 1
-      neededThisWeek = Math.min(7, Math.max(0, daysRemaining))
+      const nextMonday = new Date(sunday)
+      nextMonday.setDate(sunday.getDate() + 1)
+      const end = parseDate(monthEndDate)
+      const daysInWeek = Math.floor((end.getTime() - nextMonday.getTime()) / 86400000) + 1
+      neededThisWeek = Math.min(7, Math.max(0, daysInWeek))
     } else {
       neededThisWeek = 7
     }
@@ -42,7 +51,7 @@ export function computeWeeklyPlan(
     neededThisWeek = Math.min(7, Math.ceil(remaining / weeks))
   }
 
-  const suggestedDays = allocateDays(neededThisWeek, monday.toISOString().split('T')[0])
+  const suggestedDays = allocateDays(neededThisWeek, formatDate(monday))
 
   return { goal, neededThisWeek, suggestedDays }
 }
@@ -50,11 +59,11 @@ export function computeWeeklyPlan(
 export function allocateDays(needed: number, weekStartMonday: string): string[] {
   if (needed === 0) return []
   const days: string[] = []
-  const start = new Date(weekStartMonday)
+  const start = parseDate(weekStartMonday)
   for (let i = 0; i < 7; i++) {
     const d = new Date(start)
     d.setDate(start.getDate() + i)
-    days.push(d.toISOString().split('T')[0])
+    days.push(formatDate(d))
   }
   if (needed >= 7) return days
   // Evenly space needed completions across 7 days
