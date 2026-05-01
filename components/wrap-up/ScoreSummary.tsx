@@ -51,19 +51,19 @@ export default function ScoreSummary({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Header banner */}
+      {/* Slim teal strip */}
       <div
-        className="rounded-2xl p-6 mb-6 text-white"
+        className="rounded-2xl px-5 py-3 mb-4 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <h1 className="text-3xl font-black">{challengeName}</h1>
-        <p className="text-white/70 text-sm font-semibold mt-1">
+        <p className="font-black text-base">{challengeName}</p>
+        <p className="text-white/70 text-xs font-semibold mt-0.5">
           {isComplete ? 'Final Results' : 'Full Challenge'}
         </p>
       </div>
 
       {/* Score tiles */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         {[
           { profile: myProfile, score: myScore, daysActive: myDaysActive, isWinner: !tied && iWon },
           { profile: buddyProfile, score: buddyScore, daysActive: buddyDaysActive, isWinner: !tied && !iWon },
@@ -94,22 +94,16 @@ export default function ScoreSummary({
 
       {/* Two-column goal cards */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="font-black text-gray-900 mb-3">You</p>
-          <div className="space-y-2">
-            {myGoals.map(goal => (
-              <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} />
-            ))}
-          </div>
+        <div className="space-y-2">
+          {myGoals.map(goal => (
+            <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} />
+          ))}
         </div>
 
-        <div>
-          <p className="font-black text-gray-900 mb-3">{buddyProfile?.name ?? 'Buddy'}</p>
-          <div className="space-y-2">
-            {buddyGoals.map(goal => (
-              <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} />
-            ))}
-          </div>
+        <div className="space-y-2">
+          {buddyGoals.map(goal => (
+            <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} />
+          ))}
         </div>
       </div>
 

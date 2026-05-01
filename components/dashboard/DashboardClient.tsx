@@ -107,16 +107,43 @@ export default function DashboardClient({
 
   const localDate = todayMidnight
 
+  const todayTied = myDone === buddyDone
+  const myAhead = !todayTied && myDone > buddyDone
+  const buddyAhead = !todayTied && buddyDone > myDone
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Slim teal strip */}
       <div
-        className="rounded-2xl p-6 mb-6 text-white"
+        className="rounded-2xl px-5 py-3 mb-4 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <h1 className="text-3xl font-black">{challenge.month_name}</h1>
-        <p className="text-white/70 text-sm font-semibold mt-1">
+        <p className="font-black text-base">{challenge.month_name}</p>
+        <p className="text-white/70 text-xs font-semibold mt-0.5">
           Day {dayNumber} of {totalDays} · {localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
+      </div>
+
+      {/* Score tiles */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        {[
+          { name: 'You', done: myDone, total: myGoals.length, isAhead: myAhead },
+          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyGoals.length, isAhead: buddyAhead },
+        ].map(({ name, done, total, isAhead }) => (
+          <div
+            key={name}
+            className="rounded-2xl border-2 p-4 text-center"
+            style={{
+              borderColor: isAhead ? '#F9F871' : '#e5e7eb',
+              background: isAhead ? '#fffde7' : 'white',
+            }}
+          >
+            {isAhead && <p className="text-xs font-black text-yellow-600 mb-1">⚡ AHEAD</p>}
+            <p className="text-sm font-bold text-gray-500">{name}</p>
+            <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{done}/{total}</p>
+            <p className="text-xs text-gray-400 mt-1">goals today</p>
+          </div>
+        ))}
       </div>
 
       {/* Sunday weekly plan */}
@@ -131,57 +158,35 @@ export default function DashboardClient({
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-black text-gray-900">You</span>
-            <span
-              className="text-xs font-bold px-3 py-1 rounded-full text-white"
-              style={{ background: '#F9F871', color: '#0077B6' }}
-            >
-              {myDone}/{myGoals.length} today
-            </span>
-          </div>
-          <div className="space-y-2">
-            {myGoals.map(goal => (
+        <div className="space-y-2">
+          {myGoals.map(goal => (
+            <GoalCard
+              key={goal.id}
+              goal={goal}
+              checkIn={getCheckIn(goal.id, optimisticCheckIns)}
+              reaction={null}
+              isMyGoal={true}
+              today={today}
+              onToggle={handleToggle}
+            />
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          {buddyGoals.map(goal => {
+            const checkIn = getCheckIn(goal.id, buddyCheckIns)
+            return (
               <GoalCard
                 key={goal.id}
                 goal={goal}
-                checkIn={getCheckIn(goal.id, optimisticCheckIns)}
-                reaction={null}
-                isMyGoal={true}
+                checkIn={checkIn}
+                reaction={getReaction(checkIn?.id)}
+                isMyGoal={false}
                 today={today}
                 onToggle={handleToggle}
               />
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-black text-gray-900">{buddy?.name ?? 'Buddy'}</span>
-            <span
-              className="text-xs font-bold px-3 py-1 rounded-full"
-              style={{ background: '#E8FBF7', color: '#00C9A7' }}
-            >
-              {buddyDone}/{buddyGoals.length} today
-            </span>
-          </div>
-          <div className="space-y-2">
-            {buddyGoals.map(goal => {
-              const checkIn = getCheckIn(goal.id, buddyCheckIns)
-              return (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  checkIn={checkIn}
-                  reaction={getReaction(checkIn?.id)}
-                  isMyGoal={false}
-                  today={today}
-                  onToggle={handleToggle}
-                />
-              )
-            })}
-          </div>
+            )
+          })}
         </div>
       </div>
     </div>
