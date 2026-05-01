@@ -66,6 +66,9 @@ export default function DashboardClient({
   const myDone = myGoals.filter(g => getCheckIn(g.id, myCheckIns)).length
   const buddyDone = buddyGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
 
+  const [ty, tm, td] = today.split('-').map(Number)
+  const localDate = new Date(ty, tm - 1, td)
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <div
@@ -77,16 +80,12 @@ export default function DashboardClient({
         </p>
         <h1 className="text-3xl font-black mt-1">Day {dayNumber} of {totalDays}</h1>
         <p className="text-white/60 text-sm mt-1">
-          {new Date(today).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          {localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
       {/* Sunday weekly plan */}
-      {(() => {
-        const [y, m, d] = today.split('-').map(Number)
-        const todayDayOfWeek = new Date(y, m - 1, d).getDay()
-        return todayDayOfWeek === 0
-      })() && (
+      {localDate.getDay() === 0 && (
         <WeeklyPlan
           myGoals={myGoals}
           myCheckIns={myCheckIns}
