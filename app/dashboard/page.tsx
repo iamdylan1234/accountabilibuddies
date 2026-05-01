@@ -81,13 +81,9 @@ export default async function DashboardPage() {
   }
 
   // Active challenge — fetch goals and check-ins, render full dashboard
-  const today = new Date().toISOString().split('T')[0]
-
-  const start = new Date(typedChallenge.start_date)
-  const todayDate = new Date(today)
-  const dayNumber = Math.max(1, Math.floor((todayDate.getTime() - start.getTime()) / 86400000) + 1)
+  // today and dayNumber are computed client-side so they reflect the user's local timezone
   const totalDays = Math.floor(
-    (new Date(typedChallenge.end_date).getTime() - start.getTime()) / 86400000
+    (new Date(typedChallenge.end_date).getTime() - new Date(typedChallenge.start_date).getTime()) / 86400000
   ) + 1
 
   const buddyId = typedChallenge.creator_id === user.id
@@ -130,8 +126,7 @@ export default async function DashboardPage() {
       buddyCheckIns={buddyCheckInsRes.data ?? []}
       reactions={reactionsRes.data ?? []}
       myId={user.id}
-      today={today}
-      dayNumber={dayNumber}
+      startDate={typedChallenge.start_date}
       totalDays={totalDays}
     />
   )

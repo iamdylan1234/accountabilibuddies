@@ -16,8 +16,7 @@ interface Props {
   buddyCheckIns: CheckIn[]
   reactions: Reaction[]
   myId: string
-  today: string
-  dayNumber: number
+  startDate: string
   totalDays: number
 }
 
@@ -29,10 +28,23 @@ export default function DashboardClient({
   buddyCheckIns,
   reactions,
   myId,
-  today,
-  dayNumber,
+  startDate,
   totalDays,
 }: Props) {
+  // Compute today in the user's local timezone, not server UTC
+  const now = new Date()
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-')
+
+  // dayNumber based on local today vs challenge start
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const startMidnight = new Date(sy, sm - 1, sd)
+  const [ty, tm, td] = today.split('-').map(Number)
+  const todayMidnight = new Date(ty, tm - 1, td)
+  const dayNumber = Math.max(1, Math.floor((todayMidnight.getTime() - startMidnight.getTime()) / 86400000) + 1)
   const router = useRouter()
   const supabase = createClient()
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
@@ -93,8 +105,7 @@ export default function DashboardClient({
   const myDone = myGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
   const buddyDone = buddyGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
 
-  const [ty, tm, td] = today.split('-').map(Number)
-  const localDate = new Date(ty, tm - 1, td)
+  const localDate = todayMidnight
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
