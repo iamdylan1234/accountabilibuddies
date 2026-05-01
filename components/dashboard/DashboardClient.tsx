@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import GoalCard from './GoalCard'
+import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 
 interface Props {
@@ -79,6 +80,18 @@ export default function DashboardClient({
           {new Date(today).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      {/* Sunday weekly plan */}
+      {new Date(today).getDay() === 0 && (
+        <WeeklyPlan
+          myGoals={myGoals}
+          myCheckIns={myCheckIns}
+          totalDays={totalDays}
+          remainingWeeks={Math.max(1, Math.ceil((totalDays - dayNumber) / 7))}
+          sundayDate={today}
+          monthEndDate={challenge.end_date}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
