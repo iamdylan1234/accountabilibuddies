@@ -47,6 +47,7 @@ export default function Navbar() {
             <Link
               key={href}
               href={href}
+              prefetch={true}
               className={`flex-1 text-center py-2.5 text-sm font-bold transition border-b-2 ${
                 active
                   ? 'border-teal-500 text-teal-600'
