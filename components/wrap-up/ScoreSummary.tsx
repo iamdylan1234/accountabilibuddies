@@ -31,6 +31,14 @@ export default function ScoreSummary({
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
+  const bothPerfect = myScore === 100 && buddyScore === 100
+
+  function tileLabel(isWinner: boolean) {
+    if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
+    if (isWinner) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
+    if (tied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
+    return <p className="text-xs mb-1">&nbsp;</p>
+  }
 
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
@@ -96,12 +104,6 @@ export default function ScoreSummary({
         </p>
       </div>
 
-      <PendingApprovalBanner
-        requests={pendingRequests}
-        goals={[...myGoals, ...buddyGoals]}
-        myId={myId}
-      />
-
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
@@ -110,21 +112,22 @@ export default function ScoreSummary({
         ].map(({ profile, score, daysActive, isWinner }) => (
           <div
             key={profile?.id ?? 'buddy'}
-            className="rounded-2xl p-5 text-center"
+            className="rounded-2xl p-4 text-center"
             style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
           >
-            {isWinner
-              ? <p className="text-xs font-black text-yellow-300 mb-1">{isComplete ? '🏆 WINNER' : '🏆 WINNING'}</p>
-              : tied
-              ? <p className="text-xs font-black text-white/50 mb-1">🤝 TIED</p>
-              : <p className="text-xs mb-1">&nbsp;</p>
-            }
+            {tileLabel(isWinner)}
             <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1 text-white">{score}%</p>
             <p className="text-xs text-white/60 mt-1">{daysActive}/{totalDays} days active</p>
           </div>
         ))}
       </div>
+
+      <PendingApprovalBanner
+        requests={pendingRequests}
+        goals={[...myGoals, ...buddyGoals]}
+        myId={myId}
+      />
 
       {/* Two-column goal cards */}
       <div className="grid grid-cols-2 gap-4">

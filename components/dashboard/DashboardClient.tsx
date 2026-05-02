@@ -142,6 +142,14 @@ export default function DashboardClient({
   const todayTied = myDone === buddyDone
   const myAhead = !todayTied && myDone > buddyDone
   const buddyAhead = !todayTied && buddyDone > myDone
+  const bothPerfect = myTotal > 0 && buddyTotal > 0 && myDone === myTotal && buddyDone === buddyTotal
+
+  function tileLabel(isAhead: boolean) {
+    if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
+    if (isAhead) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
+    if (todayTied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
+    return <p className="text-xs mb-1">&nbsp;</p>
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -167,7 +175,7 @@ export default function DashboardClient({
             className="rounded-2xl p-4 text-center"
             style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
           >
-            {isAhead && <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>}
+            {tileLabel(isAhead)}
             <p className="text-sm font-bold text-white/70">{name}</p>
             <p className="text-4xl font-black mt-1 text-white">{done}/{total}</p>
             <p className="text-xs text-white/60 mt-1">goals today</p>

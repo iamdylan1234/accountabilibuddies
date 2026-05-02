@@ -67,6 +67,14 @@ export default function WeekView({
   const buddyScore = scoreChallenge(buddyGoals, weekBuddyForScoring, 7, weekStartStr, todayStr)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
+  const bothPerfect = myScore === 100 && buddyScore === 100
+
+  function tileLabel(isWinner: boolean) {
+    if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
+    if (isWinner) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
+    if (tied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
+    return <p className="text-xs mb-1">&nbsp;</p>
+  }
 
   const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -183,15 +191,10 @@ export default function WeekView({
         ].map(({ profile, score, isWinner }) => (
           <div
             key={profile?.id ?? 'buddy'}
-            className="rounded-2xl p-5 text-center"
+            className="rounded-2xl p-4 text-center"
             style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
           >
-            {isWinner
-              ? <p className="text-xs font-black text-yellow-300 mb-1">🏆 WINNING</p>
-              : tied
-              ? <p className="text-xs font-black text-white/50 mb-1">🤝 TIED</p>
-              : <p className="text-xs mb-1">&nbsp;</p>
-            }
+            {tileLabel(isWinner)}
             <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1 text-white">{score}%</p>
             <p className="text-xs text-white/60 mt-1">this week</p>
