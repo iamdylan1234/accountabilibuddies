@@ -7,6 +7,7 @@ import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
+import { isGoalActiveToday, getCurrentStreak } from '@/lib/scoring'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -102,8 +103,11 @@ export default function DashboardClient({
     return reactions.find(r => r.check_in_id === checkInId) ?? null
   }
 
-  const myDone = myGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
-  const buddyDone = buddyGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
+  const myActiveGoals = myGoals.filter(g => isGoalActiveToday(g, today, optimisticCheckIns, startDate))
+  const buddyActiveGoals = buddyGoals.filter(g => isGoalActiveToday(g, today, buddyCheckIns, startDate))
+
+  const myDone = myActiveGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
+  const buddyDone = buddyActiveGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
 
   const localDate = todayMidnight
 
@@ -127,8 +131,8 @@ export default function DashboardClient({
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
-          { name: 'You', done: myDone, total: myGoals.length, isAhead: myAhead },
-          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyGoals.length, isAhead: buddyAhead },
+          { name: 'You', done: myDone, total: myActiveGoals.length, isAhead: myAhead },
+          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyActiveGoals.length, isAhead: buddyAhead },
         ].map(({ name, done, total, isAhead }) => (
           <div
             key={name}
@@ -159,7 +163,7 @@ export default function DashboardClient({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          {myGoals.map(goal => (
+          {myActiveGoals.map(goal => (
             <GoalCard
               key={goal.id}
               goal={goal}
@@ -168,12 +172,13 @@ export default function DashboardClient({
               isMyGoal={true}
               today={today}
               onToggle={handleToggle}
+              streak={getCurrentStreak(goal, myCheckIns, today)}
             />
           ))}
         </div>
 
         <div className="space-y-2">
-          {buddyGoals.map(goal => {
+          {buddyActiveGoals.map(goal => {
             const checkIn = getCheckIn(goal.id, buddyCheckIns)
             return (
               <GoalCard
@@ -184,6 +189,7 @@ export default function DashboardClient({
                 isMyGoal={false}
                 today={today}
                 onToggle={handleToggle}
+                streak={getCurrentStreak(goal, buddyCheckIns, today)}
               />
             )
           })}

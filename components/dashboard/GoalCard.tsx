@@ -8,9 +8,10 @@ interface Props {
   isMyGoal: boolean
   today: string
   onToggle: (goalId: string) => void
+  streak?: number
 }
 
-export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle }: Props) {
+export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak }: Props) {
   const done = !!checkIn
 
   if (isMyGoal) {
@@ -29,6 +30,11 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle }
           {done && <span className="text-white text-xs font-bold">✓</span>}
         </span>
         <span className="text-sm font-semibold flex-1">{goal.title}</span>
+        {streak !== undefined && streak >= 2 && (
+          <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>
+            🔥{streak}
+          </span>
+        )}
         {goal.type === 'frequency' && (
           <span className={`text-xs font-bold ${done ? 'text-white/70' : 'text-gray-400'}`}>
             ×{goal.target_count}
@@ -50,6 +56,11 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle }
         {done && <span className="text-white text-xs font-bold">✓</span>}
       </span>
       <span className="text-sm font-semibold flex-1">{goal.title}</span>
+      {streak !== undefined && streak >= 2 && (
+        <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>
+          🔥{streak}
+        </span>
+      )}
       {done && checkIn && (
         <ReactionPicker checkInId={checkIn.id} existingEmoji={reaction?.emoji} />
       )}
