@@ -75,7 +75,8 @@ export default function DashboardClient({
     const existing = optimisticCheckIns.find(c => c.goal_id === goalId && c.date === today)
     startTransition(async () => {
       applyOptimistic({ goalId, action: existing ? 'remove' : 'add' })
-      await toggleCheckIn(goalId, today)
+      const result = await toggleCheckIn(goalId, today)
+      if (result?.error) console.error('[handleToggle] server error:', result.error)
     })
   }
 
