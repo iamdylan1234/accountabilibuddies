@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
-import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalActiveToday, isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 
@@ -178,16 +177,6 @@ export default function DashboardClient({
         ))}
       </div>
 
-      {/* Sunday weekly plan */}
-      {localDate.getDay() === 0 && (
-        <WeeklyPlan
-          myGoals={myGoals}
-          myCheckIns={myCheckIns}
-          remainingWeeks={Math.max(1, Math.ceil((totalDays - dayNumber) / 7))}
-          sundayDate={today}
-          monthEndDate={challenge.end_date}
-        />
-      )}
 
       <div className="space-y-6">
         {/* Section 1: Today's Goals */}
