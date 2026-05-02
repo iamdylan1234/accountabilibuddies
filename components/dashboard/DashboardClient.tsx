@@ -50,6 +50,8 @@ export default function DashboardClient({
   const router = useRouter()
   const supabase = createClient()
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
+  const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
+  const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
   const [, startTransition] = useTransition()
 
   const [optimisticCheckIns, applyOptimistic] = useOptimistic(
@@ -148,9 +150,9 @@ export default function DashboardClient({
         className="rounded-2xl px-5 py-3 mb-4 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
-        <p className="font-black text-base">{challenge.month_name}</p>
+        <p className="font-black text-base">Hello, {myFirstName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
-          Day {dayNumber} of {totalDays} · {localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          {localDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
 

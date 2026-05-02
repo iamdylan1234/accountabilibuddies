@@ -35,6 +35,12 @@ export default function ScoreSummary({
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ty, tm, td] = today.split('-').map(Number)
+  const dayNumber = Math.max(1, Math.floor(
+    (new Date(ty, tm - 1, td).getTime() - new Date(sy, sm - 1, sd).getTime()) / 86400000
+  ) + 1)
+
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
     const denominator = goal.schedule_dates && goal.schedule_dates.length > 0
       ? goal.schedule_dates.filter(d => d <= today).length
@@ -74,7 +80,7 @@ export default function ScoreSummary({
       >
         <p className="font-black text-base">{challengeName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
-          {isComplete ? 'Final Results' : 'Full Challenge'}
+          Day {dayNumber} of {totalDays} · {isComplete ? 'Final Results' : 'Summary'}
         </p>
       </div>
 
