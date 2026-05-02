@@ -1,5 +1,5 @@
 import type { Goal, CheckIn, Profile } from '@/types/database'
-import { scoreChallenge, scoreGoal, getScheduledDaysElapsed } from '@/lib/scoring'
+import { scoreChallenge, scoreGoal } from '@/lib/scoring'
 import Link from 'next/link'
 import GoalEditButton from './GoalEditButton'
 
@@ -14,13 +14,14 @@ interface Props {
   challengeName: string
   isComplete: boolean
   startDate: string
+  endDate: string
   today: string
 }
 
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
-  startDate, today,
+  startDate, endDate, today,
 }: Props) {
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
@@ -31,15 +32,15 @@ export default function ScoreSummary({
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    const denominator = goal.schedule_days && goal.schedule_days.length > 0
-      ? getScheduledDaysElapsed(goal.schedule_days, startDate, today)
+    const denominator = goal.schedule_dates && goal.schedule_dates.length > 0
+      ? goal.schedule_dates.filter(d => d <= today).length
       : totalDays
-    const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator) * 100)
+    const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator, startDate, today) * 100)
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-2">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
-          {isOwn && <GoalEditButton goal={goal} />}
+          {isOwn && <GoalEditButton goal={goal} challengeStartDate={startDate} challengeEndDate={endDate} />}
           <span
             className="text-sm font-black"
             style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}

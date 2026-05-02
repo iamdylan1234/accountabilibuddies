@@ -61,6 +61,7 @@ export default async function WrapUpPage() {
       challengeName={typedChallenge.month_name}
       isComplete={typedChallenge.status === 'completed'}
       startDate={typedChallenge.start_date}
+      endDate={typedChallenge.end_date}
       today={today}
     />
   )
