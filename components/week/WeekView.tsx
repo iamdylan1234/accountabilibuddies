@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { getWeekStart, scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
+import { getWeekStart, scoreChallenge, getCurrentStreak } from '@/lib/scoring'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 
 interface Props {
@@ -78,70 +78,60 @@ export default function WeekView({
 
   const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-  function goalLabel(goal: Goal, checkIns: CheckIn[]) {
-    const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
-    if (goal.type === 'daily') return relevant.length > 0 ? 'Done ✓' : isFuture ? 'Upcoming' : 'Not done'
-    if (goal.type === 'milestone') return relevant.length > 0 ? 'Done ✓' : 'Not yet'
-    if (goal.type === 'frequency') {
-      const scheduledToday = goal.schedule_dates?.includes(selectedStr)
-      if (scheduledToday) return relevant.length > 0 ? 'Done ✓' : isFuture ? 'Scheduled' : 'Not done'
-      return goal.schedule_dates ? 'Not scheduled today' : (relevant.length > 0 ? 'Done ✓' : 'Not done')
-    }
-    if (goal.type === 'cumulative') {
-      const total = checkIns.filter(c => c.goal_id === goal.id && c.value != null).reduce((s, c) => s + (c.value ?? 0), 0)
-      return total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''} today` : isFuture ? 'Upcoming' : 'Nothing logged'
-    }
-    return ''
-  }
-
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
+    // checkIns = day-filtered (selected day only)
+    const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
+    const done = relevant.length > 0
     const scheduled = !goal.schedule_dates || goal.schedule_dates.length === 0 || goal.schedule_dates.includes(selectedStr)
     const streak = getCurrentStreak(goal, goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns, isFuture ? todayStr : selectedStr)
 
-    // Weekly progress % — full week's check-ins, scoped to Mon–today
-    const ownerCheckIns = goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns
-    const weekGoalCheckIns = ownerCheckIns.filter(c => {
-      if (c.goal_id !== goal.id) return false
-      if (goal.type === 'milestone') return c.date <= todayStr
-      return c.date >= weekStartStr && c.date <= todayStr
-    })
-    const pct = Math.round(scoreGoal(goal, weekGoalCheckIns, 7, weekStartStr, todayStr) * 100)
-
+    // Not scheduled today — dim card, no checkbox
     if (!scheduled && goal.type === 'frequency') {
       return (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 opacity-50">
-          <p className="text-sm font-bold text-gray-400">{goal.title}</p>
+        <div className="w-full flex items-center gap-3 rounded-xl px-4 py-3 bg-gray-50 opacity-40">
+          <span className="w-5 h-5 rounded-full border-2 border-gray-200 flex-shrink-0" />
+          <span className="text-sm font-semibold text-gray-400 flex-1">{goal.title}</span>
         </div>
       )
     }
 
+    // Cumulative: show logged value as subtitle instead of a checkbox
+    if (goal.type === 'cumulative') {
+      const total = checkIns.filter(c => c.goal_id === goal.id && c.value != null).reduce((s, c) => s + (c.value ?? 0), 0)
+      const cardStyle = done
+        ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
+        : isFuture ? { background: '#f0f9ff', border: '1px solid #bae6fd' }
+        : { background: '#f9fafb' }
+      return (
+        <div className="rounded-xl px-4 py-3" style={cardStyle}>
+          <p className={`text-sm font-semibold ${done ? 'text-white' : isFuture ? 'text-blue-700' : 'text-gray-700'}`}>
+            {goal.title}
+          </p>
+          <p className={`text-xs mt-0.5 ${done ? 'text-white/70' : isFuture ? 'text-blue-400' : 'text-gray-400'}`}>
+            {total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''}` : isFuture ? 'Upcoming' : 'Nothing logged'}
+          </p>
+        </div>
+      )
+    }
+
+    // Daily / milestone / frequency — Today tab style (read-only)
+    const cardStyle = done
+      ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
+      : isFuture ? { background: '#f0f9ff', border: '1px solid #bae6fd' }
+      : { background: '#f9fafb' }
+
     return (
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
-        {/* Title row */}
-        <div className="flex items-center gap-2 mb-2">
-          <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
-          <span className="text-sm font-black" style={{ color: '#0077B6' }}>{pct}%</span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
-          />
-        </div>
-
-        {/* Footer: streak + future label */}
-        {(streak >= 2 || isFuture) && (
-          <div className="flex items-center justify-between mt-2">
-            {streak >= 2
-              ? <p className="text-xs text-gray-400">🔥{streak}</p>
-              : <span />
-            }
-            {isFuture && (
-              <p className="text-xs text-blue-400">{goalLabel(goal, checkIns)}</p>
-            )}
-          </div>
+      <div className="w-full flex items-center gap-3 rounded-xl px-4 py-3" style={cardStyle}>
+        <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+          done ? 'border-white bg-white/30' : isFuture ? 'border-blue-300' : 'border-gray-300'
+        }`}>
+          {done && <span className="text-white text-xs font-bold">✓</span>}
+        </span>
+        <span className={`text-sm font-semibold flex-1 ${done ? 'text-white' : isFuture ? 'text-blue-700' : 'text-gray-700'}`}>
+          {goal.title}
+        </span>
+        {streak >= 2 && (
+          <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>🔥{streak}</span>
         )}
       </div>
     )
