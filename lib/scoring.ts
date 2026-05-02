@@ -115,8 +115,19 @@ export function scoreGoal(
   return denominator === 0 ? 0 : relevant.length / denominator
 }
 
-export function scoreChallenge(goals: Goal[], checkIns: CheckIn[], totalDays: number): number {
+// startDate + today are optional; when provided, scheduled daily goals use the
+// correct per-goal denominator instead of the coarser totalDays fallback.
+export function scoreChallenge(
+  goals: Goal[],
+  checkIns: CheckIn[],
+  totalDays: number,
+  startDate?: string,
+  today?: string,
+): number {
   if (goals.length === 0) return 0
-  const total = goals.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays), 0)
+  const total = goals.reduce(
+    (sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today),
+    0,
+  )
   return Math.round((total / goals.length) * 100)
 }
