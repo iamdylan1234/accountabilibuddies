@@ -87,12 +87,10 @@ export default function WeekView({
   }
 
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
-    const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
-    const doneToday = relevant.length > 0
     const scheduled = !goal.schedule_dates || goal.schedule_dates.length === 0 || goal.schedule_dates.includes(selectedStr)
     const streak = getCurrentStreak(goal, goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns, isFuture ? todayStr : selectedStr)
 
-    // Weekly progress % — uses full week's check-ins, scoped to Mon–today
+    // Weekly progress % — full week's check-ins, scoped to Mon–today
     const ownerCheckIns = goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns
     const weekGoalCheckIns = ownerCheckIns.filter(c => {
       if (c.goal_id !== goal.id) return false
@@ -103,36 +101,39 @@ export default function WeekView({
 
     if (!scheduled && goal.type === 'frequency') {
       return (
-        <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 opacity-50">
+        <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 opacity-50">
           <p className="text-sm font-bold text-gray-400">{goal.title}</p>
-          <p className="text-xs text-gray-300 mt-1">Not scheduled</p>
         </div>
       )
     }
 
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4">
+        {/* Title row */}
         <div className="flex items-center gap-2 mb-2">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
-          {streak >= 2 && <span className="text-xs font-bold text-orange-400">🔥{streak}</span>}
-          {doneToday && goal.type !== 'cumulative' && (
-            <span className="text-xs font-bold" style={{ color: '#00C9A7' }}>✓ today</span>
-          )}
-          <span
-            className="text-sm font-black"
-            style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
-          >
-            {pct}%
-          </span>
+          <span className="text-sm font-black" style={{ color: '#0077B6' }}>{pct}%</span>
         </div>
+
+        {/* Progress bar */}
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
           />
         </div>
-        {isFuture && (
-          <p className="text-xs text-blue-400 mt-1">{goalLabel(goal, checkIns)}</p>
+
+        {/* Footer: streak + future label */}
+        {(streak >= 2 || isFuture) && (
+          <div className="flex items-center justify-between mt-2">
+            {streak >= 2
+              ? <p className="text-xs text-gray-400">🔥{streak}</p>
+              : <span />
+            }
+            {isFuture && (
+              <p className="text-xs text-blue-400">{goalLabel(goal, checkIns)}</p>
+            )}
+          </div>
         )}
       </div>
     )

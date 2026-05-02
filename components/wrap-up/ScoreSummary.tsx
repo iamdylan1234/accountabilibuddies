@@ -1,5 +1,5 @@
 import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
-import { scoreChallenge, scoreGoal } from '@/lib/scoring'
+import { scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import Link from 'next/link'
 import GoalEditButton from './GoalEditButton'
 import PendingApprovalBanner from './PendingApprovalBanner'
@@ -42,39 +42,42 @@ export default function ScoreSummary({
   ) + 1)
 
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    // scoreGoal computes its own denominator from startDate+today (daily: elapsedDays,
-    // frequency: past schedule_dates, milestone: binary, cumulative: target_count).
-    // totalDays is passed as a fallback but is only used for goals with no startDate context.
     const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today) * 100)
     const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
+    const streak = getCurrentStreak(goal, checkIns, today)
 
     return (
       <div
         className="rounded-xl border p-4"
         style={isPending
-          ? { background: '#f3f4f6', borderColor: '#d1d5db' }
+          ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
           : { background: 'white', borderColor: '#f3f4f6' }}
       >
+        {/* Title row */}
         <div className="flex items-center gap-2 mb-2">
-          <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>{goal.title}</p>
-          {isOwn && !isPending && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />}
-          <span
-            className="text-sm font-black"
-            style={{ color: isPending ? '#9ca3af' : pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
-          >
+          <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
+            {goal.title}
+          </p>
+          {isPending
+            ? <span className="text-xs text-gray-400">⏳</span>
+            : isOwn && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />
+          }
+          <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
             {pct}%
           </span>
         </div>
-        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+
+        {/* Progress bar */}
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: isPending ? '#d1d5db' : 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
+            style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
           />
         </div>
-        {isPending && (
-          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-            <span>⏳</span> Under review
-          </p>
+
+        {/* Footer: streak */}
+        {streak >= 2 && (
+          <p className="text-xs text-gray-400 mt-2">🔥{streak}</p>
         )}
       </div>
     )
