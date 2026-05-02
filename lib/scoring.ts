@@ -87,7 +87,12 @@ export function scoreGoal(
 
   if (goal.type === 'frequency') {
     if (goal.schedule_dates && goal.schedule_dates.length > 0) {
-      const past = today ? goal.schedule_dates.filter(d => d <= today).length : goal.schedule_dates.length
+      // When startDate is provided (e.g. weekStartStr) only count scheduled dates within that window.
+      // This lets WeekView scope the denominator to the current week, while ScoreSummary
+      // (which passes challengeStartDate) still counts all past dates correctly.
+      const past = today
+        ? goal.schedule_dates.filter(d => (!startDate || d >= startDate) && d <= today).length
+        : goal.schedule_dates.length
       return past === 0 ? 0 : Math.min(1, relevant.length / past)
     }
     return Math.min(1, relevant.length / (goal.target_count ?? 1))

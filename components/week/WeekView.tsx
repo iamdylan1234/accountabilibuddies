@@ -31,9 +31,12 @@ export default function WeekView({
   const now = new Date()
   const todayStr = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
   const currentWeekStart = getWeekStart(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+  const weekStartStr = fmt(currentWeekStart)
 
-  // dayOffset: 0 = Monday, 1 = Tuesday, ... 6 = Sunday
-  const todayOffset = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - currentWeekStart.getTime()) / 86400000)
+  // dayOffset: 0 = Monday … 6 = Sunday; default to today
+  const todayOffset = Math.floor(
+    (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - currentWeekStart.getTime()) / 86400000
+  )
   const [dayOffset, setDayOffset] = useState(todayOffset)
 
   const selectedDate = new Date(currentWeekStart.getFullYear(), currentWeekStart.getMonth(), currentWeekStart.getDate() + dayOffset)
@@ -41,17 +44,27 @@ export default function WeekView({
   const isToday = selectedStr === todayStr
   const isFuture = selectedStr > todayStr
 
-  const weekStartStr = fmt(currentWeekStart)
-
-  // Filter check-ins to the selected day (for goal cards only)
+  // Goal cards show the selected day only
   const dayMy = myCheckIns.filter(c => c.date === selectedStr)
   const dayBuddy = buddyCheckIns.filter(c => c.date === selectedStr)
 
-  // Score tiles use the full check-in history with the real challenge startDate.
-  // This correctly handles frequency goals (schedule_dates spanning multiple weeks),
-  // milestones completed in prior weeks, and daily goal streaks.
-  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, todayStr)
-  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, todayStr)
+  // Score tiles: scope check-ins to Mon–today for this week.
+  // Milestones are one-time achievements — include them regardless of which week they were completed.
+  const weekMyForScoring = myCheckIns.filter(c => {
+    const goal = myGoals.find(g => g.id === c.goal_id)
+    if (goal?.type === 'milestone') return c.date <= todayStr
+    return c.date >= weekStartStr && c.date <= todayStr
+  })
+  const weekBuddyForScoring = buddyCheckIns.filter(c => {
+    const goal = buddyGoals.find(g => g.id === c.goal_id)
+    if (goal?.type === 'milestone') return c.date <= todayStr
+    return c.date >= weekStartStr && c.date <= todayStr
+  })
+
+  // scoreGoal now uses startDate as the lower bound for schedule_dates,
+  // so frequency denominators are scoped to this week too.
+  const myScore = scoreChallenge(myGoals, weekMyForScoring, 7, weekStartStr, todayStr)
+  const buddyScore = scoreChallenge(buddyGoals, weekBuddyForScoring, 7, weekStartStr, todayStr)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
@@ -113,7 +126,7 @@ export default function WeekView({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Banner with arrows */}
+      {/* Banner with day navigation arrows */}
       <div
         className="rounded-2xl px-4 py-3 mb-4 text-white"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
@@ -147,7 +160,7 @@ export default function WeekView({
         </div>
       </div>
 
-      {/* Score tiles — overall challenge progress */}
+      {/* Score tiles — this week's progress */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
           { profile: myProfile, score: myScore, isWinner: !tied && iWon },
@@ -164,12 +177,12 @@ export default function WeekView({
             {isWinner && <p className="text-xs font-black text-yellow-600 mb-1">🏆 WINNING</p>}
             <p className="text-sm font-bold text-gray-500">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{score}%</p>
-            <p className="text-xs text-gray-400 mt-1">overall</p>
+            <p className="text-xs text-gray-400 mt-1">this week</p>
           </div>
         ))}
       </div>
 
-      {tied && <p className="text-center text-gray-500 text-sm mb-6 font-semibold">Tied overall! 🤝</p>}
+      {tied && <p className="text-center text-gray-500 text-sm mb-6 font-semibold">Tied so far! 🤝</p>}
 
       {/* Two-column goal cards */}
       <div className="grid grid-cols-2 gap-4">
