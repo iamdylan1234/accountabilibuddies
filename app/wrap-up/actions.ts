@@ -45,10 +45,10 @@ export async function submitGoalChangeRequest(
     schedule_dates: string[] | null
     catch_up: boolean
   }
-) {
+): Promise<{ error: string } | undefined> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
+  if (!user) return { error: 'Not authenticated' }
 
   // Cancel any existing pending request from this user for this goal
   await supabase.from('goal_change_requests')
@@ -69,7 +69,7 @@ export async function submitGoalChangeRequest(
     proposed_catch_up: proposed.catch_up,
     status: 'pending',
   })
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/wrap-up')
 }
 

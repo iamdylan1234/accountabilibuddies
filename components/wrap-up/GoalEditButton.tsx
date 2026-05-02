@@ -23,6 +23,7 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
   const [catchUp, setCatchUp] = useState(goal.catch_up)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [, startTransition] = useTransition()
 
   const isMyGoal = goal.user_id === myId
@@ -30,8 +31,9 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
 
   function handleSave() {
     setSaving(true)
+    setSaveError('')
     startTransition(async () => {
-      await submitGoalChangeRequest(goal.id, challengeId, {
+      const result = await submitGoalChangeRequest(goal.id, challengeId, {
         title,
         type,
         target_count: (type === 'frequency' || type === 'cumulative') ? (parseInt(targetCount) || null) : null,
@@ -40,8 +42,12 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
         catch_up: catchUp,
       })
       setSaving(false)
-      setSubmitted(true)
-      setTimeout(() => { setOpen(false); setSubmitted(false) }, 1500)
+      if (result?.error) {
+        setSaveError(result.error)
+      } else {
+        setSubmitted(true)
+        setTimeout(() => { setOpen(false); setSubmitted(false) }, 1500)
+      }
     })
   }
 
@@ -116,6 +122,10 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                   placeholder="Unit (e.g. km, pages)"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
               </div>
+            )}
+
+            {saveError && (
+              <p className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg p-2">{saveError}</p>
             )}
 
             {submitted
