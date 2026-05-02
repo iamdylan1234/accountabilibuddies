@@ -1,8 +1,11 @@
+'use client'
+
+import { useState } from 'react'
 import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
 import { scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import Link from 'next/link'
-import GoalEditButton from './GoalEditButton'
 import PendingApprovalBanner from './PendingApprovalBanner'
+import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 
 interface Props {
   myGoals: Goal[]
@@ -48,6 +51,9 @@ export default function ScoreSummary({
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
+  type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
+  const [sheet, setSheet] = useState<SheetTarget | null>(null)
+
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
@@ -64,20 +70,18 @@ export default function ScoreSummary({
 
     return (
       <div
-        className="rounded-xl border p-4"
+        className="rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform"
         style={isPending
           ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
           : { background: 'white', borderColor: '#f3f4f6' }}
+        onClick={() => setSheet({ goal, checkIns, isOwn })}
       >
         {/* Title row */}
         <div className="flex items-center gap-2 mb-2">
           <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
             {goal.title}
           </p>
-          {isPending
-            ? <span className="text-xs text-gray-400">⏳</span>
-            : isOwn && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />
-          }
+          {isPending && <span className="text-xs text-gray-400">⏳</span>}
           <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
             {pct}%
           </span>
@@ -204,6 +208,21 @@ export default function ScoreSummary({
         >
           Start a new challenge →
         </Link>
+      )}
+
+      {sheet && (
+        <GoalCalendarSheet
+          goal={sheet.goal}
+          checkIns={sheet.checkIns}
+          isOwn={sheet.isOwn}
+          isPending={sheet.isOwn && pendingRequests.some(r => r.goal_id === sheet.goal.id)}
+          startDate={startDate}
+          endDate={endDate}
+          today={today}
+          challengeId={challengeId}
+          myId={myId}
+          onClose={() => setSheet(null)}
+        />
       )}
     </div>
   )
