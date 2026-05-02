@@ -42,10 +42,10 @@ export default function ScoreSummary({
   ) + 1)
 
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    const denominator = goal.schedule_dates && goal.schedule_dates.length > 0
-      ? goal.schedule_dates.filter(d => d <= today).length
-      : totalDays
-    const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator, startDate, today) * 100)
+    // scoreGoal computes its own denominator from startDate+today (daily: elapsedDays,
+    // frequency: past schedule_dates, milestone: binary, cumulative: target_count).
+    // totalDays is passed as a fallback but is only used for goals with no startDate context.
+    const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today) * 100)
     const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
 
     return (

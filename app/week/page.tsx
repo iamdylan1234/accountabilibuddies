@@ -26,15 +26,19 @@ export default async function WeekPage() {
 
   if (!buddyId) redirect('/dashboard')
 
-  // Fetch last 14 days generously — client will filter to Mon–today locally
-  const fourteenDaysAgo = new Date()
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
-  const windowStart = fourteenDaysAgo.toISOString().split('T')[0]
+  const totalDays = Math.floor(
+    (new Date(typedChallenge.end_date).getTime() - new Date(typedChallenge.start_date).getTime()) / 86400000
+  ) + 1
 
+  // Fetch all check-ins for the full challenge so scoring is accurate across all weeks
   const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
-    supabase.from('check_ins').select('*').eq('user_id', user.id).gte('date', windowStart),
-    supabase.from('check_ins').select('*').eq('user_id', buddyId).gte('date', windowStart),
+    supabase.from('check_ins').select('*').eq('user_id', user.id)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
+    supabase.from('check_ins').select('*').eq('user_id', buddyId)
+      .gte('date', typedChallenge.start_date)
+      .lte('date', typedChallenge.end_date),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
@@ -54,6 +58,8 @@ export default async function WeekPage() {
       myProfile={myProfileRes.data}
       buddyProfile={buddyProfile}
       challengeName={typedChallenge.month_name}
+      startDate={typedChallenge.start_date}
+      totalDays={totalDays}
     />
   )
 }

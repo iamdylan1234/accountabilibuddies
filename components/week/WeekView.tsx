@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { getWeekStart, scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
+import { getWeekStart, scoreChallenge, getCurrentStreak } from '@/lib/scoring'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   myProfile: Profile
   buddyProfile: Profile | null
   challengeName: string
+  startDate: string
+  totalDays: number
 }
 
 function fmt(d: Date): string {
@@ -24,7 +26,7 @@ function fmt(d: Date): string {
 
 export default function WeekView({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
-  myProfile, buddyProfile, challengeName,
+  myProfile, buddyProfile, challengeName, startDate, totalDays,
 }: Props) {
   const now = new Date()
   const todayStr = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
@@ -39,26 +41,17 @@ export default function WeekView({
   const isToday = selectedStr === todayStr
   const isFuture = selectedStr > todayStr
 
-  // For scoring: use selectedStr as "today", but cap at actual today for past days
-  const scoringDay = isFuture ? selectedStr : selectedStr
-  const daysElapsed = isFuture ? dayOffset + 1 : Math.floor(
-    (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - currentWeekStart.getTime()) / 86400000
-  ) + 1
-
   const weekStartStr = fmt(currentWeekStart)
 
-  // Filter check-ins to the selected day
+  // Filter check-ins to the selected day (for goal cards only)
   const dayMy = myCheckIns.filter(c => c.date === selectedStr)
   const dayBuddy = buddyCheckIns.filter(c => c.date === selectedStr)
 
-  // For scoring tiles: use whole week up to selected day
-  const weekEndForScore = isFuture ? todayStr : selectedStr
-  const weekMy = myCheckIns.filter(c => c.date >= weekStartStr && c.date <= weekEndForScore)
-  const weekBuddy = buddyCheckIns.filter(c => c.date >= weekStartStr && c.date <= weekEndForScore)
-  const scoreElapsed = Math.floor((new Date(weekEndForScore.split('-').map(Number).reduce((acc, v, i) => i === 0 ? v : acc, 0)).getTime() - currentWeekStart.getTime()) / 86400000) + 1
-
-  const myScore = scoreChallenge(myGoals, weekMy, daysElapsed, weekStartStr, weekEndForScore)
-  const buddyScore = scoreChallenge(buddyGoals, weekBuddy, daysElapsed, weekStartStr, weekEndForScore)
+  // Score tiles use the full check-in history with the real challenge startDate.
+  // This correctly handles frequency goals (schedule_dates spanning multiple weeks),
+  // milestones completed in prior weeks, and daily goal streaks.
+  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, todayStr)
+  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, todayStr)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
@@ -154,7 +147,7 @@ export default function WeekView({
         </div>
       </div>
 
-      {/* Score tiles */}
+      {/* Score tiles — overall challenge progress */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
           { profile: myProfile, score: myScore, isWinner: !tied && iWon },
@@ -171,12 +164,12 @@ export default function WeekView({
             {isWinner && <p className="text-xs font-black text-yellow-600 mb-1">🏆 WINNING</p>}
             <p className="text-sm font-bold text-gray-500">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{score}%</p>
-            <p className="text-xs text-gray-400 mt-1">week so far</p>
+            <p className="text-xs text-gray-400 mt-1">overall</p>
           </div>
         ))}
       </div>
 
-      {tied && <p className="text-center text-gray-500 text-sm mb-6 font-semibold">Tied so far! 🤝</p>}
+      {tied && <p className="text-center text-gray-500 text-sm mb-6 font-semibold">Tied overall! 🤝</p>}
 
       {/* Two-column goal cards */}
       <div className="grid grid-cols-2 gap-4">
