@@ -1,4 +1,4 @@
-export type GoalType = 'daily' | 'milestone' | 'frequency'
+export type GoalType = 'daily' | 'milestone' | 'frequency' | 'cumulative'
 export type ChallengeStatus = 'pending' | 'active' | 'completed'
 
 export interface Profile {
@@ -40,6 +40,7 @@ export interface CheckIn {
   user_id: string
   date: string
   completed: boolean
+  value: number | null   // set for cumulative goals
   created_at: string
 }
 

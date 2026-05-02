@@ -11,7 +11,7 @@ const baseGoal = (type: Goal['type'], target_count: number | null = null): Goal 
 })
 
 const ci = (date: string, goalId = 'g1'): CheckIn => ({
-  id: date, goal_id: goalId, user_id: 'u1', date, completed: true, created_at: '',
+  id: date, goal_id: goalId, user_id: 'u1', date, completed: true, value: null, created_at: '',
 })
 
 describe('scoreGoal', () => {
@@ -145,5 +145,38 @@ describe('getCurrentStreak', () => {
     const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-01','2026-05-05','2026-05-10'] }
     // May 01 missed, May 05 done → streak 1
     expect(getCurrentStreak(goal, [ci('2026-05-05')], '2026-05-07')).toBe(1)
+  })
+})
+
+describe('scoreGoal — cumulative', () => {
+  it('sums check-in values against target_count', () => {
+    const goal: Goal = { ...baseGoal('cumulative', 100), target_unit: 'km' }
+    const checkIns: CheckIn[] = [
+      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, value: 7.5, created_at: '' },
+      { id: '2', goal_id: 'g1', user_id: 'u1', date: '2026-05-03', completed: true, value: 12.0, created_at: '' },
+    ]
+    expect(scoreGoal(goal, checkIns, 30)).toBeCloseTo(0.195) // 19.5/100
+  })
+
+  it('caps at 1 when over target', () => {
+    const goal: Goal = { ...baseGoal('cumulative', 10), target_unit: 'km' }
+    const checkIns: CheckIn[] = [
+      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, value: 15, created_at: '' },
+    ]
+    expect(scoreGoal(goal, checkIns, 30)).toBe(1)
+  })
+
+  it('returns 0 when no target_count set', () => {
+    const goal: Goal = { ...baseGoal('cumulative', null), target_unit: 'km' }
+    expect(scoreGoal(goal, [], 30)).toBe(0)
+  })
+
+  it('scoreChallenge excludes cumulative goals from overall %', () => {
+    const goals: Goal[] = [
+      baseGoal('milestone'),                              // 0%
+      { ...baseGoal('cumulative', 100), id: 'g2', target_unit: 'km' }, // excluded
+    ]
+    // Only milestone scored → 0/1 = 0%
+    expect(scoreChallenge(goals, [], 30)).toBe(0)
   })
 })

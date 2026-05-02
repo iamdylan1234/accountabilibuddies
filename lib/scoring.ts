@@ -73,8 +73,13 @@ export function scoreGoal(
   goal: Goal, checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,
 ): number {
-  // Phase 4 implements cumulative scoring; placeholder until then.
-  if ((goal.type as string) === 'cumulative') return 0
+  if (goal.type === 'cumulative') {
+    if (!goal.target_count) return 0
+    const total = checkIns
+      .filter(c => c.goal_id === goal.id && c.value != null)
+      .reduce((sum, c) => sum + (c.value ?? 0), 0)
+    return Math.min(1, total / goal.target_count)
+  }
 
   const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
 
@@ -98,7 +103,7 @@ export function scoreChallenge(
   goals: Goal[], checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,
 ): number {
-  const scorable = goals.filter(g => (g.type as string) !== 'cumulative')
+  const scorable = goals.filter(g => g.type !== 'cumulative')
   if (scorable.length === 0) return 0
   const total = scorable.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today), 0)
   return Math.round((total / scorable.length) * 100)
