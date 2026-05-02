@@ -1,7 +1,8 @@
-import type { Goal, CheckIn, Profile } from '@/types/database'
+import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
 import { scoreChallenge, scoreGoal } from '@/lib/scoring'
 import Link from 'next/link'
 import GoalEditButton from './GoalEditButton'
+import PendingApprovalBanner from './PendingApprovalBanner'
 
 interface Props {
   myGoals: Goal[]
@@ -18,12 +19,13 @@ interface Props {
   today: string
   challengeId: string
   myId: string
+  pendingRequests: GoalChangeRequest[]
 }
 
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
-  startDate, endDate, today, challengeId, myId,
+  startDate, endDate, today, challengeId, myId, pendingRequests,
 }: Props) {
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
@@ -43,6 +45,9 @@ export default function ScoreSummary({
         <div className="flex items-center gap-2 mb-2">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
           {isOwn && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />}
+          {isOwn && pendingRequests.some(r => r.goal_id === goal.id) && (
+            <span className="text-xs text-yellow-500 font-bold">⏳</span>
+          )}
           <span
             className="text-sm font-black"
             style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
@@ -72,6 +77,12 @@ export default function ScoreSummary({
           {isComplete ? 'Final Results' : 'Full Challenge'}
         </p>
       </div>
+
+      <PendingApprovalBanner
+        requests={pendingRequests}
+        goals={[...myGoals, ...buddyGoals]}
+        myId={myId}
+      />
 
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">

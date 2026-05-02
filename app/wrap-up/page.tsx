@@ -31,7 +31,7 @@ export default async function WrapUpPage() {
   ) + 1
   const today = new Date().toISOString().split('T')[0]
 
-  const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
+  const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes, pendingRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
     supabase.from('check_ins').select('*').eq('user_id', user.id)
       .gte('date', typedChallenge.start_date)
@@ -40,6 +40,8 @@ export default async function WrapUpPage() {
       .gte('date', typedChallenge.start_date)
       .lte('date', typedChallenge.end_date),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('goal_change_requests').select('*')
+      .eq('challenge_id', typedChallenge.id).eq('status', 'pending'),
   ])
 
   if (!myProfileRes.data) redirect('/auth/login')
@@ -65,6 +67,7 @@ export default async function WrapUpPage() {
       today={today}
       challengeId={typedChallenge.id}
       myId={user.id}
+      pendingRequests={pendingRes.data ?? []}
     />
   )
 }
