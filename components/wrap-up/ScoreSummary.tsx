@@ -1,6 +1,7 @@
 import type { Goal, CheckIn, Profile } from '@/types/database'
 import { scoreChallenge, scoreGoal } from '@/lib/scoring'
 import Link from 'next/link'
+import GoalEditButton from './GoalEditButton'
 
 interface Props {
   myGoals: Goal[]
@@ -26,12 +27,13 @@ export default function ScoreSummary({
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
-  function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
+  function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
     const pct = Math.round(scoreGoal(goal, checkIns, totalDays) * 100)
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-2">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
+          {isOwn && <GoalEditButton goal={goal} />}
           <span
             className="text-sm font-black"
             style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
@@ -96,13 +98,13 @@ export default function ScoreSummary({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           {myGoals.map(goal => (
-            <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} />
+            <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
           ))}
         </div>
 
         <div className="space-y-2">
           {buddyGoals.map(goal => (
-            <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} />
+            <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
           ))}
         </div>
       </div>
