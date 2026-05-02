@@ -103,11 +103,29 @@ export default function DashboardClient({
     return reactions.find(r => r.check_in_id === checkInId) ?? null
   }
 
-  const myActiveGoals = myGoals.filter(g => isGoalActiveToday(g, today, optimisticCheckIns))
-  const buddyActiveGoals = buddyGoals.filter(g => isGoalActiveToday(g, today, buddyCheckIns))
+  // Section 1: goals due today (not catch-up, not milestone)
+  const myTodayGoals = myGoals.filter(g =>
+    g.type !== 'milestone' &&
+    isGoalActiveToday(g, today, optimisticCheckIns) &&
+    !isGoalCatchUp(g, today, optimisticCheckIns)
+  )
+  const buddyTodayGoals = buddyGoals.filter(g =>
+    g.type !== 'milestone' &&
+    isGoalActiveToday(g, today, buddyCheckIns) &&
+    !isGoalCatchUp(g, today, buddyCheckIns)
+  )
 
-  const myDone = myActiveGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
-  const buddyDone = buddyActiveGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
+  // Section 2: milestones (always show)
+  const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
+  const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
+
+  // Section 3: catch-up (overdue committed dates)
+  const myCatchUpGoals = myGoals.filter(g => isGoalCatchUp(g, today, optimisticCheckIns))
+  const buddyCatchUpGoals = buddyGoals.filter(g => isGoalCatchUp(g, today, buddyCheckIns))
+
+  // Daily tile: only Section 1 goals count
+  const myDone = myTodayGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
+  const buddyDone = buddyTodayGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
 
   const localDate = todayMidnight
 
@@ -131,8 +149,8 @@ export default function DashboardClient({
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
-          { name: 'You', done: myDone, total: myActiveGoals.length, isAhead: myAhead },
-          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyActiveGoals.length, isAhead: buddyAhead },
+          { name: 'You', done: myDone, total: myTodayGoals.length, isAhead: myAhead },
+          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyTodayGoals.length, isAhead: buddyAhead },
         ].map(({ name, done, total, isAhead }) => (
           <div
             key={name}
@@ -161,39 +179,80 @@ export default function DashboardClient({
         />
       )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          {myActiveGoals.map(goal => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              checkIn={getCheckIn(goal.id, optimisticCheckIns)}
-              reaction={null}
-              isMyGoal={true}
-              today={today}
-              onToggle={handleToggle}
-              streak={getCurrentStreak(goal, myCheckIns, today)}
-            />
-          ))}
-        </div>
+      <div className="space-y-6">
+        {/* Section 1: Today's Goals */}
+        {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myTodayGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, myCheckIns, today)} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyTodayGoals.map(goal => {
+                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
+                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
+                    onToggle={handleToggle} streak={getCurrentStreak(goal, buddyCheckIns, today)} />
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div className="space-y-2">
-          {buddyActiveGoals.map(goal => {
-            const checkIn = getCheckIn(goal.id, buddyCheckIns)
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                checkIn={checkIn}
-                reaction={getReaction(checkIn?.id)}
-                isMyGoal={false}
-                today={today}
-                onToggle={handleToggle}
-                streak={getCurrentStreak(goal, buddyCheckIns, today)}
-              />
-            )
-          })}
-        </div>
+        {/* Section 2: Milestones */}
+        {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myMilestoneGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyMilestoneGoals.map(goal => {
+                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
+                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
+                    onToggle={handleToggle} />
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 3: Catch-up (overdue) */}
+        {(myCatchUpGoals.length > 0 || buddyCatchUpGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-red-400 uppercase tracking-wide mb-2">🔴 Catch-up</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myCatchUpGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle}
+                    isCatchUp={true} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyCatchUpGoals.map(goal => {
+                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
+                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
+                    onToggle={handleToggle} isCatchUp={true} />
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
