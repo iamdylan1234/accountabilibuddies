@@ -10,7 +10,6 @@ interface Props {
 export default async function SetupPage({ searchParams }: Props) {
   const params = await searchParams
   const challengeId = params.challenge
-
   if (!challengeId) redirect('/dashboard')
 
   const supabase = await createClient()
@@ -27,12 +26,14 @@ export default async function SetupPage({ searchParams }: Props) {
   if (!challenge) redirect('/dashboard')
 
   const { data: existingGoals } = await supabase
-    .from('goals')
-    .select('*')
+    .from('goals').select('*')
     .eq('challenge_id', challengeId)
     .eq('user_id', user.id)
 
-  async function handleSave(goals: { title: string; type: string; target_count: string }[]) {
+  async function handleSave(goals: {
+    title: string; type: string; target_count: string
+    target_unit: string; schedule_dates: string[]; catch_up: boolean
+  }[]) {
     'use server'
     await saveGoals(challengeId!, goals as any)
   }
@@ -49,9 +50,10 @@ export default async function SetupPage({ searchParams }: Props) {
         <h1 className="text-2xl font-black">Set your goals</h1>
         <p className="text-white/70 text-sm mt-1">Add 5–8 goals. You can&apos;t change these once your buddy joins.</p>
       </div>
-
       <GoalSetupForm
         challengeId={challengeId}
+        challengeStartDate={challenge.start_date}
+        challengeEndDate={challenge.end_date}
         existingGoals={existingGoals ?? []}
         onSubmit={handleSave}
       />
