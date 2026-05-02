@@ -146,7 +146,7 @@ export default function DashboardClient({
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Slim teal strip */}
       <div
-        className="rounded-2xl px-5 py-3 mb-4 text-white"
+        className="rounded-2xl px-5 py-3 mb-4 text-white text-center"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
         <p className="font-black text-base">Hello, {myFirstName}</p>
