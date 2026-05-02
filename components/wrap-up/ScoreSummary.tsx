@@ -16,12 +16,14 @@ interface Props {
   startDate: string
   endDate: string
   today: string
+  challengeId: string
+  myId: string
 }
 
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
-  startDate, endDate, today,
+  startDate, endDate, today, challengeId, myId,
 }: Props) {
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
@@ -40,7 +42,7 @@ export default function ScoreSummary({
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-2">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
-          {isOwn && <GoalEditButton goal={goal} challengeStartDate={startDate} challengeEndDate={endDate} />}
+          {isOwn && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />}
           <span
             className="text-sm font-black"
             style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}

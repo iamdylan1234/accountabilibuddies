@@ -63,6 +63,8 @@ export default async function WrapUpPage() {
       startDate={typedChallenge.start_date}
       endDate={typedChallenge.end_date}
       today={today}
+      challengeId={typedChallenge.id}
+      myId={user.id}
     />
   )
 }
