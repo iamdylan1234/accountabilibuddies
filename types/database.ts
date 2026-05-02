@@ -28,9 +28,10 @@ export interface Goal {
   title: string
   type: GoalType
   target_count: number | null
+  target_unit: string | null       // display label for quantity (e.g. "km")
   created_at: string
-  schedule_days: number[] | null   // null = every day; [0]=Sun [1]=Mon…[6]=Sat
-  catch_up: boolean                // show every day when behind on scheduled days
+  schedule_dates: string[] | null  // specific "YYYY-MM-DD" dates; null = every day
+  catch_up: boolean
 }
 
 export interface CheckIn {
@@ -50,7 +51,6 @@ export interface Reaction {
   created_at: string
 }
 
-// Joined types used in components
 export interface GoalWithCheckIns extends Goal {
   check_ins: CheckIn[]
 }

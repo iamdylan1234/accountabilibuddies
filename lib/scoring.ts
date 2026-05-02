@@ -7,127 +7,99 @@ export function getWeekStart(date: Date): Date {
   return d
 }
 
-// Count days in [startDate, today] whose day-of-week is in scheduleDays.
-// null scheduleDays = every day → falls back to total elapsed days.
-export function getScheduledDaysElapsed(
-  scheduleDays: number[] | null,
-  startDate: string,
-  today: string,
-): number {
+function fmt(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+function elapsedDays(startDate: string, today: string): number {
   const [sy, sm, sd] = startDate.split('-').map(Number)
   const [ty, tm, td] = today.split('-').map(Number)
   const start = new Date(sy, sm - 1, sd)
   const end = new Date(ty, tm - 1, td)
-  if (!scheduleDays || scheduleDays.length === 0) {
-    return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1)
-  }
-  let count = 0
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    if (scheduleDays.includes(d.getDay())) count++
-  }
-  return count
+  return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1)
 }
 
-// Returns true if the goal should appear today:
-// - no schedule → always true
-// - today is a scheduled day → true
-// - catch_up=true and completed count < scheduled days elapsed → true
-export function isGoalActiveToday(
-  goal: Goal,
-  today: string,
-  checkIns: CheckIn[],
-  startDate: string,
-): boolean {
-  if (!goal.schedule_days || goal.schedule_days.length === 0) return true
-  const [y, m, d] = today.split('-').map(Number)
-  const todayDow = new Date(y, m - 1, d).getDay()
-  if (goal.schedule_days.includes(todayDow)) return true
+// True if the goal should appear in Today's Goals section.
+// Daily/milestone → always. Frequency → today is a committed date, or
+// catch_up=true and completions < past committed dates.
+export function isGoalActiveToday(goal: Goal, today: string, checkIns: CheckIn[]): boolean {
+  if (!goal.schedule_dates || goal.schedule_dates.length === 0) return true
+  if (goal.schedule_dates.includes(today)) return true
   if (!goal.catch_up) return false
-  const completed = checkIns.filter(c => c.goal_id === goal.id && c.completed).length
-  // Look back up to 6 days to capture at least one full scheduled cycle.
-  const todayDate = new Date(y, m - 1, d)
-  const lookbackDate = new Date(todayDate)
-  lookbackDate.setDate(lookbackDate.getDate() - 6)
-  const lookbackStr = [
-    lookbackDate.getFullYear(),
-    String(lookbackDate.getMonth() + 1).padStart(2, '0'),
-    String(lookbackDate.getDate()).padStart(2, '0'),
-  ].join('-')
-  const scheduled = getScheduledDaysElapsed(goal.schedule_days, lookbackStr, today)
-  return completed < scheduled
+  const done = checkIns.filter(c => c.goal_id === goal.id && c.completed).length
+  const past = goal.schedule_dates.filter(d => d < today).length
+  return done < past
 }
 
-// Consecutive completed scheduled days ending on (or before) today.
-// For unscheduled goals, counts calendar days.
+// True when the goal is active today ONLY because of missed past dates (catch-up state).
+// Callers use this to route the goal to the red Catch-up section.
+export function isGoalCatchUp(goal: Goal, today: string, checkIns: CheckIn[]): boolean {
+  if (!goal.catch_up || !goal.schedule_dates || goal.schedule_dates.length === 0) return false
+  if (goal.schedule_dates.includes(today)) return false
+  const done = checkIns.filter(c => c.goal_id === goal.id && c.completed).length
+  const past = goal.schedule_dates.filter(d => d < today).length
+  return done < past
+}
+
+// Consecutive completed dates walking backwards from today.
+// Daily goals walk calendar days; frequency goals walk their schedule_dates.
 export function getCurrentStreak(goal: Goal, checkIns: CheckIn[], today: string): number {
-  const completed = new Set(
-    checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date),
-  )
-  const scheduleDays = goal.schedule_days
-  const [y, m, d] = today.split('-').map(Number)
-  const cursor = new Date(y, m - 1, d)
-  let streak = 0
-  for (let i = 0; i < 730; i++) {
-    const dow = cursor.getDay()
-    const dateStr = [
-      cursor.getFullYear(),
-      String(cursor.getMonth() + 1).padStart(2, '0'),
-      String(cursor.getDate()).padStart(2, '0'),
-    ].join('-')
-    const isScheduled = !scheduleDays || scheduleDays.length === 0 || scheduleDays.includes(dow)
-    if (isScheduled) {
-      if (completed.has(dateStr)) {
-        streak++
-      } else {
-        break
-      }
+  const done = new Set(checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date))
+
+  if (!goal.schedule_dates || goal.schedule_dates.length === 0) {
+    const [y, m, d] = today.split('-').map(Number)
+    const cursor = new Date(y, m - 1, d)
+    let streak = 0
+    for (let i = 0; i < 730; i++) {
+      if (done.has(fmt(cursor))) { streak++ } else { break }
+      cursor.setDate(cursor.getDate() - 1)
     }
-    cursor.setDate(cursor.getDate() - 1)
+    return streak
+  }
+
+  const past = goal.schedule_dates.filter(d => d <= today).sort().reverse()
+  let streak = 0
+  for (const date of past) {
+    if (done.has(date)) { streak++ } else { break }
   }
   return streak
 }
 
-// scoreGoal now accepts optional startDate + today to compute the correct
-// denominator for scheduled daily goals. Falls back to totalDays when absent.
 export function scoreGoal(
-  goal: Goal,
-  checkIns: CheckIn[],
-  totalDays: number,
-  startDate?: string,
-  today?: string,
+  goal: Goal, checkIns: CheckIn[], totalDays: number,
+  startDate?: string, today?: string,
 ): number {
+  // Phase 4 implements cumulative scoring; placeholder until then.
+  if ((goal.type as string) === 'cumulative') return 0
+
   const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
 
-  if (goal.type === 'milestone') {
-    return relevant.length > 0 ? 1 : 0
-  }
+  if (goal.type === 'milestone') return relevant.length > 0 ? 1 : 0
 
   if (goal.type === 'frequency') {
-    const target = goal.target_count ?? 1
-    return Math.min(1, relevant.length / target)
+    if (goal.schedule_dates && goal.schedule_dates.length > 0) {
+      const past = today ? goal.schedule_dates.filter(d => d <= today).length : goal.schedule_dates.length
+      return past === 0 ? 0 : Math.min(1, relevant.length / past)
+    }
+    return Math.min(1, relevant.length / (goal.target_count ?? 1))
   }
 
-  // daily — use scheduled days elapsed when we have the date context
-  const denominator =
-    startDate && today && goal.schedule_days && goal.schedule_days.length > 0
-      ? getScheduledDaysElapsed(goal.schedule_days, startDate, today)
-      : totalDays
-  return denominator === 0 ? 0 : relevant.length / denominator
+  // daily
+  const denom = startDate && today ? elapsedDays(startDate, today) : totalDays
+  return denom === 0 ? 0 : Math.min(1, relevant.length / denom)
 }
 
-// startDate + today are optional; when provided, scheduled daily goals use the
-// correct per-goal denominator instead of the coarser totalDays fallback.
+// Excludes cumulative goals from challenge % (they are progress reminders, not scored).
 export function scoreChallenge(
-  goals: Goal[],
-  checkIns: CheckIn[],
-  totalDays: number,
-  startDate?: string,
-  today?: string,
+  goals: Goal[], checkIns: CheckIn[], totalDays: number,
+  startDate?: string, today?: string,
 ): number {
-  if (goals.length === 0) return 0
-  const total = goals.reduce(
-    (sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today),
-    0,
-  )
-  return Math.round((total / goals.length) * 100)
+  const scorable = goals.filter(g => (g.type as string) !== 'cumulative')
+  if (scorable.length === 0) return 0
+  const total = scorable.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today), 0)
+  return Math.round((total / scorable.length) * 100)
 }

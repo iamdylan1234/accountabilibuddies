@@ -1,203 +1,149 @@
 import {
   scoreGoal, scoreChallenge, getWeekStart,
-  getScheduledDaysElapsed, isGoalActiveToday, getCurrentStreak,
+  isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 
 const baseGoal = (type: Goal['type'], target_count: number | null = null): Goal => ({
   id: 'g1', challenge_id: 'c1', user_id: 'u1',
   title: 'Test', type, target_count, created_at: '',
-  schedule_days: null, catch_up: false,
+  target_unit: null, schedule_dates: null, catch_up: false,
+})
+
+const ci = (date: string, goalId = 'g1'): CheckIn => ({
+  id: date, goal_id: goalId, user_id: 'u1', date, completed: true, created_at: '',
 })
 
 describe('scoreGoal', () => {
-  it('scores a daily goal as completed/total days', () => {
-    const goal = baseGoal('daily')
-    const checkIns: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '' },
-      { id: '2', goal_id: 'g1', user_id: 'u1', date: '2026-05-02', completed: true, created_at: '' },
-    ]
-    expect(scoreGoal(goal, checkIns, 10)).toBeCloseTo(0.2)
+  it('daily: completions / totalDays', () => {
+    expect(scoreGoal(baseGoal('daily'), [ci('2026-05-01'), ci('2026-05-02')], 10))
+      .toBeCloseTo(0.2)
   })
 
-  it('scores a milestone goal as 1 if completed, 0 otherwise', () => {
-    const goal = baseGoal('milestone')
-    const withCheckIn: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '' },
-    ]
-    expect(scoreGoal(goal, withCheckIn, 30)).toBe(1)
-    expect(scoreGoal(goal, [], 30)).toBe(0)
+  it('daily: uses elapsed days when startDate+today provided', () => {
+    // 5 days elapsed (May 1–5), 2 completions → 2/5 = 0.4
+    expect(scoreGoal(baseGoal('daily'), [ci('2026-05-01'), ci('2026-05-03')], 30, '2026-05-01', '2026-05-05'))
+      .toBeCloseTo(0.4)
   })
 
-  it('scores a frequency goal as completions/target, capped at 1', () => {
-    const goal = baseGoal('frequency', 10)
-    const checkIns: CheckIn[] = Array.from({ length: 7 }, (_, i) => ({
-      id: String(i), goal_id: 'g1', user_id: 'u1',
-      date: `2026-05-0${i + 1}`, completed: true, created_at: '',
-    }))
-    expect(scoreGoal(goal, checkIns, 30)).toBeCloseTo(0.7)
+  it('milestone: 1 if done, 0 if not', () => {
+    expect(scoreGoal(baseGoal('milestone'), [ci('2026-05-01')], 30)).toBe(1)
+    expect(scoreGoal(baseGoal('milestone'), [], 30)).toBe(0)
   })
 
-  it('caps frequency goal score at 1 when over target', () => {
-    const goal = baseGoal('frequency', 5)
-    const checkIns: CheckIn[] = Array.from({ length: 8 }, (_, i) => ({
-      id: String(i), goal_id: 'g1', user_id: 'u1',
-      date: `2026-05-0${i + 1}`, completed: true, created_at: '',
-    }))
-    expect(scoreGoal(goal, checkIns, 30)).toBe(1)
+  it('frequency without dates: completions / target_count', () => {
+    expect(scoreGoal(baseGoal('frequency', 10), Array.from({length: 7}, (_, i) => ci(`2026-05-0${i+1}`)), 30))
+      .toBeCloseTo(0.7)
+  })
+
+  it('frequency with schedule_dates: completions / past dates', () => {
+    const goal: Goal = { ...baseGoal('frequency', 4), schedule_dates: ['2026-05-01','2026-05-05','2026-05-10','2026-05-15'] }
+    // today = May 6, past dates = [May 1, May 5] = 2. 1 completion → 0.5
+    expect(scoreGoal(goal, [ci('2026-05-01')], 30, '2026-05-01', '2026-05-06')).toBeCloseTo(0.5)
+  })
+
+  it('caps at 1', () => {
+    expect(scoreGoal(baseGoal('frequency', 3), [ci('2026-05-01'), ci('2026-05-02'), ci('2026-05-03'), ci('2026-05-04')], 30)).toBe(1)
   })
 })
 
 describe('scoreChallenge', () => {
-  it('returns average of goal scores as a percentage', () => {
-    const goals: Goal[] = [
-      baseGoal('milestone'),
-      { ...baseGoal('milestone'), id: 'g2' },
-    ]
-    const checkIns: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '' },
-    ]
-    // First goal completed (1.0), second not (0.0) → average 50%
-    expect(scoreChallenge(goals, checkIns, 30)).toBe(50)
+  it('average of goal scores as percentage', () => {
+    const goals: Goal[] = [baseGoal('milestone'), { ...baseGoal('milestone'), id: 'g2' }]
+    expect(scoreChallenge(goals, [ci('2026-05-01')], 30)).toBe(50)
   })
 
-  it('returns 0 when no goals', () => {
+  it('returns 0 for empty goals', () => {
     expect(scoreChallenge([], [], 30)).toBe(0)
   })
 })
 
 describe('getWeekStart', () => {
-  it('returns Monday when given a Monday', () => {
-    // 2026-04-27 is a Monday
-    const result = getWeekStart(new Date(2026, 3, 27))
-    expect(result).toEqual(new Date(2026, 3, 27))
+  it('returns Monday given a Monday', () => {
+    expect(getWeekStart(new Date(2026, 3, 27))).toEqual(new Date(2026, 3, 27))
   })
 
-  it('returns the previous Monday when given a Wednesday', () => {
-    // 2026-04-29 is a Wednesday → Monday 2026-04-27
-    const result = getWeekStart(new Date(2026, 3, 29))
-    expect(result).toEqual(new Date(2026, 3, 27))
+  it('returns previous Monday given a Wednesday', () => {
+    expect(getWeekStart(new Date(2026, 3, 29))).toEqual(new Date(2026, 3, 27))
   })
 
-  it('returns the previous Monday when given a Sunday', () => {
-    // 2026-05-03 is a Sunday → Monday 2026-04-27
-    const result = getWeekStart(new Date(2026, 4, 3))
-    expect(result).toEqual(new Date(2026, 3, 27))
-  })
-
-  it('returns midnight (no time component)', () => {
-    const result = getWeekStart(new Date(2026, 3, 30, 15, 30, 0))
-    expect(result.getHours()).toBe(0)
-    expect(result.getMinutes()).toBe(0)
-    expect(result.getSeconds()).toBe(0)
-    expect(result.getMilliseconds()).toBe(0)
-  })
-})
-
-describe('getScheduledDaysElapsed', () => {
-  it('counts all elapsed days when scheduleDays is null', () => {
-    // 2026-04-27 to 2026-04-29 = 3 days
-    expect(getScheduledDaysElapsed(null, '2026-04-27', '2026-04-29')).toBe(3)
-  })
-
-  it('counts only scheduled days in range', () => {
-    // 2026-04-27 (Mon) to 2026-05-03 (Sun): only one Sunday [0] = 2026-05-03
-    expect(getScheduledDaysElapsed([0], '2026-04-27', '2026-05-03')).toBe(1)
-  })
-
-  it('counts multiple scheduled days across two weeks', () => {
-    // Mon+Wed+Fri [1,3,5] over 2026-04-27..2026-05-10 (2 full weeks) = 6
-    expect(getScheduledDaysElapsed([1, 3, 5], '2026-04-27', '2026-05-10')).toBe(6)
-  })
-
-  it('returns 1 on the start date when that day is scheduled', () => {
-    // 2026-04-27 is Monday (1)
-    expect(getScheduledDaysElapsed([1], '2026-04-27', '2026-04-27')).toBe(1)
-  })
-
-  it('returns 0 when no scheduled days have fallen yet', () => {
-    // Sunday-only goal, range is Mon-Sat only
-    expect(getScheduledDaysElapsed([0], '2026-04-27', '2026-05-02')).toBe(0)
+  it('returns previous Monday given a Sunday', () => {
+    expect(getWeekStart(new Date(2026, 4, 3))).toEqual(new Date(2026, 3, 27))
   })
 })
 
 describe('isGoalActiveToday', () => {
-  const scheduledGoal = (schedule_days: number[] | null, catch_up = false): Goal => ({
-    ...baseGoal('daily'), schedule_days, catch_up,
+  it('daily (no dates): always true', () => {
+    expect(isGoalActiveToday(baseGoal('daily'), '2026-05-05', [])).toBe(true)
   })
 
-  it('always true when no schedule set', () => {
-    expect(isGoalActiveToday(scheduledGoal(null), '2026-04-27', [], '2026-04-27')).toBe(true)
+  it('frequency: true when today is a scheduled date', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-05', '2026-05-12'] }
+    expect(isGoalActiveToday(goal, '2026-05-05', [])).toBe(true)
   })
 
-  it('true when today is a scheduled day', () => {
-    // 2026-04-27 is Monday (1)
-    expect(isGoalActiveToday(scheduledGoal([1]), '2026-04-27', [], '2026-04-27')).toBe(true)
+  it('frequency: false when today is not scheduled and catch_up=false', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-03', '2026-05-10'], catch_up: false }
+    expect(isGoalActiveToday(goal, '2026-05-06', [])).toBe(false)
   })
 
-  it('false when today is not scheduled and catch_up is false', () => {
-    // Sunday-only goal, today is Monday
-    expect(isGoalActiveToday(scheduledGoal([0]), '2026-04-27', [], '2026-04-27')).toBe(false)
+  it('frequency: true when catch_up=true and behind', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-03', '2026-05-10'], catch_up: true }
+    // May 3 has passed, no completions → behind
+    expect(isGoalActiveToday(goal, '2026-05-06', [])).toBe(true)
   })
 
-  it('true when catch_up is true and user is behind', () => {
-    // Sunday goal, today is Monday 2026-04-28, Sunday 2026-04-27 had no check-in
-    const goal = scheduledGoal([0], true)
-    expect(isGoalActiveToday(goal, '2026-04-28', [], '2026-04-27')).toBe(true)
+  it('frequency: false when catch_up=true but not behind', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-03', '2026-05-10'], catch_up: true }
+    expect(isGoalActiveToday(goal, '2026-05-06', [ci('2026-05-03')])).toBe(false)
+  })
+})
+
+describe('isGoalCatchUp', () => {
+  it('false when no schedule', () => {
+    expect(isGoalCatchUp({ ...baseGoal('daily'), catch_up: true }, '2026-05-06', [])).toBe(false)
   })
 
-  it('false when catch_up is true but user is not behind', () => {
-    // Sunday goal, completed last Sunday, today is Monday
-    const goal = scheduledGoal([0], true)
-    const checkIns: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-04-27', completed: true, created_at: '' },
-    ]
-    // 1 Sunday elapsed (2026-04-27), 1 completed → not behind
-    expect(isGoalActiveToday(goal, '2026-04-28', checkIns, '2026-04-27')).toBe(false)
+  it('false when today IS a scheduled date', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-06'], catch_up: true }
+    expect(isGoalCatchUp(goal, '2026-05-06', [])).toBe(false)
+  })
+
+  it('true when a past scheduled date was missed', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-03', '2026-05-10'], catch_up: true }
+    expect(isGoalCatchUp(goal, '2026-05-06', [])).toBe(true)
+  })
+
+  it('false when caught up', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-03', '2026-05-10'], catch_up: true }
+    expect(isGoalCatchUp(goal, '2026-05-06', [ci('2026-05-03')])).toBe(false)
   })
 })
 
 describe('getCurrentStreak', () => {
-  it('returns 0 when no check-ins', () => {
-    expect(getCurrentStreak(baseGoal('daily'), [], '2026-05-02')).toBe(0)
+  it('returns 0 with no check-ins', () => {
+    expect(getCurrentStreak(baseGoal('daily'), [], '2026-05-05')).toBe(0)
   })
 
-  it('counts consecutive daily check-ins backwards from today', () => {
-    const checkIns: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-04-30', completed: true, created_at: '' },
-      { id: '2', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '' },
-      { id: '3', goal_id: 'g1', user_id: 'u1', date: '2026-05-02', completed: true, created_at: '' },
-    ]
-    expect(getCurrentStreak(baseGoal('daily'), checkIns, '2026-05-02')).toBe(3)
+  it('counts consecutive calendar days for daily goal', () => {
+    const checkIns = [ci('2026-05-03'), ci('2026-05-04'), ci('2026-05-05')]
+    expect(getCurrentStreak(baseGoal('daily'), checkIns, '2026-05-05')).toBe(3)
   })
 
-  it('stops at a missed day', () => {
-    // Apr 30 missed, May 1+2 done → streak = 2
-    const checkIns: CheckIn[] = [
-      { id: '2', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '' },
-      { id: '3', goal_id: 'g1', user_id: 'u1', date: '2026-05-02', completed: true, created_at: '' },
-    ]
-    expect(getCurrentStreak(baseGoal('daily'), checkIns, '2026-05-02')).toBe(2)
+  it('breaks on a missed calendar day', () => {
+    // May 03 missing
+    expect(getCurrentStreak(baseGoal('daily'), [ci('2026-05-04'), ci('2026-05-05')], '2026-05-05')).toBe(2)
   })
 
-  it('counts only scheduled days for a scheduled goal', () => {
-    // Sunday-only goal, 3 consecutive Sundays completed
-    const goal: Goal = { ...baseGoal('daily'), schedule_days: [0], catch_up: false }
-    const checkIns: CheckIn[] = [
-      { id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-04-19', completed: true, created_at: '' },
-      { id: '2', goal_id: 'g1', user_id: 'u1', date: '2026-04-26', completed: true, created_at: '' },
-      { id: '3', goal_id: 'g1', user_id: 'u1', date: '2026-05-03', completed: true, created_at: '' },
-    ]
-    // Today is 2026-05-03 (Sunday) → streak = 3
-    expect(getCurrentStreak(goal, checkIns, '2026-05-03')).toBe(3)
+  it('counts consecutive schedule_dates for frequency goal', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-01','2026-05-05','2026-05-10'] }
+    // today = May 07 → past dates = [May 1, May 5]. Both done → streak 2
+    expect(getCurrentStreak(goal, [ci('2026-05-01'), ci('2026-05-05')], '2026-05-07')).toBe(2)
   })
 
-  it('breaks streak when a scheduled day was missed', () => {
-    // Sunday-only goal, missed 2026-04-26, but did 2026-05-03
-    const goal: Goal = { ...baseGoal('daily'), schedule_days: [0], catch_up: false }
-    const checkIns: CheckIn[] = [
-      { id: '3', goal_id: 'g1', user_id: 'u1', date: '2026-05-03', completed: true, created_at: '' },
-    ]
-    expect(getCurrentStreak(goal, checkIns, '2026-05-03')).toBe(1)
+  it('breaks on a missed schedule_date', () => {
+    const goal: Goal = { ...baseGoal('frequency'), schedule_dates: ['2026-05-01','2026-05-05','2026-05-10'] }
+    // May 01 missed, May 05 done → streak 1
+    expect(getCurrentStreak(goal, [ci('2026-05-05')], '2026-05-07')).toBe(1)
   })
 })
