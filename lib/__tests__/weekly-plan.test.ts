@@ -24,7 +24,7 @@ describe('computeWeeklyPlan', () => {
     const goal = baseGoal('frequency', 12)
     const checkIns: CheckIn[] = Array.from({ length: 4 }, (_, i) => ({
       id: String(i), goal_id: 'g1', user_id: 'u1',
-      date: `2026-05-0${i + 1}`, completed: true, created_at: '',
+      date: `2026-05-0${i + 1}`, completed: true, value: null, created_at: '',
     }))
     // 8 left, 2 remaining weeks → 4 this week
     const result = computeWeeklyPlan(goal, checkIns, 2, '2026-05-10')
@@ -47,7 +47,7 @@ describe('computeWeeklyPlan', () => {
   it('milestone goal already done returns needed=0', () => {
     const goal = baseGoal('milestone')
     const checkIns: CheckIn[] = [{
-      id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, created_at: '',
+      id: '1', goal_id: 'g1', user_id: 'u1', date: '2026-05-01', completed: true, value: null, created_at: '',
     }]
     const result = computeWeeklyPlan(goal, checkIns, 2, '2026-05-10')
     expect(result.neededThisWeek).toBe(0)

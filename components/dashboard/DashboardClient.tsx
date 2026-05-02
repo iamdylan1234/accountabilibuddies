@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
+import CumulativeCard from './CumulativeCard'
 import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalActiveToday, isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
@@ -63,6 +64,7 @@ export default function DashboardClient({
         user_id: myId,
         date: today,
         completed: true,
+        value: null,
         created_at: '',
       }]
     }
@@ -123,9 +125,15 @@ export default function DashboardClient({
   const myCatchUpGoals = myGoals.filter(g => isGoalCatchUp(g, today, optimisticCheckIns))
   const buddyCatchUpGoals = buddyGoals.filter(g => isGoalCatchUp(g, today, buddyCheckIns))
 
-  // Daily tile: only Section 1 goals count
-  const myDone = myTodayGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
-  const buddyDone = buddyTodayGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length
+  // Daily tile: only Section 1 goals count (exclude cumulative)
+  const myDone = myTodayGoals
+    .filter(g => g.type !== 'cumulative' && getCheckIn(g.id, optimisticCheckIns))
+    .length
+  const myTotal = myTodayGoals.filter(g => g.type !== 'cumulative').length
+  const buddyDone = buddyTodayGoals
+    .filter(g => g.type !== 'cumulative' && getCheckIn(g.id, buddyCheckIns))
+    .length
+  const buddyTotal = buddyTodayGoals.filter(g => g.type !== 'cumulative').length
 
   const localDate = todayMidnight
 
@@ -149,8 +157,8 @@ export default function DashboardClient({
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
-          { name: 'You', done: myDone, total: myTodayGoals.length, isAhead: myAhead },
-          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyTodayGoals.length, isAhead: buddyAhead },
+          { name: 'You', done: myDone, total: myTotal, isAhead: myAhead },
+          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyTotal, isAhead: buddyAhead },
         ].map(({ name, done, total, isAhead }) => (
           <div
             key={name}
@@ -186,20 +194,23 @@ export default function DashboardClient({
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {myTodayGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                    isMyGoal={true} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, myCheckIns, today)} />
-                ))}
+                {myTodayGoals.map(goal => goal.type === 'cumulative'
+                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
+                  : <GoalCard key={goal.id} goal={goal}
+                      checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                      isMyGoal={true} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, myCheckIns, today)} />
+                )}
               </div>
               <div className="space-y-2">
-                {buddyTodayGoals.map(goal => {
-                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
-                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
-                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
-                    onToggle={handleToggle} streak={getCurrentStreak(goal, buddyCheckIns, today)} />
-                })}
+                {buddyTodayGoals.map(goal => goal.type === 'cumulative'
+                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
+                  : <GoalCard key={goal.id} goal={goal}
+                      checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                      reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                      isMyGoal={false} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, buddyCheckIns, today)} />
+                )}
               </div>
             </div>
           </div>

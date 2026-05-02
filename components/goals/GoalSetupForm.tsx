@@ -81,6 +81,9 @@ export default function GoalSetupForm({
           return
         }
       }
+      if (g.type === 'cumulative') {
+        if (!(parseInt(g.target_count) > 0)) { setError(`Set a target total for "${g.title}".`); return }
+      }
     }
     setSubmitting(true)
     try { await onSubmit(filled) }
@@ -108,7 +111,7 @@ export default function GoalSetupForm({
 
           {/* Type row */}
           <div className="flex gap-2 ml-7 flex-wrap">
-            {(['daily', 'milestone', 'frequency'] as GoalType[]).map(t => (
+            {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
               <button
                 key={t}
                 type="button"
@@ -159,6 +162,27 @@ export default function GoalSetupForm({
                   )}
                 </>
               )}
+            </div>
+          )}
+
+          {/* Cumulative: target total + unit */}
+          {goal.type === 'cumulative' && (
+            <div className="ml-7 space-y-2">
+              <input
+                type="number"
+                value={goal.target_count}
+                onChange={e => update(i, 'target_count', e.target.value)}
+                placeholder="Target total (e.g. 100)"
+                min="1"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
+              <input
+                type="text"
+                value={goal.target_unit}
+                onChange={e => update(i, 'target_unit', e.target.value)}
+                placeholder="Unit (e.g. km, pages, hours)"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
             </div>
           )}
         </div>

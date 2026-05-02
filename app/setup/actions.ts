@@ -35,7 +35,9 @@ export async function saveGoals(challengeId: string, goals: GoalDraft[]) {
     user_id: user.id,
     title: g.title,
     type: g.type,
-    target_count: g.type === 'frequency' ? (parseInt(g.target_count) || null) : null,
+    target_count: (g.type === 'frequency' || g.type === 'cumulative')
+      ? (parseInt(g.target_count) || null)
+      : null,
     target_unit: g.target_unit.trim() || null,
     schedule_dates: g.schedule_dates.length > 0 ? g.schedule_dates : null,
     catch_up: g.catch_up,
