@@ -40,6 +40,14 @@ export default function ScoreSummary({
     return <p className="text-xs mb-1">&nbsp;</p>
   }
 
+  // Section splits
+  const myDailyGoals = myGoals.filter(g => g.type === 'daily')
+  const buddyDailyGoals = buddyGoals.filter(g => g.type === 'daily')
+  const myTargetGoals = myGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
+  const buddyTargetGoals = buddyGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
+  const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
+  const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
+
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
@@ -129,19 +137,63 @@ export default function ScoreSummary({
         myId={myId}
       />
 
-      {/* Two-column goal cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          {myGoals.map(goal => (
-            <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
-          ))}
-        </div>
+      <div className="space-y-6">
+        {/* Daily Goals */}
+        {(myDailyGoals.length > 0 || buddyDailyGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Daily Goals</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myDailyGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyDailyGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div className="space-y-2">
-          {buddyGoals.map(goal => (
-            <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
-          ))}
-        </div>
+        {/* Target Goals */}
+        {(myTargetGoals.length > 0 || buddyTargetGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Target Goals</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myTargetGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyTargetGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Milestones */}
+        {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myMilestoneGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                ))}
+              </div>
+              <div className="space-y-2">
+                {buddyMilestoneGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {isComplete && (

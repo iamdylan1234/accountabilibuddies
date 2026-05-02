@@ -7,7 +7,7 @@ import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalActiveToday, isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
+import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -107,35 +107,35 @@ export default function DashboardClient({
     return reactions.find(r => r.check_in_id === checkInId) ?? null
   }
 
-  // Section 1: goals due today (not catch-up, not milestone)
+  // Section 1: Today's Goals — daily goals + frequency goals scheduled today
   const myTodayGoals = myGoals.filter(g =>
-    g.type !== 'milestone' &&
-    isGoalActiveToday(g, today, optimisticCheckIns) &&
-    !isGoalCatchUp(g, today, optimisticCheckIns)
+    g.type === 'daily' ||
+    (g.type === 'frequency' && g.schedule_dates?.includes(today))
   )
   const buddyTodayGoals = buddyGoals.filter(g =>
-    g.type !== 'milestone' &&
-    isGoalActiveToday(g, today, buddyCheckIns) &&
-    !isGoalCatchUp(g, today, buddyCheckIns)
+    g.type === 'daily' ||
+    (g.type === 'frequency' && g.schedule_dates?.includes(today))
   )
 
-  // Section 2: milestones (always show)
+  // Section 2: Optional — frequency (not scheduled today) + cumulative; catch-up rendered red
+  const myOptionalGoals = myGoals.filter(g =>
+    g.type === 'cumulative' ||
+    (g.type === 'frequency' && !g.schedule_dates?.includes(today))
+  )
+  const buddyOptionalGoals = buddyGoals.filter(g =>
+    g.type === 'cumulative' ||
+    (g.type === 'frequency' && !g.schedule_dates?.includes(today))
+  )
+
+  // Section 3: Milestones
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
-  // Section 3: catch-up (overdue committed dates)
-  const myCatchUpGoals = myGoals.filter(g => isGoalCatchUp(g, today, optimisticCheckIns))
-  const buddyCatchUpGoals = buddyGoals.filter(g => isGoalCatchUp(g, today, buddyCheckIns))
-
-  // Daily tile: only Section 1 goals count (exclude cumulative)
-  const myDone = myTodayGoals
-    .filter(g => g.type !== 'cumulative' && getCheckIn(g.id, optimisticCheckIns))
-    .length
-  const myTotal = myTodayGoals.filter(g => g.type !== 'cumulative').length
-  const buddyDone = buddyTodayGoals
-    .filter(g => g.type !== 'cumulative' && getCheckIn(g.id, buddyCheckIns))
-    .length
-  const buddyTotal = buddyTodayGoals.filter(g => g.type !== 'cumulative').length
+  // Score tiles: Today's Goals only (daily + frequency scheduled today)
+  const myDone = myTodayGoals.filter(g => !!getCheckIn(g.id, optimisticCheckIns)).length
+  const myTotal = myTodayGoals.length
+  const buddyDone = buddyTodayGoals.filter(g => !!getCheckIn(g.id, buddyCheckIns)).length
+  const buddyTotal = buddyTodayGoals.length
 
   const localDate = todayMidnight
 
@@ -185,35 +185,65 @@ export default function DashboardClient({
 
 
       <div className="space-y-6">
-        {/* Section 1: Today's Goals */}
+        {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {myTodayGoals.map(goal => goal.type === 'cumulative'
-                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
-                  : <GoalCard key={goal.id} goal={goal}
-                      checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                      isMyGoal={true} today={today} onToggle={handleToggle}
-                      streak={getCurrentStreak(goal, myCheckIns, today)} />
-                )}
+                {myTodayGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, myCheckIns, today)} />
+                ))}
               </div>
               <div className="space-y-2">
-                {buddyTodayGoals.map(goal => goal.type === 'cumulative'
-                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
-                  : <GoalCard key={goal.id} goal={goal}
-                      checkIn={getCheckIn(goal.id, buddyCheckIns)}
-                      reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
-                      isMyGoal={false} today={today} onToggle={handleToggle}
-                      streak={getCurrentStreak(goal, buddyCheckIns, today)} />
-                )}
+                {buddyTodayGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                    reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                    isMyGoal={false} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, buddyCheckIns, today)} />
+                ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* Section 2: Milestones */}
+        {/* Section 2: Optional — frequency (not scheduled) + cumulative; catch-up shown red */}
+        {(myOptionalGoals.length > 0 || buddyOptionalGoals.length > 0) && (
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Optional</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                {myOptionalGoals.map(goal => goal.type === 'cumulative'
+                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
+                  : <GoalCard key={goal.id} goal={goal}
+                      checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                      isMyGoal={true} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, myCheckIns, today)}
+                      isCatchUp={isGoalCatchUp(goal, today, optimisticCheckIns)} />
+                )}
+              </div>
+              <div className="space-y-2">
+                {buddyOptionalGoals.map(goal => {
+                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                  return goal.type === 'cumulative'
+                    ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
+                    : <GoalCard key={goal.id} goal={goal}
+                        checkIn={checkIn}
+                        reaction={getReaction(checkIn?.id)}
+                        isMyGoal={false} today={today} onToggle={handleToggle}
+                        streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                        isCatchUp={isGoalCatchUp(goal, today, buddyCheckIns)} />
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section 3: Milestones */}
         {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
@@ -231,31 +261,6 @@ export default function DashboardClient({
                   return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
                     reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
                     onToggle={handleToggle} />
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 3: Catch-up (overdue) */}
-        {(myCatchUpGoals.length > 0 || buddyCatchUpGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-red-400 uppercase tracking-wide mb-2">🔴 Catch-up</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myCatchUpGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                    isMyGoal={true} today={today} onToggle={handleToggle}
-                    isCatchUp={true} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyCatchUpGoals.map(goal => {
-                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
-                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
-                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
-                    onToggle={handleToggle} isCatchUp={true} />
                 })}
               </div>
             </div>
