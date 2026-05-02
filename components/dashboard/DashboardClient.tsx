@@ -7,7 +7,7 @@ import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import WeeklyPlan from './WeeklyPlan'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalActiveToday, getCurrentStreak } from '@/lib/scoring'
+import { isGoalActiveToday, isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -103,8 +103,8 @@ export default function DashboardClient({
     return reactions.find(r => r.check_in_id === checkInId) ?? null
   }
 
-  const myActiveGoals = myGoals.filter(g => isGoalActiveToday(g, today, optimisticCheckIns, startDate))
-  const buddyActiveGoals = buddyGoals.filter(g => isGoalActiveToday(g, today, buddyCheckIns, startDate))
+  const myActiveGoals = myGoals.filter(g => isGoalActiveToday(g, today, optimisticCheckIns))
+  const buddyActiveGoals = buddyGoals.filter(g => isGoalActiveToday(g, today, buddyCheckIns))
 
   const myDone = myActiveGoals.filter(g => getCheckIn(g.id, optimisticCheckIns)).length
   const buddyDone = buddyActiveGoals.filter(g => getCheckIn(g.id, buddyCheckIns)).length

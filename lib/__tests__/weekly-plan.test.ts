@@ -3,7 +3,7 @@ import type { Goal, CheckIn } from '@/types/database'
 
 const baseGoal = (type: Goal['type'], target_count: number | null = null, id = 'g1'): Goal => ({
   id, challenge_id: 'c1', user_id: 'u1', title: 'Test', type, target_count, created_at: '',
-  schedule_days: null, catch_up: false,
+  schedule_dates: null, catch_up: false, target_unit: null,
 })
 
 describe('computeWeeklyPlan', () => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { getWeekStart, scoreChallenge, scoreGoal, getScheduledDaysElapsed, getCurrentStreak } from '@/lib/scoring'
+import { getWeekStart, scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 
 interface Props {
@@ -49,13 +49,18 @@ export default function WeekView({
     const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
     if (goal.type === 'daily') return `${relevant.length}/${daysElapsed} days`
     if (goal.type === 'milestone') return relevant.length > 0 ? 'Done ✓' : 'Not yet'
-    return `${relevant.length}/${goal.target_count ?? 1} times`
+    if (goal.type === 'frequency') {
+      const weekDates = goal.schedule_dates
+        ? goal.schedule_dates.filter(d => d >= weekStartStr && d <= today).length
+        : Math.round((goal.target_count ?? 1) / 4)
+      return `${relevant.length}/${weekDates} this week`
+    }
+    return ''
   }
 
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
-    // Use scheduled days elapsed this week as denominator for scheduled goals
-    const denominator = goal.schedule_days && goal.schedule_days.length > 0
-      ? getScheduledDaysElapsed(goal.schedule_days, weekStartStr, today)
+    const denominator = goal.schedule_dates && goal.schedule_dates.length > 0
+      ? goal.schedule_dates.filter(d => d >= weekStartStr && d <= today).length
       : daysElapsed
     const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator) * 100)
     const streak = getCurrentStreak(goal, checkIns, today)
