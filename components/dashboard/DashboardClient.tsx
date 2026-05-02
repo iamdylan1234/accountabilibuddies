@@ -163,16 +163,13 @@ export default function DashboardClient({
         ].map(({ name, done, total, isAhead }) => (
           <div
             key={name}
-            className="rounded-2xl border-2 p-4 text-center"
-            style={{
-              borderColor: isAhead ? '#F9F871' : '#e5e7eb',
-              background: isAhead ? '#fffde7' : 'white',
-            }}
+            className="rounded-2xl p-4 text-center"
+            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
           >
-            {isAhead && <p className="text-xs font-black text-yellow-600 mb-1">⚡ AHEAD</p>}
-            <p className="text-sm font-bold text-gray-500">{name}</p>
-            <p className="text-4xl font-black mt-1" style={{ color: '#0077B6' }}>{done}/{total}</p>
-            <p className="text-xs text-gray-400 mt-1">goals today</p>
+            {isAhead && <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>}
+            <p className="text-sm font-bold text-white/70">{name}</p>
+            <p className="text-4xl font-black mt-1 text-white">{done}/{total}</p>
+            <p className="text-xs text-white/60 mt-1">goals today</p>
           </div>
         ))}
       </div>

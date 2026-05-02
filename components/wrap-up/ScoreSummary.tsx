@@ -46,27 +46,36 @@ export default function ScoreSummary({
       ? goal.schedule_dates.filter(d => d <= today).length
       : totalDays
     const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator, startDate, today) * 100)
+    const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
+
     return (
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
+      <div
+        className="rounded-xl border p-4"
+        style={isPending
+          ? { background: '#f3f4f6', borderColor: '#d1d5db' }
+          : { background: 'white', borderColor: '#f3f4f6' }}
+      >
         <div className="flex items-center gap-2 mb-2">
-          <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
-          {isOwn && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />}
-          {isOwn && pendingRequests.some(r => r.goal_id === goal.id) && (
-            <span className="text-xs text-yellow-500 font-bold">⏳</span>
-          )}
+          <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>{goal.title}</p>
+          {isOwn && !isPending && <GoalEditButton goal={goal} challengeId={challengeId} challengeStartDate={startDate} challengeEndDate={endDate} myId={myId} />}
           <span
             className="text-sm font-black"
-            style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
+            style={{ color: isPending ? '#9ca3af' : pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
           >
             {pct}%
           </span>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
+            style={{ width: `${pct}%`, background: isPending ? '#d1d5db' : 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
           />
         </div>
+        {isPending && (
+          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+            <span>⏳</span> Under review
+          </p>
+        )}
       </div>
     )
   }
