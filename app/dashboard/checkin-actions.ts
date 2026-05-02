@@ -54,3 +54,20 @@ export async function addReaction(checkInId: string, emoji: string) {
 
   revalidatePath('/dashboard')
 }
+
+export async function logValue(goalId: string, date: string, value: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Allow multiple log entries per day for cumulative goals (e.g. two runs)
+  const { error } = await supabase.from('check_ins').insert({
+    goal_id: goalId,
+    user_id: user.id,
+    date,
+    completed: true,
+    value,
+  })
+  if (error) console.error('[logValue] error:', error)
+  revalidatePath('/dashboard')
+}
