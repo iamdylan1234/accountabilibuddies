@@ -1,5 +1,5 @@
 import type { Goal, CheckIn, Profile } from '@/types/database'
-import { scoreChallenge, scoreGoal } from '@/lib/scoring'
+import { scoreChallenge, scoreGoal, getScheduledDaysElapsed } from '@/lib/scoring'
 import Link from 'next/link'
 import GoalEditButton from './GoalEditButton'
 
@@ -13,14 +13,17 @@ interface Props {
   totalDays: number
   challengeName: string
   isComplete: boolean
+  startDate: string
+  today: string
 }
 
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
+  startDate, today,
 }: Props) {
-  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays)
-  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays)
+  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today)
+  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
@@ -28,7 +31,10 @@ export default function ScoreSummary({
   const buddyDaysActive = new Set(buddyCheckIns.filter(c => c.completed).map(c => c.date)).size
 
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    const pct = Math.round(scoreGoal(goal, checkIns, totalDays) * 100)
+    const denominator = goal.schedule_days && goal.schedule_days.length > 0
+      ? getScheduledDaysElapsed(goal.schedule_days, startDate, today)
+      : totalDays
+    const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator) * 100)
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-2">

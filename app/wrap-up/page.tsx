@@ -29,6 +29,7 @@ export default async function WrapUpPage() {
   const totalDays = Math.floor(
     (new Date(typedChallenge.end_date).getTime() - new Date(typedChallenge.start_date).getTime()) / 86400000
   ) + 1
+  const today = new Date().toISOString().split('T')[0]
 
   const [goalsRes, myCheckInsRes, buddyCheckInsRes, myProfileRes] = await Promise.all([
     supabase.from('goals').select('*').eq('challenge_id', typedChallenge.id),
@@ -59,6 +60,8 @@ export default async function WrapUpPage() {
       totalDays={totalDays}
       challengeName={typedChallenge.month_name}
       isComplete={typedChallenge.status === 'completed'}
+      startDate={typedChallenge.start_date}
+      today={today}
     />
   )
 }

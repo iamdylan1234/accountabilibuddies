@@ -1,6 +1,6 @@
 'use client'
 
-import { getWeekStart, scoreChallenge, scoreGoal } from '@/lib/scoring'
+import { getWeekStart, scoreChallenge, scoreGoal, getScheduledDaysElapsed, getCurrentStreak } from '@/lib/scoring'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 
 interface Props {
@@ -40,8 +40,8 @@ export default function WeekView({
   const weekMy = myCheckIns.filter(c => c.date >= weekStartStr && c.date <= today)
   const weekBuddy = buddyCheckIns.filter(c => c.date >= weekStartStr && c.date <= today)
 
-  const myScore = scoreChallenge(myGoals, weekMy, daysElapsed)
-  const buddyScore = scoreChallenge(buddyGoals, weekBuddy, daysElapsed)
+  const myScore = scoreChallenge(myGoals, weekMy, daysElapsed, weekStartStr, today)
+  const buddyScore = scoreChallenge(buddyGoals, weekBuddy, daysElapsed, weekStartStr, today)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
 
@@ -53,11 +53,17 @@ export default function WeekView({
   }
 
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
-    const pct = Math.round(scoreGoal(goal, checkIns, daysElapsed) * 100)
+    // Use scheduled days elapsed this week as denominator for scheduled goals
+    const denominator = goal.schedule_days && goal.schedule_days.length > 0
+      ? getScheduledDaysElapsed(goal.schedule_days, weekStartStr, today)
+      : daysElapsed
+    const pct = denominator === 0 ? 0 : Math.round(scoreGoal(goal, checkIns, denominator) * 100)
+    const streak = getCurrentStreak(goal, checkIns, today)
     return (
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         <div className="flex items-center gap-2 mb-1">
           <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
+          {streak >= 2 && <span className="text-xs font-bold text-orange-400">🔥{streak}</span>}
           <span className="text-sm font-black" style={{ color: '#0077B6' }}>{pct}%</span>
         </div>
         <p className="text-xs text-gray-400 mb-2">{goalLabel(goal, checkIns)}</p>
