@@ -8,9 +8,23 @@ interface GoalDraft {
   title: string
   type: GoalType
   target_count: string
+  schedule_days: number[]   // empty = all 7 days (saved as null)
+  catch_up: boolean
 }
 
-const emptyGoal = (): GoalDraft => ({ id: crypto.randomUUID(), title: '', type: 'daily', target_count: '' })
+const ALL_DAYS: number[] = []  // empty = all days selected
+
+const emptyGoal = (): GoalDraft => ({
+  id: crypto.randomUUID(),
+  title: '',
+  type: 'daily',
+  target_count: '',
+  schedule_days: ALL_DAYS,
+  catch_up: false,
+})
+
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const DAY_VALUES = [1, 2, 3, 4, 5, 6, 0]  // Mon=1 … Sat=6, Sun=0
 
 interface Props {
   challengeId: string
@@ -26,14 +40,33 @@ export default function GoalSetupForm({ challengeId, existingGoals, onSubmit }: 
           title: g.title,
           type: g.type,
           target_count: g.target_count?.toString() ?? '',
+          schedule_days: g.schedule_days ?? [],
+          catch_up: g.catch_up,
         }))
       : [emptyGoal()]
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  function updateGoal(i: number, field: keyof GoalDraft, value: string) {
+  function updateGoal(i: number, field: keyof GoalDraft, value: unknown) {
     setGoals(prev => prev.map((g, idx) => idx === i ? { ...g, [field]: value } : g))
+  }
+
+  function toggleDay(goalIdx: number, dayValue: number) {
+    setGoals(prev => prev.map((g, i) => {
+      if (i !== goalIdx) return g
+      const current = g.schedule_days
+      const next = current.includes(dayValue)
+        ? current.filter(d => d !== dayValue)
+        : [...current, dayValue]
+      // clear catch_up if all days selected (no point) or all deselected
+      const catchUp = next.length === 0 || next.length === 7 ? false : g.catch_up
+      return { ...g, schedule_days: next, catch_up: catchUp }
+    }))
+  }
+
+  function isDaySelected(goal: GoalDraft, dayValue: number) {
+    return goal.schedule_days.length === 0 || goal.schedule_days.includes(dayValue)
   }
 
   function addGoal() {
@@ -80,16 +113,15 @@ export default function GoalSetupForm({ challengeId, existingGoals, onSubmit }: 
                 className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
             )}
           </div>
-          <div className="flex gap-2 ml-7">
+
+          <div className="flex gap-2 ml-7 flex-wrap">
             {(['daily', 'milestone', 'frequency'] as GoalType[]).map(t => (
               <button
                 key={t}
                 type="button"
                 onClick={() => updateGoal(i, 'type', t)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
-                  goal.type === t
-                    ? 'text-white'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  goal.type === t ? 'text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
                 style={goal.type === t ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' } : {}}
               >
@@ -105,6 +137,41 @@ export default function GoalSetupForm({ challengeId, existingGoals, onSubmit }: 
                 min="1"
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
               />
+            )}
+          </div>
+
+          {/* Day picker */}
+          <div className="ml-7 space-y-2">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Target days</p>
+            <div className="flex gap-1">
+              {DAY_LABELS.map((label, idx) => {
+                const val = DAY_VALUES[idx]
+                const selected = isDaySelected(goal, val)
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => toggleDay(i, val)}
+                    className={`w-8 h-8 rounded-full text-xs font-bold transition ${
+                      selected ? 'text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                    style={selected ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' } : {}}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            {goal.schedule_days.length > 0 && goal.schedule_days.length < 7 && (
+              <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={goal.catch_up}
+                  onChange={e => updateGoal(i, 'catch_up', e.target.checked)}
+                  className="rounded"
+                />
+                Show as catch-up goal if I miss a day
+              </label>
             )}
           </div>
         </div>
