@@ -29,6 +29,8 @@ export interface Goal {
   type: GoalType
   target_count: number | null
   created_at: string
+  schedule_days: number[] | null   // null = every day; [0]=Sun [1]=Mon…[6]=Sat
+  catch_up: boolean                // show every day when behind on scheduled days
 }
 
 export interface CheckIn {
