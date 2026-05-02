@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { getWeekStart, scoreChallenge, getCurrentStreak } from '@/lib/scoring'
+import { getWeekStart, scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 
 interface Props {
@@ -88,9 +88,18 @@ export default function WeekView({
 
   function GoalCard({ goal, checkIns }: { goal: Goal; checkIns: CheckIn[] }) {
     const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
-    const done = relevant.length > 0
+    const doneToday = relevant.length > 0
     const scheduled = !goal.schedule_dates || goal.schedule_dates.length === 0 || goal.schedule_dates.includes(selectedStr)
     const streak = getCurrentStreak(goal, goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns, isFuture ? todayStr : selectedStr)
+
+    // Weekly progress % — uses full week's check-ins, scoped to Mon–today
+    const ownerCheckIns = goal.user_id === myProfile.id ? myCheckIns : buddyCheckIns
+    const weekGoalCheckIns = ownerCheckIns.filter(c => {
+      if (c.goal_id !== goal.id) return false
+      if (goal.type === 'milestone') return c.date <= todayStr
+      return c.date >= weekStartStr && c.date <= todayStr
+    })
+    const pct = Math.round(scoreGoal(goal, weekGoalCheckIns, 7, weekStartStr, todayStr) * 100)
 
     if (!scheduled && goal.type === 'frequency') {
       return (
@@ -102,24 +111,29 @@ export default function WeekView({
     }
 
     return (
-      <div
-        className="rounded-xl border p-4"
-        style={done
-          ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)', borderColor: 'transparent' }
-          : isFuture
-          ? { background: '#f0f9ff', borderColor: '#bae6fd' }
-          : { background: 'white', borderColor: '#f3f4f6' }}
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <p className={`flex-1 text-sm font-bold ${done ? 'text-white' : isFuture ? 'text-blue-700' : 'text-gray-800'}`}>
-            {goal.title}
-          </p>
-          {streak >= 2 && <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>🔥{streak}</span>}
-          {done && <span className="text-white text-sm font-black">✓</span>}
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <p className="flex-1 text-sm font-bold text-gray-800">{goal.title}</p>
+          {streak >= 2 && <span className="text-xs font-bold text-orange-400">🔥{streak}</span>}
+          {doneToday && goal.type !== 'cumulative' && (
+            <span className="text-xs font-bold" style={{ color: '#00C9A7' }}>✓ today</span>
+          )}
+          <span
+            className="text-sm font-black"
+            style={{ color: pct >= 80 ? '#00C9A7' : pct >= 50 ? '#0077B6' : '#ef4444' }}
+          >
+            {pct}%
+          </span>
         </div>
-        <p className={`text-xs mt-0.5 ${done ? 'text-white/70' : isFuture ? 'text-blue-400' : 'text-gray-400'}`}>
-          {goalLabel(goal, checkIns)}
-        </p>
+        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
+          />
+        </div>
+        {isFuture && (
+          <p className="text-xs text-blue-400 mt-1">{goalLabel(goal, checkIns)}</p>
+        )}
       </div>
     )
   }
