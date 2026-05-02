@@ -60,3 +60,20 @@ export interface ChallengeWithProfiles extends ChallengeMonth {
   creator: Profile
   buddy: Profile | null
 }
+
+export type ChangeRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface GoalChangeRequest {
+  id: string
+  goal_id: string
+  challenge_id: string
+  requester_id: string
+  proposed_title: string
+  proposed_type: GoalType
+  proposed_target_count: number | null
+  proposed_target_unit: string | null
+  proposed_schedule_dates: string[] | null
+  proposed_catch_up: boolean
+  status: ChangeRequestStatus
+  created_at: string
+}
