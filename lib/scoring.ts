@@ -96,8 +96,8 @@ export function scoreGoal(
     return Math.min(1, relevant.length / (goal.target_count ?? 1))
   }
 
-  // daily
-  const denom = startDate && today ? elapsedDays(startDate, today) : totalDays
+  // daily: Summary uses full challenge length; WeekView uses elapsed days in window
+  const denom = useTargetCount ? totalDays : (startDate && today ? elapsedDays(startDate, today) : totalDays)
   return denom === 0 ? 0 : Math.min(1, relevant.length / denom)
 }
 
