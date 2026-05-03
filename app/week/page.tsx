@@ -59,7 +59,10 @@ export default async function WeekPage() {
       buddyProfile={buddyProfile}
       challengeName={typedChallenge.month_name}
       startDate={typedChallenge.start_date}
+      endDate={typedChallenge.end_date}
       totalDays={totalDays}
+      challengeId={typedChallenge.id}
+      myId={user.id}
     />
   )
 }
