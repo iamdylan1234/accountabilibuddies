@@ -11,9 +11,10 @@ interface Props {
   streak?: number
   isCatchUp?: boolean
   remaining?: number
+  hasFailed?: boolean
 }
 
-export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp, remaining }: Props) {
+export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp, remaining, hasFailed }: Props) {
   const done = !!checkIn
 
   const baseStyle = done
@@ -31,7 +32,7 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   if (isMyGoal) {
     return (
       <button type="button" onClick={() => onToggle(goal.id)}
-        className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${baseClass}`}
+        className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${hasFailed ? 'ring-2 ring-red-400 ring-offset-1' : ''} ${baseClass}`}
         style={baseStyle}>
         <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
           done ? 'border-white bg-white/30' : isCatchUp ? 'border-red-300' : 'border-gray-300'
@@ -39,7 +40,8 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
           {done && <span className="text-white text-xs font-bold">✓</span>}
         </span>
         <span className="text-sm font-semibold flex-1">{goal.title}</span>
-        {isCatchUp && !done && <span className="text-xs font-bold text-red-400">LATE</span>}
+        {hasFailed && <span className={`text-xs font-bold ${done ? 'text-red-200' : 'text-red-400'}`}>Failed</span>}
+        {!hasFailed && isCatchUp && !done && <span className="text-xs font-bold text-red-400">LATE</span>}
         {streak !== undefined && streak >= 2 && (
           <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>🔥{streak}</span>
         )}

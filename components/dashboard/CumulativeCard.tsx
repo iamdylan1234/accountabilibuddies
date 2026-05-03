@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useOptimistic, useTransition } from 'react'
 import { logValue } from '@/app/dashboard/checkin-actions'
 import type { Goal, CheckIn } from '@/types/database'
 
@@ -17,7 +17,12 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
   const [showInput, setShowInput] = useState(false)
   const [, startTransition] = useTransition()
 
-  const totalLogged = checkIns
+  const [optimisticCheckIns, applyOptimistic] = useOptimistic(
+    checkIns,
+    (state: CheckIn[], newEntry: CheckIn) => [...state, newEntry]
+  )
+
+  const totalLogged = optimisticCheckIns
     .filter(c => c.goal_id === goal.id && c.value != null)
     .reduce((sum, c) => sum + (c.value ?? 0), 0)
 
@@ -25,7 +30,7 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
   const pct = target > 0 ? Math.min(100, Math.round((totalLogged / target) * 100)) : 0
   const unit = goal.target_unit ?? ''
 
-  const todayTotal = checkIns
+  const todayTotal = optimisticCheckIns
     .filter(c => c.goal_id === goal.id && c.date === today && c.value != null)
     .reduce((sum, c) => sum + (c.value ?? 0), 0)
 
@@ -34,6 +39,15 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
     if (isNaN(v) || v <= 0) return
     setLogging(true)
     startTransition(async () => {
+      applyOptimistic({
+        id: `optimistic-${Date.now()}`,
+        goal_id: goal.id,
+        user_id: '',
+        date: today,
+        completed: false,
+        value: v,
+        created_at: '',
+      })
       await logValue(goal.id, today, v)
       setInputVal('')
       setShowInput(false)
