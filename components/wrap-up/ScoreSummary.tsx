@@ -30,8 +30,8 @@ export default function ScoreSummary({
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
   startDate, endDate, today, challengeId, myId, pendingRequests,
 }: Props) {
-  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today)
-  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today)
+  const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today, true)
+  const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today, true)
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
   const bothPerfect = myScore === 100 && buddyScore === 100
@@ -64,7 +64,7 @@ export default function ScoreSummary({
   ) + 1)
 
   function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today) * 100)
+    const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
     const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
     const streak = getCurrentStreak(goal, checkIns, today)
 

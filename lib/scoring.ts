@@ -72,6 +72,7 @@ export function getCurrentStreak(goal: Goal, checkIns: CheckIn[], today: string)
 export function scoreGoal(
   goal: Goal, checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,
+  useTargetCount?: boolean,  // true in Summary: frequency denominator = target_count, not past dates
 ): number {
   if (goal.type === 'cumulative') {
     if (!goal.target_count) return 0
@@ -86,13 +87,10 @@ export function scoreGoal(
   if (goal.type === 'milestone') return relevant.length > 0 ? 1 : 0
 
   if (goal.type === 'frequency') {
-    if (goal.schedule_dates && goal.schedule_dates.length > 0) {
-      // When startDate is provided (e.g. weekStartStr) only count scheduled dates within that window.
-      // This lets WeekView scope the denominator to the current week, while ScoreSummary
-      // (which passes challengeStartDate) still counts all past dates correctly.
-      const past = today
-        ? goal.schedule_dates.filter(d => (!startDate || d >= startDate) && d <= today).length
-        : goal.schedule_dates.length
+    // WeekView (useTargetCount=false): score against past scheduled dates in the week window.
+    // Summary (useTargetCount=true): score against total target_count so 1/12 = 8%, not 1/1 = 100%.
+    if (!useTargetCount && startDate && today && goal.schedule_dates && goal.schedule_dates.length > 0) {
+      const past = goal.schedule_dates.filter(d => d >= startDate && d <= today).length
       return past === 0 ? 0 : Math.min(1, relevant.length / past)
     }
     return Math.min(1, relevant.length / (goal.target_count ?? 1))
@@ -107,9 +105,10 @@ export function scoreGoal(
 export function scoreChallenge(
   goals: Goal[], checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,
+  useTargetCount?: boolean,
 ): number {
   const scorable = goals.filter(g => g.type !== 'cumulative')
   if (scorable.length === 0) return 0
-  const total = scorable.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today), 0)
+  const total = scorable.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today, useTargetCount), 0)
   return Math.round((total / scorable.length) * 100)
 }
