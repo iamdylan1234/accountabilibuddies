@@ -60,7 +60,7 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
         aria-label="Request goal edit">✏️</button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
           onClick={() => setOpen(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>

@@ -167,7 +167,7 @@ export default function WeekView({
               {isFuture && <span className="text-white/60 text-sm font-semibold"> · upcoming</span>}
             </p>
             <p className="text-white/70 text-xs font-semibold mt-0.5">
-              {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })} · Week day {dayOffset + 1} of 7
+              Day {dayOffset + 1} of 7
             </p>
           </div>
           <button

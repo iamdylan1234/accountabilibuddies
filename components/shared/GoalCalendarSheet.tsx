@@ -226,7 +226,8 @@ export default function GoalCalendarSheet({
                 )
               }
 
-              // Circle states
+              // Circle styles
+              const isToday = dateStr === today
               const circleStyle: React.CSSProperties =
                 state === 'done'
                   ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
@@ -245,20 +246,18 @@ export default function GoalCalendarSheet({
                   ? 'text-teal-600 font-bold'
                   : 'text-blue-300 font-semibold'
 
+              const ringCls = isToday
+                ? 'ring-2 ring-teal-400 ring-offset-1'
+                : ''
+
               return (
                 <div key={dateStr} className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${textCls}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${textCls} ${ringCls}`}
                     style={circleStyle}
                   >
-                    <span className="text-xs">
-                      {state === 'missed' ? '✕' : num}
-                    </span>
+                    <span className="text-xs">{num}</span>
                   </div>
-                  {/* Today dot */}
-                  {(state === 'today-open' || state === 'done' && dateStr === today) && (
-                    <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5" />
-                  )}
                 </div>
               )
             })}

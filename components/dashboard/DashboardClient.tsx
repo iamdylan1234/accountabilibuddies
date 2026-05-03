@@ -102,6 +102,12 @@ export default function DashboardClient({
     return checkIns.find(c => c.goal_id === goalId && c.date === today) ?? null
   }
 
+  function getRemaining(goal: Goal, checkIns: CheckIn[]): number | undefined {
+    if (goal.type !== 'frequency' || goal.target_count == null) return undefined
+    const done = checkIns.filter(c => c.goal_id === goal.id && c.completed).length
+    return Math.max(0, goal.target_count - done)
+  }
+
   function getReaction(checkInId: string | undefined) {
     if (!checkInId) return null
     return reactions.find(r => r.check_in_id === checkInId) ?? null
@@ -177,8 +183,12 @@ export default function DashboardClient({
           >
             {tileLabel(isAhead)}
             <p className="text-sm font-bold text-white/70">{name}</p>
-            <p className="text-4xl font-black mt-1 text-white">{done}/{total}</p>
-            <p className="text-xs text-white/60 mt-1">goals today</p>
+            <p className="text-4xl font-black mt-1 text-white">
+              {total === 0 ? '—' : `${done}/${total}`}
+            </p>
+            <p className="text-xs text-white/60 mt-1">
+              {total === 0 ? 'Rest day' : 'goals today'}
+            </p>
           </div>
         ))}
       </div>
@@ -195,7 +205,8 @@ export default function DashboardClient({
                   <GoalCard key={goal.id} goal={goal}
                     checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
                     isMyGoal={true} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, myCheckIns, today)} />
+                    streak={getCurrentStreak(goal, myCheckIns, today)}
+                    remaining={getRemaining(goal, myCheckIns)} />
                 ))}
               </div>
               <div className="space-y-2">
@@ -204,7 +215,8 @@ export default function DashboardClient({
                     checkIn={getCheckIn(goal.id, buddyCheckIns)}
                     reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
                     isMyGoal={false} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, buddyCheckIns, today)} />
+                    streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                    remaining={getRemaining(goal, buddyCheckIns)} />
                 ))}
               </div>
             </div>
@@ -223,7 +235,8 @@ export default function DashboardClient({
                       checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
                       isMyGoal={true} today={today} onToggle={handleToggle}
                       streak={getCurrentStreak(goal, myCheckIns, today)}
-                      isCatchUp={isGoalCatchUp(goal, today, optimisticCheckIns)} />
+                      isCatchUp={isGoalCatchUp(goal, today, optimisticCheckIns)}
+                      remaining={getRemaining(goal, myCheckIns)} />
                 )}
               </div>
               <div className="space-y-2">
@@ -236,7 +249,8 @@ export default function DashboardClient({
                         reaction={getReaction(checkIn?.id)}
                         isMyGoal={false} today={today} onToggle={handleToggle}
                         streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                        isCatchUp={isGoalCatchUp(goal, today, buddyCheckIns)} />
+                        isCatchUp={isGoalCatchUp(goal, today, buddyCheckIns)}
+                        remaining={getRemaining(goal, buddyCheckIns)} />
                 })}
               </div>
             </div>

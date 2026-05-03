@@ -10,9 +10,10 @@ interface Props {
   onToggle: (goalId: string) => void
   streak?: number
   isCatchUp?: boolean
+  remaining?: number
 }
 
-export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp }: Props) {
+export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp, remaining }: Props) {
   const done = !!checkIn
 
   const baseStyle = done
@@ -42,8 +43,8 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
         {streak !== undefined && streak >= 2 && (
           <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>🔥{streak}</span>
         )}
-        {goal.type === 'frequency' && (
-          <span className={`text-xs font-bold ${done ? 'text-white/70' : 'text-gray-400'}`}>×{goal.target_count}</span>
+        {goal.type === 'frequency' && remaining !== undefined && remaining > 0 && (
+          <span className={`text-xs font-bold ${done ? 'text-white/70' : 'text-gray-400'}`}>{remaining} left</span>
         )}
       </button>
     )

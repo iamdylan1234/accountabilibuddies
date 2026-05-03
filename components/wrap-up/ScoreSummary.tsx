@@ -85,6 +85,7 @@ export default function ScoreSummary({
           <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
             {pct}%
           </span>
+          <span className="text-gray-300 text-sm leading-none">›</span>
         </div>
 
         {/* Progress bar */}
