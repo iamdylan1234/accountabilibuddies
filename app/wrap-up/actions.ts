@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { GoalType } from '@/types/database'
 
@@ -83,7 +84,9 @@ export async function approveChange(requestId: string) {
   if (!req) throw new Error('Request not found or already resolved')
   if (req.requester_id === user.id) throw new Error('Cannot approve your own change request')
 
-  await supabase.from('goals').update({
+  // Use admin client to bypass RLS — the approver doesn't own the goal
+  const admin = createAdminClient()
+  await admin.from('goals').update({
     title: req.proposed_title,
     type: req.proposed_type,
     target_count: req.proposed_target_count,
