@@ -61,7 +61,7 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
         {isMyGoal && (
           <button onClick={() => setShowInput(v => !v)}
             className="text-xs font-bold text-teal-600 hover:text-teal-700 transition">
-            + Log
+            {showInput ? 'Cancel' : '+ Log'}
           </button>
         )}
       </div>

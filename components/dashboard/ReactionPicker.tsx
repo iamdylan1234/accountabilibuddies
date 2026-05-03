@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { addReaction } from '@/app/dashboard/checkin-actions'
 
 const EMOJIS = ['🔥', '💪', '👏', '❤️', '⚡']
@@ -12,6 +12,20 @@ interface Props {
 
 export default function ReactionPicker({ checkInId, existingEmoji }: Props) {
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleOutside(e: MouseEvent | TouchEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [open])
 
   async function handlePick(emoji: string) {
     setOpen(false)
@@ -19,12 +33,13 @@ export default function ReactionPicker({ checkInId, existingEmoji }: Props) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="text-lg leading-none hover:scale-110 transition-transform"
+        className={`leading-none transition-transform hover:scale-110 ${existingEmoji ? 'text-lg' : 'text-white/50 text-sm font-black'}`}
+        aria-label={existingEmoji ? 'Change reaction' : 'Add reaction'}
       >
-        {existingEmoji ?? '😊'}
+        {existingEmoji ?? '+'}
       </button>
       {open && (
         <div className="absolute bottom-8 right-0 bg-white rounded-xl shadow-lg border border-gray-100 p-2 flex gap-1 z-10">

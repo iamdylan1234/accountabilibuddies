@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Goal, CheckIn } from '@/types/database'
 import GoalEditButton from '@/components/wrap-up/GoalEditButton'
 
@@ -60,6 +60,34 @@ export default function GoalCalendarSheet({
   const initialOffset = Math.min(Math.max(todayAbs, startAbs), endAbs) - startAbs
   const [offset, setOffset] = useState(initialOffset)
 
+  // Slide-up animation
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  // Animate out then unmount
+  function handleClose() {
+    setMounted(false)
+    setTimeout(onClose, 280)
+  }
+
+  // Swipe-to-close
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef(0)
+  const touchStartScrollTop = useRef(0)
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY
+    touchStartScrollTop.current = sheetRef.current?.scrollTop ?? 0
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
+    if (deltaY > 60 && touchStartScrollTop.current === 0) handleClose()
+  }
+
   const curAbs = startAbs + offset
   const curYear = Math.floor(curAbs / 12)
   const curMonth = curAbs % 12 // 0-based
@@ -113,10 +141,18 @@ export default function GoalCalendarSheet({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${mounted ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleClose}
+      />
 
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        ref={sheetRef}
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto transition-transform duration-300 ease-out ${mounted ? 'translate-y-0' : 'translate-y-full'}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
 
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
@@ -152,7 +188,7 @@ export default function GoalCalendarSheet({
               )}
               {isPending && <span className="text-white/70 text-sm">⏳</span>}
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="text-white/60 hover:text-white text-2xl leading-none font-light"
                 aria-label="Close"
               >×</button>

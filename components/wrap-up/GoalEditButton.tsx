@@ -56,8 +56,12 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="text-gray-300 hover:text-teal-500 transition text-sm leading-none"
-        aria-label="Request goal edit">✏️</button>
+        className="text-white/50 hover:text-white transition"
+        aria-label="Request goal edit">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+          <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L6.75 6.774a2.75 2.75 0 0 0-.596.892l-.83 2.49a.75.75 0 0 0 .948.948l2.49-.83a2.75 2.75 0 0 0 .892-.596l4.261-4.263a1.75 1.75 0 0 0 0-2.475ZM3.75 12.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+        </svg>
+      </button>
 
       {open && (
         <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4"
