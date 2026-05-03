@@ -96,6 +96,8 @@ export async function approveChange(requestId: string) {
     .update({ status: 'approved' }).eq('id', requestId)
 
   revalidatePath('/wrap-up')
+  revalidatePath('/dashboard')
+  revalidatePath('/week')
 }
 
 export async function rejectChange(requestId: string) {
@@ -112,4 +114,6 @@ export async function rejectChange(requestId: string) {
     .update({ status: 'rejected' }).eq('id', requestId)
 
   revalidatePath('/wrap-up')
+  revalidatePath('/dashboard')
+  revalidatePath('/week')
 }
