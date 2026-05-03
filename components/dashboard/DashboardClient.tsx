@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useOptimistic, useTransition, useState } from 'react'
+import { Fragment, useEffect, useOptimistic, useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
@@ -8,6 +8,7 @@ import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
+import type { ReactNode } from 'react'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -25,6 +26,23 @@ function EmptyColumn() {
   return (
     <div className="flex items-center justify-center rounded-xl px-4 py-3 border border-dashed border-gray-200 min-h-[46px]">
       <span className="text-xs text-gray-300 font-semibold">No goals</span>
+    </div>
+  )
+}
+
+// Renders two arrays as row-aligned pairs in a CSS grid so cards at the
+// same index always sit in the same horizontal row.
+function GoalPairGrid({ myColumn, buddyColumn }: { myColumn: ReactNode[]; buddyColumn: ReactNode[] }) {
+  const maxLen = Math.max(myColumn.length, buddyColumn.length)
+  if (maxLen === 0) return null
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      {Array.from({ length: maxLen }, (_, i) => (
+        <Fragment key={i}>
+          {i === 0 && myColumn.length === 0 ? <EmptyColumn /> : (myColumn[i] ?? <div />)}
+          {i === 0 && buddyColumn.length === 0 ? <EmptyColumn /> : (buddyColumn[i] ?? <div />)}
+        </Fragment>
+      ))}
     </div>
   )
 }
@@ -60,6 +78,7 @@ export default function DashboardClient({
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
   const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
   const [, startTransition] = useTransition()
+  const [isRefreshing, startRefreshTransition] = useTransition()
   const [failedGoals, setFailedGoals] = useState<Set<string>>(new Set())
 
   const [optimisticCheckIns, applyOptimistic] = useOptimistic(
@@ -86,7 +105,6 @@ export default function DashboardClient({
       applyOptimistic({ goalId, action: existing ? 'remove' : 'add' })
       const result = await toggleCheckIn(goalId, today)
       if (result?.error) {
-        // Revert optimistic update
         applyOptimistic({ goalId, action: existing ? 'add' : 'remove' })
         setFailedGoals(prev => new Set([...prev, goalId]))
         setTimeout(() => setFailedGoals(prev => {
@@ -105,12 +123,12 @@ export default function DashboardClient({
         event: '*',
         schema: 'public',
         table: 'check_ins',
-      }, () => router.refresh())
+      }, () => startRefreshTransition(() => router.refresh()))
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'reactions',
-      }, () => router.refresh())
+      }, () => startRefreshTransition(() => router.refresh()))
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
@@ -179,13 +197,18 @@ export default function DashboardClient({
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Slim teal strip */}
       <div
-        className="rounded-2xl px-5 py-3 mb-4 text-white text-center"
+        className="rounded-2xl px-5 py-3 mb-2 text-white text-center"
         style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
       >
         <p className="font-black text-base">Hello, {myFirstName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
           {localDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
+      </div>
+
+      {/* Realtime refresh indicator — thin animated bar under header */}
+      <div className={`h-0.5 rounded-full mb-3 overflow-hidden transition-opacity duration-300 ${isRefreshing ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="h-full w-full animate-pulse" style={{ background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }} />
       </div>
 
       {/* Score tiles */}
@@ -196,7 +219,7 @@ export default function DashboardClient({
         ].map(({ name, done, total, isAhead }) => (
           <div
             key={name}
-            className="rounded-2xl p-4 text-center"
+            className={`rounded-2xl p-4 text-center transition-opacity duration-300 ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}
             style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
           >
             {tileLabel(isAhead)}
@@ -216,28 +239,24 @@ export default function DashboardClient({
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myTodayGoals.length === 0 ? <EmptyColumn /> : myTodayGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                    isMyGoal={true} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, myCheckIns, today)}
-                    remaining={getRemaining(goal, myCheckIns)}
-                    hasFailed={failedGoals.has(goal.id)} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyTodayGoals.length === 0 ? <EmptyColumn /> : buddyTodayGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, buddyCheckIns)}
-                    reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
-                    isMyGoal={false} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                    remaining={getRemaining(goal, buddyCheckIns)} />
-                ))}
-              </div>
-            </div>
+            <GoalPairGrid
+              myColumn={myTodayGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal}
+                  checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                  isMyGoal={true} today={today} onToggle={handleToggle}
+                  streak={getCurrentStreak(goal, myCheckIns, today)}
+                  remaining={getRemaining(goal, myCheckIns)}
+                  hasFailed={failedGoals.has(goal.id)} />
+              ))}
+              buddyColumn={buddyTodayGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal}
+                  checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                  reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                  isMyGoal={false} today={today} onToggle={handleToggle}
+                  streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                  remaining={getRemaining(goal, buddyCheckIns)} />
+              ))}
+            />
           </div>
         )}
 
@@ -245,34 +264,30 @@ export default function DashboardClient({
         {(myOptionalGoals.length > 0 || buddyOptionalGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Optional</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myOptionalGoals.length === 0 ? <EmptyColumn /> : myOptionalGoals.map(goal => goal.type === 'cumulative'
-                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
+            <GoalPairGrid
+              myColumn={myOptionalGoals.map(goal => goal.type === 'cumulative'
+                ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
+                : <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, myCheckIns, today)}
+                    isCatchUp={isGoalCatchUp(goal, today, optimisticCheckIns)}
+                    remaining={getRemaining(goal, myCheckIns)}
+                    hasFailed={failedGoals.has(goal.id)} />
+              )}
+              buddyColumn={buddyOptionalGoals.map(goal => {
+                const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                return goal.type === 'cumulative'
+                  ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
                   : <GoalCard key={goal.id} goal={goal}
-                      checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                      isMyGoal={true} today={today} onToggle={handleToggle}
-                      streak={getCurrentStreak(goal, myCheckIns, today)}
-                      isCatchUp={isGoalCatchUp(goal, today, optimisticCheckIns)}
-                      remaining={getRemaining(goal, myCheckIns)}
-                      hasFailed={failedGoals.has(goal.id)} />
-                )}
-              </div>
-              <div className="space-y-2">
-                {buddyOptionalGoals.length === 0 ? <EmptyColumn /> : buddyOptionalGoals.map(goal => {
-                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
-                  return goal.type === 'cumulative'
-                    ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
-                    : <GoalCard key={goal.id} goal={goal}
-                        checkIn={checkIn}
-                        reaction={getReaction(checkIn?.id)}
-                        isMyGoal={false} today={today} onToggle={handleToggle}
-                        streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                        isCatchUp={isGoalCatchUp(goal, today, buddyCheckIns)}
-                        remaining={getRemaining(goal, buddyCheckIns)} />
-                })}
-              </div>
-            </div>
+                      checkIn={checkIn}
+                      reaction={getReaction(checkIn?.id)}
+                      isMyGoal={false} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                      isCatchUp={isGoalCatchUp(goal, today, buddyCheckIns)}
+                      remaining={getRemaining(goal, buddyCheckIns)} />
+              })}
+            />
           </div>
         )}
 
@@ -280,24 +295,20 @@ export default function DashboardClient({
         {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myMilestoneGoals.length === 0 ? <EmptyColumn /> : myMilestoneGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                    isMyGoal={true} today={today} onToggle={handleToggle}
-                    hasFailed={failedGoals.has(goal.id)} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyMilestoneGoals.length === 0 ? <EmptyColumn /> : buddyMilestoneGoals.map(goal => {
-                  const checkIn = getCheckIn(goal.id, buddyCheckIns)
-                  return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
-                    reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
-                    onToggle={handleToggle} />
-                })}
-              </div>
-            </div>
+            <GoalPairGrid
+              myColumn={myMilestoneGoals.map(goal => (
+                <GoalCard key={goal.id} goal={goal}
+                  checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                  isMyGoal={true} today={today} onToggle={handleToggle}
+                  hasFailed={failedGoals.has(goal.id)} />
+              ))}
+              buddyColumn={buddyMilestoneGoals.map(goal => {
+                const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
+                  reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
+                  onToggle={handleToggle} />
+              })}
+            />
           </div>
         )}
       </div>
