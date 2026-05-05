@@ -105,21 +105,42 @@ export default function WeekView({
   // that specific day — otherwise every frequency goal would appear on every
   // day regardless of its schedule, which is confusing and incorrect.
 
-  const myDailyGoals     = myGoals.filter(g => g.type === 'daily')
-  const buddyDailyGoals  = buddyGoals.filter(g => g.type === 'daily')
-  const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
+  const myMilestoneGoals    = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
-  // Target goals: for the week summary show all; for a specific day only show
-  // frequency goals that are either (a) scheduled on that day or (b) cumulative.
+  // Daily Goals section:
+  //   Week summary (isToday): only type=daily goals
+  //   Specific day: type=daily + frequency goals that are scheduled for that day
+  //   (a scheduled frequency goal is a daily commitment on its day)
+  const myDailyGoals = isToday
+    ? myGoals.filter(g => g.type === 'daily')
+    : myGoals.filter(g =>
+        g.type === 'daily' ||
+        (g.type === 'frequency' &&
+          g.schedule_dates && g.schedule_dates.length > 0 &&
+          g.schedule_dates.includes(selectedStr))
+      )
+
+  const buddyDailyGoals = isToday
+    ? buddyGoals.filter(g => g.type === 'daily')
+    : buddyGoals.filter(g =>
+        g.type === 'daily' ||
+        (g.type === 'frequency' &&
+          g.schedule_dates && g.schedule_dates.length > 0 &&
+          g.schedule_dates.includes(selectedStr))
+      )
+
+  // Target Goals section:
+  //   Week summary (isToday): all frequency + cumulative goals
+  //   Specific day: cumulative + frequency goals NOT scheduled for this day
+  //   (these remain visible on every day as ongoing tracking reference)
   const myTargetGoals = isToday
     ? myGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
     : myGoals.filter(g =>
         g.type === 'cumulative' ||
         (g.type === 'frequency' && (
-          // scheduled for this exact day, OR has no schedule (treat as daily-like)
           !g.schedule_dates || g.schedule_dates.length === 0 ||
-          g.schedule_dates.includes(selectedStr)
+          !g.schedule_dates.includes(selectedStr)
         ))
       )
 
@@ -129,7 +150,7 @@ export default function WeekView({
         g.type === 'cumulative' ||
         (g.type === 'frequency' && (
           !g.schedule_dates || g.schedule_dates.length === 0 ||
-          g.schedule_dates.includes(selectedStr)
+          !g.schedule_dates.includes(selectedStr)
         ))
       )
 
