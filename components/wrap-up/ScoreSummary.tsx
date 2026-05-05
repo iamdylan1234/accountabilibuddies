@@ -9,6 +9,65 @@ import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
+
+// ── Module-level sub-components ───────────────────────────────────────────────
+interface SummaryGoalCardProps {
+  goal: Goal
+  checkIns: CheckIn[]
+  isOwn: boolean
+  totalDays: number
+  startDate: string
+  today: string
+  pendingRequests: GoalChangeRequest[]
+  onOpen: (target: SheetTarget) => void
+}
+
+function SummaryGoalCard({
+  goal, checkIns, isOwn, totalDays, startDate, today, pendingRequests, onOpen,
+}: SummaryGoalCardProps) {
+  const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
+  const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
+  const streak = getCurrentStreak(goal, checkIns, today)
+
+  return (
+    <button
+      type="button"
+      className="w-full text-left rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+      style={isPending
+        ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
+        : { background: 'white', borderColor: '#f3f4f6' }}
+      onClick={() => onOpen({ goal, checkIns, isOwn })}
+    >
+      {/* Title row */}
+      <div className="flex items-center gap-2 mb-2">
+        <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
+          {goal.title}
+        </p>
+        {isPending && <span className="text-xs text-gray-400">⏳</span>}
+        <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
+          {pct}%
+        </span>
+        <span className="text-gray-300 text-sm leading-none">›</span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : BRAND_GRADIENT_H }}
+        />
+      </div>
+
+      {/* Footer: streak */}
+      {streak >= 2 && (
+        <p className="text-xs text-gray-400 mt-2">🔥{streak}</p>
+      )}
+    </button>
+  )
+}
+
 interface Props {
   myGoals: Goal[]
   buddyGoals: Goal[]
@@ -46,7 +105,6 @@ export default function ScoreSummary({
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
-  type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
@@ -57,48 +115,6 @@ export default function ScoreSummary({
   const dayNumber = Math.max(1, Math.floor(
     (new Date(ty, tm - 1, td).getTime() - new Date(sy, sm - 1, sd).getTime()) / 86400000
   ) + 1)
-
-  function GoalCard({ goal, checkIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }) {
-    const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
-    const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
-    const streak = getCurrentStreak(goal, checkIns, today)
-
-    return (
-      <button
-        type="button"
-        className="w-full text-left rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
-        style={isPending
-          ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
-          : { background: 'white', borderColor: '#f3f4f6' }}
-        onClick={() => setSheet({ goal, checkIns, isOwn })}
-      >
-        {/* Title row */}
-        <div className="flex items-center gap-2 mb-2">
-          <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
-            {goal.title}
-          </p>
-          {isPending && <span className="text-xs text-gray-400">⏳</span>}
-          <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
-            {pct}%
-          </span>
-          <span className="text-gray-300 text-sm leading-none">›</span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : BRAND_GRADIENT_H }}
-          />
-        </div>
-
-        {/* Footer: streak */}
-        {streak >= 2 && (
-          <p className="text-xs text-gray-400 mt-2">🔥{streak}</p>
-        )}
-      </button>
-    )
-  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -145,12 +161,16 @@ export default function ScoreSummary({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 {myDailyGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
               <div className="space-y-2">
                 {buddyDailyGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
             </div>
@@ -164,12 +184,16 @@ export default function ScoreSummary({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 {myTargetGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
               <div className="space-y-2">
                 {buddyTargetGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
             </div>
@@ -183,12 +207,16 @@ export default function ScoreSummary({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 {myMilestoneGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
               <div className="space-y-2">
                 {buddyMilestoneGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false} />
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} onOpen={setSheet} />
                 ))}
               </div>
             </div>
