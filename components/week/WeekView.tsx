@@ -236,17 +236,16 @@ export default function WeekView({
         .reduce((s, c) => s + (c.value ?? 0), 0)
       const cardStyle = done
         ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
-        : isFuture ? { background: '#f0f9ff', border: '1px solid #bae6fd' }
         : { background: '#f9fafb' }
       return (
         <button type="button" onClick={() => setSheet({ goal, checkIns: allCheckIns, isOwn })}
           className="w-full text-left rounded-xl px-4 py-3 transition active:scale-95 hover:opacity-90"
           style={cardStyle}>
-          <p className={`text-sm font-semibold ${done ? 'text-white' : isFuture ? 'text-blue-700' : 'text-gray-700'}`}>
+          <p className={`text-sm font-semibold ${done ? 'text-white' : 'text-gray-700'}`}>
             {goal.title}
           </p>
-          <p className={`text-xs mt-0.5 ${done ? 'text-white/70' : isFuture ? 'text-blue-400' : 'text-gray-400'}`}>
-            {total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''}` : isFuture ? 'Upcoming' : 'Nothing logged'}
+          <p className={`text-xs mt-0.5 ${done ? 'text-white/70' : 'text-gray-400'}`}>
+            {total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''}` : 'Nothing logged'}
           </p>
         </button>
       )
@@ -254,17 +253,16 @@ export default function WeekView({
 
     const cardStyle = done
       ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
-      : isFuture ? { background: '#f0f9ff', border: '1px solid #bae6fd' }
       : { background: '#f9fafb' }
 
     return (
       <button type="button" onClick={() => setSheet({ goal, checkIns: allCheckIns, isOwn })}
         className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${
-          done ? 'text-white' : isFuture ? 'text-blue-700' : 'text-gray-700'
+          done ? 'text-white' : 'text-gray-700'
         }`}
         style={cardStyle}>
         <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-          done ? 'border-white bg-white/30' : isFuture ? 'border-blue-300' : 'border-gray-300'
+          done ? 'border-white bg-white/30' : 'border-gray-300'
         }`}>
           {done && <span className="text-white text-xs font-bold">✓</span>}
         </span>
