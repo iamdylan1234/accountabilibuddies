@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Goal, CheckIn } from '@/types/database'
 import GoalEditButton from '@/components/wrap-up/GoalEditButton'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { formatYMD } from '@/lib/dateUtils'
 
 interface Props {
   goal: Goal
@@ -23,10 +24,6 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
-function fmt(y: number, m: number, d: number): string {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
 
 function parseYM(s: string): [number, number] {
   const [y, m] = s.split('-').map(Number)
@@ -102,7 +99,7 @@ export default function GoalCalendarSheet({
 
   const cells: (string | null)[] = [
     ...Array<null>(firstDow).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => fmt(curYear, curMonth, i + 1)),
+    ...Array.from({ length: daysInMonth }, (_, i) => formatYMD(curYear, curMonth, i + 1)),
   ]
 
   function getDayState(dateStr: string): DayState {

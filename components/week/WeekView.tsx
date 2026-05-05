@@ -5,6 +5,7 @@ import { getWeekStart, scoreChallenge, getCurrentStreak } from '@/lib/scoring'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import type { Goal, CheckIn, Profile } from '@/types/database'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
+import { formatDate } from '@/lib/dateUtils'
 
 interface Props {
   myGoals: Goal[]
@@ -21,14 +22,6 @@ interface Props {
   myId: string
 }
 
-function fmt(d: Date): string {
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-')
-}
-
 // Day names indexed 0–7 to cover Mon(0)…Sun(6) plus next-Mon(7)
 // Offset -1 maps to last Sunday.
 const DAY_NAMES: Record<number, string> = {
@@ -41,9 +34,9 @@ export default function WeekView({
   totalDays, challengeId, myId,
 }: Props) {
   const now = new Date()
-  const todayStr = fmt(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+  const todayStr = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
   const currentWeekStart = getWeekStart(new Date(now.getFullYear(), now.getMonth(), now.getDate()))
-  const weekStartStr = fmt(currentWeekStart)
+  const weekStartStr = formatDate(currentWeekStart)
 
   const todayOffset = Math.floor(
     (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - currentWeekStart.getTime()) / 86400000
@@ -62,7 +55,7 @@ export default function WeekView({
     currentWeekStart.getMonth(),
     currentWeekStart.getDate() + dayOffset,
   )
-  const selectedStr = fmt(selectedDate)
+  const selectedStr = formatDate(selectedDate)
   const isToday = selectedStr === todayStr
   const isFuture = selectedStr > todayStr
   const isYesterday = dayOffset === -1

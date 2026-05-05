@@ -10,6 +10,7 @@ import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 import type { ReactNode } from 'react'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
+import { formatDate } from '@/lib/dateUtils'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -61,11 +62,7 @@ export default function DashboardClient({
 }: Props) {
   // Compute today in the user's local timezone, not server UTC
   const now = new Date()
-  const today = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('-')
+  const today = formatDate(now)
 
   // dayNumber based on local today vs challenge start
   const [sy, sm, sd] = startDate.split('-').map(Number)

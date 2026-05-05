@@ -1,18 +1,11 @@
 import type { Goal, CheckIn } from '@/types/database'
+import { formatDate } from '@/lib/dateUtils'
 
 export function getWeekStart(date: Date): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const diff = (d.getDay() + 6) % 7
   d.setDate(d.getDate() - diff)
   return d
-}
-
-function fmt(d: Date): string {
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-')
 }
 
 function elapsedDays(startDate: string, today: string): number {
@@ -55,7 +48,7 @@ export function getCurrentStreak(goal: Goal, checkIns: CheckIn[], today: string)
     const cursor = new Date(y, m - 1, d)
     let streak = 0
     for (let i = 0; i < 730; i++) {
-      if (done.has(fmt(cursor))) { streak++ } else { break }
+      if (done.has(formatDate(cursor))) { streak++ } else { break }
       cursor.setDate(cursor.getDate() - 1)
     }
     return streak
