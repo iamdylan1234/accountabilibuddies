@@ -1,14 +1,13 @@
 'use client'
 
-import { Fragment } from 'react'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
+import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import { useDashboardRealtime } from './useDashboardRealtime'
 import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
-import type { ReactNode } from 'react'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 import { formatDate } from '@/lib/dateUtils'
 
@@ -24,30 +23,6 @@ interface Props {
   totalDays: number
 }
 
-function EmptyColumn() {
-  return (
-    <div className="flex items-center justify-center rounded-xl px-4 py-3 border border-dashed border-gray-200 min-h-[46px]">
-      <span className="text-xs text-gray-300 font-semibold">No goals</span>
-    </div>
-  )
-}
-
-// Renders two arrays as row-aligned pairs in a CSS grid so cards at the
-// same index always sit in the same horizontal row.
-function GoalPairGrid({ myColumn, buddyColumn }: { myColumn: ReactNode[]; buddyColumn: ReactNode[] }) {
-  const maxLen = Math.max(myColumn.length, buddyColumn.length)
-  if (maxLen === 0) return null
-  return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-      {Array.from({ length: maxLen }, (_, i) => (
-        <Fragment key={i}>
-          {i === 0 && myColumn.length === 0 ? <EmptyColumn /> : (myColumn[i] ?? <div />)}
-          {i === 0 && buddyColumn.length === 0 ? <EmptyColumn /> : (buddyColumn[i] ?? <div />)}
-        </Fragment>
-      ))}
-    </div>
-  )
-}
 
 export default function DashboardClient({
   challenge,

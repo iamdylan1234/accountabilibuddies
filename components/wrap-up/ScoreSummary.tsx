@@ -7,6 +7,7 @@ import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
+import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -30,39 +31,47 @@ function SummaryGoalCard({
   const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
   const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
   const streak = getCurrentStreak(goal, checkIns, today)
+  const complete = pct === 100 && !isPending
+  const showBar = goal.type !== 'milestone'
+  const label = goal.type === 'milestone' ? (complete ? '✓ Done' : 'Not yet') : `${pct}%`
 
   return (
     <button
       type="button"
-      className="w-full text-left rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
-      style={isPending
-        ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
-        : { background: 'white', borderColor: '#f3f4f6' }}
       onClick={() => onOpen({ goal, checkIns, isOwn })}
+      className={[
+        'w-full text-left rounded-xl px-4 py-3 transition active:scale-95 hover:opacity-90',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400',
+        isPending ? 'opacity-60 bg-gray-50 text-gray-400' : complete ? 'text-white' : 'bg-gray-50 text-gray-700',
+      ].join(' ')}
+      style={complete ? { background: BRAND_GRADIENT } : {}}
     >
-      {/* Title row */}
-      <div className="flex items-center gap-2 mb-2">
-        <p className={`flex-1 text-sm font-bold ${isPending ? 'text-gray-400' : 'text-gray-800'}`}>
-          {goal.title}
-        </p>
-        {isPending && <span className="text-xs text-gray-400">⏳</span>}
-        <span className="text-sm font-black" style={{ color: isPending ? '#d1d5db' : '#0077B6' }}>
-          {pct}%
+      {/* Title + badge */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold flex-1 leading-tight">
+          {goal.title}{isPending && <span className="ml-1 text-xs">⏳</span>}
         </span>
-        <span className="text-gray-300 text-sm leading-none">›</span>
+        <span className={`text-xs font-black flex-shrink-0 ${complete ? 'text-white/80' : 'text-teal-600'}`}>
+          {label}
+        </span>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : BRAND_GRADIENT_H }}
-        />
-      </div>
+      {showBar && (
+        <div className={`mt-2 h-1 rounded-full overflow-hidden ${complete ? 'bg-white/30' : 'bg-gray-200'}`}>
+          <div
+            className="h-full rounded-full transition-all"
+            style={{
+              width: `${pct}%`,
+              background: complete ? 'rgba(255,255,255,0.7)' : BRAND_GRADIENT_H,
+            }}
+          />
+        </div>
+      )}
 
-      {/* Footer: streak */}
+      {/* Streak */}
       {streak >= 2 && (
-        <p className="text-xs text-gray-400 mt-2">🔥{streak}</p>
+        <p className={`text-xs font-bold mt-2 ${complete ? 'text-white/70' : 'text-orange-400'}`}>🔥{streak}</p>
       )}
     </button>
   )
@@ -158,45 +167,37 @@ export default function ScoreSummary({
         {(myDailyGoals.length > 0 || buddyDailyGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Daily Goals</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myDailyGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyDailyGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-            </div>
+            <GoalPairGrid
+              myColumn={myDailyGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+              buddyColumn={buddyDailyGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+            />
           </div>
         )}
 
-        {/* Target Goals */}
+        {/* Ongoing */}
         {(myTargetGoals.length > 0 || buddyTargetGoals.length > 0) && (
           <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Target Goals</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myTargetGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyTargetGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-            </div>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Ongoing</p>
+            <GoalPairGrid
+              myColumn={myTargetGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+              buddyColumn={buddyTargetGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+            />
           </div>
         )}
 
@@ -204,22 +205,18 @@ export default function ScoreSummary({
         {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                {myMilestoneGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-              <div className="space-y-2">
-                {buddyMilestoneGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} onOpen={setSheet} />
-                ))}
-              </div>
-            </div>
+            <GoalPairGrid
+              myColumn={myMilestoneGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+              buddyColumn={buddyMilestoneGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} onOpen={setSheet} />
+              ))}
+            />
           </div>
         )}
       </div>
