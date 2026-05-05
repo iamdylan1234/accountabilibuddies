@@ -117,21 +117,35 @@ export default function DashboardClient({
   }
 
   useEffect(() => {
+    // Scope subscriptions to the two challenge participants so we don't
+    // trigger a full refresh on every check_in/reaction change in the DB.
+    const userFilter = buddy
+      ? `user_id=in.(${myId},${buddy.id})`
+      : `user_id=eq.${myId}`
+    const reactionFilter = buddy
+      ? `from_user_id=in.(${myId},${buddy.id})`
+      : `from_user_id=eq.${myId}`
+
     const channel = supabase
       .channel('dashboard-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'check_ins',
+        filter: userFilter,
       }, () => startRefreshTransition(() => router.refresh()))
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'reactions',
+        filter: reactionFilter,
       }, () => startRefreshTransition(() => router.refresh()))
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
+  // supabase and router are stable refs; myId and buddy.id are fixed for the
+  // lifetime of this challenge session — intentionally omitting from deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function getCheckIn(goalId: string, checkIns: CheckIn[]) {
@@ -214,7 +228,7 @@ export default function DashboardClient({
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         {[
-          { name: 'You', done: myDone, total: myTotal, isAhead: myAhead },
+          { name: myFirstName, done: myDone, total: myTotal, isAhead: myAhead },
           { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyTotal, isAhead: buddyAhead },
         ].map(({ name, done, total, isAhead }) => (
           <div

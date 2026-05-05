@@ -69,8 +69,9 @@ export default function ScoreSummary({
     const streak = getCurrentStreak(goal, checkIns, today)
 
     return (
-      <div
-        className="rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform"
+      <button
+        type="button"
+        className="w-full text-left rounded-xl border p-4 cursor-pointer active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
         style={isPending
           ? { background: '#f3f4f6', borderColor: '#e5e7eb' }
           : { background: 'white', borderColor: '#f3f4f6' }}
@@ -100,7 +101,7 @@ export default function ScoreSummary({
         {streak >= 2 && (
           <p className="text-xs text-gray-400 mt-2">🔥{streak}</p>
         )}
-      </div>
+      </button>
     )
   }
 

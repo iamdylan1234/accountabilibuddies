@@ -28,6 +28,12 @@ function fmt(d: Date): string {
   ].join('-')
 }
 
+// Day names indexed 0–7 to cover Mon(0)…Sun(6) plus next-Mon(7)
+// Offset -1 maps to last Sunday.
+const DAY_NAMES: Record<number, string> = {
+  [-1]: 'Sun', 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun', 7: 'Mon',
+}
+
 export default function WeekView({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, challengeName, startDate, endDate,
@@ -43,19 +49,32 @@ export default function WeekView({
   )
   const [dayOffset, setDayOffset] = useState(todayOffset)
 
-  const selectedDate = new Date(currentWeekStart.getFullYear(), currentWeekStart.getMonth(), currentWeekStart.getDate() + dayOffset)
+  // Always allow reaching Yesterday and Tomorrow, even across week boundaries.
+  // Monday (todayOffset=0): allow offset -1  → last Sunday (yesterday)
+  // Sunday  (todayOffset=6): allow offset  7 → next Monday (tomorrow)
+  const minOffset = todayOffset === 0 ? -1 : 0
+  const maxOffset = todayOffset === 6 ?  7 : 6
+
+  // Date arithmetic handles negative offsets and offsets > 6 correctly.
+  const selectedDate = new Date(
+    currentWeekStart.getFullYear(),
+    currentWeekStart.getMonth(),
+    currentWeekStart.getDate() + dayOffset,
+  )
   const selectedStr = fmt(selectedDate)
   const isToday = selectedStr === todayStr
   const isFuture = selectedStr > todayStr
+  const isYesterday = dayOffset === -1
+  const isTomorrow  = dayOffset === maxOffset && maxOffset === 7
 
   type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
   // Day-filtered check-ins for the selected day
-  const dayMy = myCheckIns.filter(c => c.date === selectedStr)
+  const dayMy    = myCheckIns.filter(c => c.date === selectedStr)
   const dayBuddy = buddyCheckIns.filter(c => c.date === selectedStr)
 
-  // Scoring: week to date
+  // Scoring: week to date (always Mon–today, unaffected by cross-week navigation)
   const weekMyForScoring = myCheckIns.filter(c => {
     const goal = myGoals.find(g => g.id === c.goal_id)
     if (goal?.type === 'milestone') return c.date <= todayStr
@@ -67,30 +86,54 @@ export default function WeekView({
     return c.date >= weekStartStr && c.date <= todayStr
   })
 
-  const myScore = scoreChallenge(myGoals, weekMyForScoring, 7, weekStartStr, todayStr)
+  const myScore    = scoreChallenge(myGoals,    weekMyForScoring,    7, weekStartStr, todayStr)
   const buddyScore = scoreChallenge(buddyGoals, weekBuddyForScoring, 7, weekStartStr, todayStr)
-  const iWon = myScore > buddyScore
-  const tied = myScore === buddyScore
+  const iWon       = myScore > buddyScore
+  const tied       = myScore === buddyScore
   const bothPerfect = myScore === 100 && buddyScore === 100
 
   function tileLabel(isWinner: boolean) {
     if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
-    if (isWinner) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
-    if (tied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
+    if (isWinner)    return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
+    if (tied)        return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
     return <p className="text-xs mb-1">&nbsp;</p>
   }
 
-  const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  // ── Goal lists ─────────────────────────────────────────────────────────────
+  // For the week-summary view (isToday) show ALL goals of each type.
+  // For the single-day view, filter frequency goals to those scheduled on
+  // that specific day — otherwise every frequency goal would appear on every
+  // day regardless of its schedule, which is confusing and incorrect.
 
-  // Section splits
-  const myDailyGoals = myGoals.filter(g => g.type === 'daily')
-  const buddyDailyGoals = buddyGoals.filter(g => g.type === 'daily')
-  const myTargetGoals = myGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
-  const buddyTargetGoals = buddyGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
+  const myDailyGoals     = myGoals.filter(g => g.type === 'daily')
+  const buddyDailyGoals  = buddyGoals.filter(g => g.type === 'daily')
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
-  // ── Week-summary card (shown when isToday) ───────────────────────────────
+  // Target goals: for the week summary show all; for a specific day only show
+  // frequency goals that are either (a) scheduled on that day or (b) cumulative.
+  const myTargetGoals = isToday
+    ? myGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
+    : myGoals.filter(g =>
+        g.type === 'cumulative' ||
+        (g.type === 'frequency' && (
+          // scheduled for this exact day, OR has no schedule (treat as daily-like)
+          !g.schedule_dates || g.schedule_dates.length === 0 ||
+          g.schedule_dates.includes(selectedStr)
+        ))
+      )
+
+  const buddyTargetGoals = isToday
+    ? buddyGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
+    : buddyGoals.filter(g =>
+        g.type === 'cumulative' ||
+        (g.type === 'frequency' && (
+          !g.schedule_dates || g.schedule_dates.length === 0 ||
+          g.schedule_dates.includes(selectedStr)
+        ))
+      )
+
+  // ── Week-summary card (shown when isToday) ─────────────────────────────────
   function WeekSummaryCard({ goal, allCheckIns, isOwn }: { goal: Goal; allCheckIns: CheckIn[]; isOwn: boolean }) {
     const weekDone = allCheckIns.filter(
       c => c.goal_id === goal.id && c.date >= weekStartStr && c.date <= todayStr && c.completed
@@ -103,30 +146,30 @@ export default function WeekView({
     if (goal.type === 'milestone') {
       const done = allCheckIns.some(c => c.goal_id === goal.id && c.completed)
       label = done ? '✓ Done' : 'Not yet'
-      pct = done ? 100 : 0
+      pct   = done ? 100 : 0
       showBar = false
     } else if (goal.type === 'cumulative') {
       const total = allCheckIns
         .filter(c => c.goal_id === goal.id && c.date >= weekStartStr && c.date <= todayStr && c.value != null)
         .reduce((s, c) => s + (c.value ?? 0), 0)
-      label = total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''}` : '—'
+      label   = total > 0 ? `+${total}${goal.target_unit ? ' ' + goal.target_unit : ''}` : '—'
       showBar = false
     } else if (goal.type === 'frequency') {
       const scheduledThisWeek = goal.schedule_dates?.filter(d => d >= weekStartStr && d <= todayStr) ?? []
       const done = weekDone.length
       if (scheduledThisWeek.length > 0) {
         label = `${done}/${scheduledThisWeek.length}`
-        pct = Math.round((done / scheduledThisWeek.length) * 100)
+        pct   = Math.round((done / scheduledThisWeek.length) * 100)
       } else {
         label = done > 0 ? `${done} done` : '—'
-        pct = 0
+        pct   = 0
       }
     } else {
       // daily
-      const elapsed = dayOffset + 1
-      const done = weekDone.length
+      const elapsed = todayOffset + 1  // days elapsed in this week up to today
+      const done    = weekDone.length
       label = `${done}/${elapsed}`
-      pct = elapsed > 0 ? Math.round((done / elapsed) * 100) : 0
+      pct   = elapsed > 0 ? Math.round((done / elapsed) * 100) : 0
     }
 
     const complete = showBar && pct === 100
@@ -161,9 +204,9 @@ export default function WeekView({
     )
   }
 
-  // ── Single-day goal card (shown when not today) ───────────────────────────
+  // ── Single-day goal card (shown when not isToday) ──────────────────────────
   function GoalCard({ goal, checkIns, allCheckIns, isOwn }: { goal: Goal; checkIns: CheckIn[]; allCheckIns: CheckIn[]; isOwn: boolean }) {
-    const done = checkIns.some(c => c.goal_id === goal.id && c.completed)
+    const done   = checkIns.some(c => c.goal_id === goal.id && c.completed)
     const streak = getCurrentStreak(goal, allCheckIns, isFuture ? todayStr : selectedStr)
 
     if (goal.type === 'cumulative') {
@@ -212,11 +255,7 @@ export default function WeekView({
     )
   }
 
-  function renderSection(
-    label: string,
-    myGoalList: Goal[],
-    buddyGoalList: Goal[],
-  ) {
+  function renderSection(label: string, myGoalList: Goal[], buddyGoalList: Goal[]) {
     if (myGoalList.length === 0 && buddyGoalList.length === 0) return null
     return (
       <div>
@@ -239,6 +278,21 @@ export default function WeekView({
     )
   }
 
+  // ── Banner label helpers ───────────────────────────────────────────────────
+  function bannerTitle() {
+    if (isToday)      return 'This Week'
+    if (isYesterday)  return `${DAY_NAMES[dayOffset]} · Yesterday`
+    if (isTomorrow)   return `${DAY_NAMES[dayOffset]} · Tomorrow`
+    return DAY_NAMES[dayOffset] ?? '—'
+  }
+
+  function bannerSub() {
+    if (isToday)   return 'Week to date'
+    if (isFuture)  return 'Upcoming'
+    if (dayOffset === -1) return 'Last week'
+    return 'Past'
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Banner */}
@@ -248,23 +302,18 @@ export default function WeekView({
       >
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setDayOffset(o => Math.max(0, o - 1))}
-            disabled={dayOffset === 0}
+            onClick={() => setDayOffset(o => Math.max(minOffset, o - 1))}
+            disabled={dayOffset === minOffset}
             className="w-8 h-8 flex items-center justify-center rounded-full transition disabled:opacity-30 hover:bg-white/20"
             aria-label="Previous day"
           >‹</button>
           <div className="text-center">
-            <p className="font-black text-base">
-              {isToday ? 'This Week' : DAY_NAMES[dayOffset]}
-              {!isToday && isFuture && <span className="text-white/60 text-sm font-semibold"> · upcoming</span>}
-            </p>
-            <p className="text-white/70 text-xs font-semibold mt-0.5">
-              {isToday ? 'Week to date' : `Day ${dayOffset + 1} of 7`}
-            </p>
+            <p className="font-black text-base">{bannerTitle()}</p>
+            <p className="text-white/70 text-xs font-semibold mt-0.5">{bannerSub()}</p>
           </div>
           <button
-            onClick={() => setDayOffset(o => Math.min(6, o + 1))}
-            disabled={dayOffset === 6}
+            onClick={() => setDayOffset(o => Math.min(maxOffset, o + 1))}
+            disabled={dayOffset === maxOffset}
             className="w-8 h-8 flex items-center justify-center rounded-full transition disabled:opacity-30 hover:bg-white/20"
             aria-label="Next day"
           >›</button>
@@ -274,7 +323,7 @@ export default function WeekView({
       {/* Score tiles */}
       <div className="grid grid-cols-2 gap-4 mb-4 select-none">
         {[
-          { profile: myProfile, score: myScore, isWinner: !tied && iWon },
+          { profile: myProfile,    score: myScore,    isWinner: !tied && iWon },
           { profile: buddyProfile, score: buddyScore, isWinner: !tied && !iWon },
         ].map(({ profile, score, isWinner }) => (
           <div
@@ -291,10 +340,20 @@ export default function WeekView({
       </div>
 
       <div className="space-y-6">
-        {renderSection('Daily Goals', myDailyGoals, buddyDailyGoals)}
-        {renderSection('Target Goals', myTargetGoals, buddyTargetGoals)}
-        {renderSection('Milestones', myMilestoneGoals, buddyMilestoneGoals)}
+        {renderSection('Daily Goals',  myDailyGoals,     buddyDailyGoals)}
+        {renderSection('Target Goals', myTargetGoals,    buddyTargetGoals)}
+        {renderSection('Milestones',   myMilestoneGoals, buddyMilestoneGoals)}
       </div>
+
+      {/* Empty state for specific days with no goals */}
+      {!isToday && myTargetGoals.length === 0 && myDailyGoals.length === 0 && myMilestoneGoals.length === 0 &&
+        buddyTargetGoals.length === 0 && buddyDailyGoals.length === 0 && buddyMilestoneGoals.length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-3xl mb-2">😴</p>
+          <p className="font-semibold text-sm">Rest day</p>
+          <p className="text-xs mt-1">No goals scheduled for this day</p>
+        </div>
+      )}
 
       {sheet && (
         <GoalCalendarSheet
