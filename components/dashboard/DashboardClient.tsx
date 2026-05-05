@@ -1,12 +1,11 @@
 'use client'
 
-import { Fragment, useEffect, useOptimistic, useTransition, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
+import { Fragment } from 'react'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
+import { useDashboardRealtime } from './useDashboardRealtime'
+import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 import type { ReactNode } from 'react'
@@ -64,88 +63,14 @@ export default function DashboardClient({
   // Compute today in the user's local timezone, not server UTC
   const now = new Date()
   const today = formatDate(now)
-
-  // dayNumber based on local today vs challenge start
-  const [sy, sm, sd] = startDate.split('-').map(Number)
-  const startMidnight = new Date(sy, sm - 1, sd)
   const [ty, tm, td] = today.split('-').map(Number)
   const todayMidnight = new Date(ty, tm - 1, td)
-  const dayNumber = Math.max(1, Math.floor((todayMidnight.getTime() - startMidnight.getTime()) / 86400000) + 1)
-  const router = useRouter()
-  const supabase = createClient()
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
   const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
-  const [, startTransition] = useTransition()
-  const [isRefreshing, startRefreshTransition] = useTransition()
-  const [failedGoals, setFailedGoals] = useState<Set<string>>(new Set())
 
-  const [optimisticCheckIns, applyOptimistic] = useOptimistic(
-    myCheckIns,
-    (state: CheckIn[], { goalId, action }: { goalId: string; action: 'add' | 'remove' }) => {
-      if (action === 'remove') {
-        return state.filter(c => !(c.goal_id === goalId && c.date === today))
-      }
-      return [...state, {
-        id: `optimistic-${goalId}`,
-        goal_id: goalId,
-        user_id: myId,
-        date: today,
-        completed: true,
-        value: null,
-        created_at: '',
-      }]
-    }
-  )
-
-  function handleToggle(goalId: string) {
-    const existing = optimisticCheckIns.find(c => c.goal_id === goalId && c.date === today)
-    startTransition(async () => {
-      applyOptimistic({ goalId, action: existing ? 'remove' : 'add' })
-      const result = await toggleCheckIn(goalId, today)
-      if (result?.error) {
-        applyOptimistic({ goalId, action: existing ? 'add' : 'remove' })
-        setFailedGoals(prev => new Set([...prev, goalId]))
-        setTimeout(() => setFailedGoals(prev => {
-          const next = new Set(prev)
-          next.delete(goalId)
-          return next
-        }), 3000)
-      }
-    })
-  }
-
-  useEffect(() => {
-    // Scope subscriptions to the two challenge participants so we don't
-    // trigger a full refresh on every check_in/reaction change in the DB.
-    const userFilter = buddy
-      ? `user_id=in.(${myId},${buddy.id})`
-      : `user_id=eq.${myId}`
-    const reactionFilter = buddy
-      ? `from_user_id=in.(${myId},${buddy.id})`
-      : `from_user_id=eq.${myId}`
-
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'check_ins',
-        filter: userFilter,
-      }, () => startRefreshTransition(() => router.refresh()))
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'reactions',
-        filter: reactionFilter,
-      }, () => startRefreshTransition(() => router.refresh()))
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  // supabase and router are stable refs; myId and buddy.id are fixed for the
-  // lifetime of this challenge session — intentionally omitting from deps.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const { isRefreshing } = useDashboardRealtime(myId, buddy?.id)
+  const { optimisticCheckIns, failedGoals, handleToggle } = useCheckInToggle(myCheckIns, myId, today)
 
   function getCheckIn(goalId: string, checkIns: CheckIn[]) {
     return checkIns.find(c => c.goal_id === goalId && c.date === today) ?? null
