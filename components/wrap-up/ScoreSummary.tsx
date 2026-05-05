@@ -6,6 +6,7 @@ import { scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
+import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 interface Props {
   myGoals: Goal[]
@@ -93,7 +94,7 @@ export default function ScoreSummary({
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
-            style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : 'linear-gradient(90deg, #00C9A7, #0077B6)' }}
+            style={{ width: `${pct}%`, background: isPending ? '#e5e7eb' : BRAND_GRADIENT_H }}
           />
         </div>
 
@@ -110,7 +111,7 @@ export default function ScoreSummary({
       {/* Slim teal strip */}
       <div
         className="rounded-2xl px-5 py-3 mb-4 text-white text-center"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <p className="font-black text-base">{challengeName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
@@ -127,7 +128,7 @@ export default function ScoreSummary({
           <div
             key={profile?.id ?? 'buddy'}
             className="rounded-2xl p-4 text-center"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             {tileLabel(isWinner)}
             <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
@@ -206,7 +207,7 @@ export default function ScoreSummary({
         <Link
           href="/dashboard"
           className="block w-full text-center py-3 rounded-xl font-bold text-sm mt-6"
-          style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)', color: 'white' }}
+          style={{ background: BRAND_GRADIENT, color: 'white' }}
         >
           Start a new challenge →
         </Link>

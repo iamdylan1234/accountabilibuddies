@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -73,7 +74,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="w-full py-3 rounded-xl font-bold text-white text-sm transition"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             {loading ? 'Logging in…' : 'Log in'}
           </button>

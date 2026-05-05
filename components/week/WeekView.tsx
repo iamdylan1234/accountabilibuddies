@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { getWeekStart, scoreChallenge, getCurrentStreak } from '@/lib/scoring'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import type { Goal, CheckIn, Profile } from '@/types/database'
+import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 interface Props {
   myGoals: Goal[]
@@ -202,7 +203,7 @@ export default function WeekView({
         className={`w-full text-left rounded-xl px-4 py-3 transition active:scale-95 hover:opacity-90 ${
           complete ? 'text-white' : 'bg-gray-50 text-gray-700'
         }`}
-        style={complete ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' } : {}}
+        style={complete ? { background: BRAND_GRADIENT } : {}}
       >
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-semibold flex-1 leading-tight">{goal.title}</span>
@@ -216,7 +217,7 @@ export default function WeekView({
               className="h-full rounded-full transition-all"
               style={{
                 width: `${pct}%`,
-                background: complete ? 'rgba(255,255,255,0.7)' : 'linear-gradient(90deg, #00C9A7, #0077B6)',
+                background: complete ? 'rgba(255,255,255,0.7)' : BRAND_GRADIENT_H,
               }}
             />
           </div>
@@ -235,7 +236,7 @@ export default function WeekView({
         .filter(c => c.goal_id === goal.id && c.value != null)
         .reduce((s, c) => s + (c.value ?? 0), 0)
       const cardStyle = done
-        ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
+        ? { background: BRAND_GRADIENT }
         : { background: '#f9fafb' }
       return (
         <button type="button" onClick={() => setSheet({ goal, checkIns: allCheckIns, isOwn })}
@@ -252,7 +253,7 @@ export default function WeekView({
     }
 
     const cardStyle = done
-      ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
+      ? { background: BRAND_GRADIENT }
       : { background: '#f9fafb' }
 
     return (
@@ -325,7 +326,7 @@ export default function WeekView({
       {/* Banner */}
       <div
         className="rounded-2xl px-4 py-3 mb-4 text-white"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <div className="flex items-center justify-between">
           <button
@@ -356,7 +357,7 @@ export default function WeekView({
           <div
             key={profile?.id ?? 'buddy'}
             className="rounded-2xl p-4 text-center cursor-default"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             {tileLabel(isWinner)}
             <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
@@ -364,13 +365,15 @@ export default function WeekView({
             <p className="text-xs text-white/60 mt-1">week score</p>
           </div>
         ))}
+      </div>
+
       {/* "Today" jump pill — only visible when browsing a specific day */}
       {!isToday && (
         <div className="flex justify-center mb-3">
           <button
             onClick={() => setDayOffset(todayOffset)}
             className="text-xs font-bold px-4 py-1.5 rounded-full text-white transition active:scale-95 hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             ↩ Today
           </button>

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { approveChange, rejectChange } from '@/app/wrap-up/actions'
 import type { Goal, GoalChangeRequest } from '@/types/database'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   requests: GoalChangeRequest[]
@@ -100,7 +101,7 @@ export default function PendingApprovalBanner({ requests, goals, myId }: Props) 
               <button
                 onClick={() => startTransition(() => approveChange(req.id))}
                 className="px-4 py-2 rounded-lg text-xs font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+                style={{ background: BRAND_GRADIENT }}>
                 Approve
               </button>
 

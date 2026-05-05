@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import GoalSetupForm from '@/components/goals/GoalSetupForm'
 import { saveGoals } from './actions'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   searchParams: Promise<{ challenge?: string }>
@@ -42,7 +43,7 @@ export default async function SetupPage({ searchParams }: Props) {
     <div className="max-w-xl mx-auto px-6 py-12">
       <div
         className="rounded-2xl p-6 mb-8 text-white"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <p className="text-sm font-semibold opacity-80 uppercase tracking-wide mb-1">
           {challenge.month_name}

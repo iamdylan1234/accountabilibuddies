@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 export default function Navbar() {
   const router = useRouter()
@@ -26,7 +27,7 @@ export default function Navbar() {
       {/* Brand bar */}
       <div
         className="w-full px-4 py-3 flex items-center justify-between"
-        style={{ background: 'linear-gradient(135deg, #00C9A7 0%, #0077B6 100%)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <span className="text-white font-black text-lg tracking-tight">
           Accountabilibuddies

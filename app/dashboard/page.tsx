@@ -4,6 +4,7 @@ import { createChallenge } from './actions'
 import CopyButton from '@/components/layout/CopyButton'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import type { ChallengeWithProfiles } from '@/types/database'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -51,7 +52,7 @@ export default async function DashboardPage() {
           <button
             type="submit"
             className="w-full py-3 rounded-xl font-bold text-white text-sm"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             Create challenge →
           </button>

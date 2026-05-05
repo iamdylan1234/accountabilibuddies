@@ -9,6 +9,7 @@ import CumulativeCard from './CumulativeCard'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 import type { ReactNode } from 'react'
+import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 interface Props {
   challenge: ChallengeWithProfiles
@@ -212,7 +213,7 @@ export default function DashboardClient({
       {/* Slim teal strip */}
       <div
         className="rounded-2xl px-5 py-3 mb-2 text-white text-center"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <p className="font-black text-base">Hello, {myFirstName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
@@ -222,7 +223,7 @@ export default function DashboardClient({
 
       {/* Realtime refresh indicator — thin animated bar under header */}
       <div className={`h-0.5 rounded-full mb-3 overflow-hidden transition-opacity duration-300 ${isRefreshing ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="h-full w-full animate-pulse" style={{ background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }} />
+        <div className="h-full w-full animate-pulse" style={{ background: BRAND_GRADIENT_H }} />
       </div>
 
       {/* Score tiles */}
@@ -234,7 +235,7 @@ export default function DashboardClient({
           <div
             key={name}
             className={`rounded-2xl p-4 text-center transition-opacity duration-300 ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+            style={{ background: BRAND_GRADIENT }}
           >
             {tileLabel(isAhead)}
             <p className="text-sm font-bold text-white/70">{name}</p>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { acceptInvite } from './actions'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -34,7 +35,7 @@ export default async function InvitePage({ params }: Props) {
       <div className="max-w-sm w-full text-center">
         <div
           className="rounded-2xl p-8 text-white mb-6"
-          style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+          style={{ background: BRAND_GRADIENT }}
         >
           <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-2">
             You've been invited

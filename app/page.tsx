@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 export default async function LandingPage() {
   const supabase = await createClient()
@@ -11,7 +12,7 @@ export default async function LandingPage() {
     <div className="min-h-screen flex flex-col">
       <div
         className="flex flex-col items-center justify-center flex-1 text-white px-6 py-24 text-center"
-        style={{ background: 'linear-gradient(135deg, #00C9A7 0%, #0077B6 100%)' }}
+        style={{ background: BRAND_GRADIENT }}
       >
         <h1 className="text-5xl font-black tracking-tight mb-4">
           Accountabilibuddies

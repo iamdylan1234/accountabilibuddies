@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { submitGoalChangeRequest } from '@/app/wrap-up/actions'
 import type { Goal, GoalType } from '@/types/database'
 import MonthDatePicker from '@/components/goals/MonthDatePicker'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   goal: Goal
@@ -89,7 +90,7 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                 {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
                   <button key={t} type="button" onClick={() => setType(t)}
                     className={`px-3 py-1 rounded-full text-xs font-semibold transition ${type === t ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
-                    style={type === t ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' } : {}}>
+                    style={type === t ? { background: BRAND_GRADIENT } : {}}>
                     {t}
                   </button>
                 ))}
@@ -136,7 +137,7 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
               ? <p className="text-center text-teal-600 font-bold text-sm">✓ Request sent to buddy!</p>
               : <button onClick={handleSave} disabled={saving}
                   className="w-full py-3 rounded-xl font-bold text-white text-sm disabled:opacity-50"
-                  style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+                  style={{ background: BRAND_GRADIENT }}>
                   {saving ? 'Sending…' : 'Request change'}
                 </button>
             }

@@ -1,5 +1,6 @@
 import type { Goal, CheckIn } from '@/types/database'
 import { computeWeeklyPlan, parseDate } from '@/lib/weekly-plan'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   myGoals: Goal[]
@@ -23,7 +24,7 @@ export default function WeeklyPlan({
   if (plans.length === 0) {
     return (
       <div className="mb-6 rounded-2xl p-5 text-white"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+        style={{ background: BRAND_GRADIENT }}>
         <p className="font-black text-lg">You&apos;re on track! 🎉</p>
         <p className="text-white/70 text-sm mt-1">All goals are on pace for the month.</p>
       </div>
@@ -34,7 +35,7 @@ export default function WeeklyPlan({
     <div className="mb-6 rounded-2xl border-2 overflow-hidden"
       style={{ borderColor: '#F9F871' }}>
       <div className="px-5 py-4"
-        style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+        style={{ background: BRAND_GRADIENT }}>
         <p className="font-black text-white text-lg">This Week&apos;s Plan 📋</p>
         <p className="text-white/70 text-sm mt-0.5">
           Here&apos;s what you need to do this week to stay on track.
@@ -46,7 +47,7 @@ export default function WeeklyPlan({
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold text-gray-800">{goal.title}</span>
               <span className="text-xs font-black px-3 py-1 rounded-full text-white"
-                style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+                style={{ background: BRAND_GRADIENT }}>
                 {goal.type === 'milestone'
                   ? 'Do it this week!'
                   : `${neededThisWeek}× this week`}

@@ -1,5 +1,7 @@
 'use client'
 
+import { BRAND_GRADIENT } from '@/lib/brand'
+
 interface Props {
   /** "YYYY-MM" — which month to render */
   month: string
@@ -61,7 +63,7 @@ export default function MonthDatePicker({ month, startDate, endDate, selectedDat
                 disabled ? 'text-gray-200 cursor-not-allowed' :
                 'text-gray-600 hover:bg-gray-100'
               }`}
-              style={selected ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' } : {}}
+              style={selected ? { background: BRAND_GRADIENT } : {}}
             >
               {day}
             </button>

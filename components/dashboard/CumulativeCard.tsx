@@ -3,6 +3,7 @@
 import { useState, useOptimistic, useTransition } from 'react'
 import { logValue } from '@/app/dashboard/checkin-actions'
 import type { Goal, CheckIn } from '@/types/database'
+import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 interface Props {
   goal: Goal
@@ -64,7 +65,7 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
 
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
         <div className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00C9A7, #0077B6)' }} />
+          style={{ width: `${pct}%`, background: BRAND_GRADIENT_H }} />
       </div>
 
       <div className="flex items-center justify-between">
@@ -95,7 +96,7 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
           />
           <button onClick={handleLog} disabled={logging}
             className="px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}>
+            style={{ background: BRAND_GRADIENT }}>
             {logging ? '…' : 'Save'}
           </button>
         </div>

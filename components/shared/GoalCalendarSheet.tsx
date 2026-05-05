@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Goal, CheckIn } from '@/types/database'
 import GoalEditButton from '@/components/wrap-up/GoalEditButton'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   goal: Goal
@@ -162,7 +163,7 @@ export default function GoalCalendarSheet({
         {/* Header */}
         <div
           className="px-5 pt-4 pb-5"
-          style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+          style={{ background: BRAND_GRADIENT }}
         >
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
@@ -238,7 +239,7 @@ export default function GoalCalendarSheet({
                   <div key={dateStr} className="flex flex-col items-center">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+                      style={{ background: BRAND_GRADIENT }}
                     >
                       <span className="text-white text-xs font-black">
                         {val > 99 ? '99+' : val}
@@ -266,7 +267,7 @@ export default function GoalCalendarSheet({
               const isToday = dateStr === today
               const circleStyle: React.CSSProperties =
                 state === 'done'
-                  ? { background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }
+                  ? { background: BRAND_GRADIENT }
                   : state === 'missed'
                   ? { background: '#fee2e2', border: '2px solid #fca5a5' }
                   : state === 'today-open'
@@ -304,7 +305,7 @@ export default function GoalCalendarSheet({
         {goal.type !== 'cumulative' && (
           <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }} />
+              <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BRAND_GRADIENT }} />
               Done
             </span>
             <span className="flex items-center gap-1.5">
@@ -321,7 +322,7 @@ export default function GoalCalendarSheet({
         )}
         {goal.type === 'cumulative' && (
           <div className="flex items-center gap-1.5 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
-            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }} />
+            <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BRAND_GRADIENT }} />
             Circle shows value logged that day
           </div>
         )}
