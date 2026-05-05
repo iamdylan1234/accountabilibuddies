@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
+import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
 import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
 import type { ReactNode } from 'react'
@@ -198,13 +199,6 @@ export default function DashboardClient({
   const buddyAhead = !todayTied && buddyDone > myDone
   const bothPerfect = myTotal > 0 && buddyTotal > 0 && myDone === myTotal && buddyDone === buddyTotal
 
-  function tileLabel(isAhead: boolean) {
-    if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
-    if (isAhead) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
-    if (todayTied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
-    return <p className="text-xs mb-1">&nbsp;</p>
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Slim teal strip */}
@@ -224,27 +218,24 @@ export default function DashboardClient({
       </div>
 
       {/* Score tiles */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {[
-          { name: myFirstName, done: myDone, total: myTotal, isAhead: myAhead },
-          { name: buddy?.name ?? 'Buddy', done: buddyDone, total: buddyTotal, isAhead: buddyAhead },
-        ].map(({ name, done, total, isAhead }) => (
-          <div
-            key={name}
-            className={`rounded-2xl p-4 text-center transition-opacity duration-300 ${isRefreshing ? 'opacity-70' : 'opacity-100'}`}
-            style={{ background: BRAND_GRADIENT }}
-          >
-            {tileLabel(isAhead)}
-            <p className="text-sm font-bold text-white/70">{name}</p>
-            <p className="text-4xl font-black mt-1 text-white">
-              {total === 0 ? '—' : `${done}/${total}`}
-            </p>
-            <p className="text-xs text-white/60 mt-1">
-              {total === 0 ? 'Rest day' : 'goals today'}
-            </p>
-          </div>
-        ))}
-      </div>
+      <ScoreTileGrid
+        left={{
+          name: myFirstName,
+          mainValue: myTotal === 0 ? '—' : `${myDone}/${myTotal}`,
+          subLabel: myTotal === 0 ? 'Rest day' : 'goals today',
+          isWinner: myAhead,
+          dimmed: isRefreshing,
+        }}
+        right={{
+          name: buddy?.name ?? 'Buddy',
+          mainValue: buddyTotal === 0 ? '—' : `${buddyDone}/${buddyTotal}`,
+          subLabel: buddyTotal === 0 ? 'Rest day' : 'goals today',
+          isWinner: buddyAhead,
+          dimmed: isRefreshing,
+        }}
+        tied={todayTied}
+        bothPerfect={bothPerfect}
+      />
 
       <div className="space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}

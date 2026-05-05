@@ -6,6 +6,7 @@ import { scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
+import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 
 interface Props {
@@ -36,13 +37,6 @@ export default function ScoreSummary({
   const iWon = myScore > buddyScore
   const tied = myScore === buddyScore
   const bothPerfect = myScore === 100 && buddyScore === 100
-
-  function tileLabel(isWinner: boolean) {
-    if (bothPerfect) return <p className="text-xs font-black text-yellow-300 mb-1">🎉 Perfect!</p>
-    if (isWinner) return <p className="text-xs font-black text-yellow-300 mb-1">⚡ AHEAD</p>
-    if (tied) return <p className="text-xs font-black text-white/50 mb-1">💪 Keep Going</p>
-    return <p className="text-xs mb-1">&nbsp;</p>
-  }
 
   // Section splits
   const myDailyGoals = myGoals.filter(g => g.type === 'daily')
@@ -120,23 +114,22 @@ export default function ScoreSummary({
       </div>
 
       {/* Score tiles */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {[
-          { profile: myProfile, score: myScore, daysActive: myDaysActive, isWinner: !tied && iWon },
-          { profile: buddyProfile, score: buddyScore, daysActive: buddyDaysActive, isWinner: !tied && !iWon },
-        ].map(({ profile, score, daysActive, isWinner }) => (
-          <div
-            key={profile?.id ?? 'buddy'}
-            className="rounded-2xl p-4 text-center"
-            style={{ background: BRAND_GRADIENT }}
-          >
-            {tileLabel(isWinner)}
-            <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
-            <p className="text-4xl font-black mt-1 text-white">{score}%</p>
-            <p className="text-xs text-white/60 mt-1">{daysActive}/{totalDays} days active</p>
-          </div>
-        ))}
-      </div>
+      <ScoreTileGrid
+        left={{
+          name: myProfile?.name ?? 'Me',
+          mainValue: `${myScore}%`,
+          subLabel: `${myDaysActive}/${totalDays} days active`,
+          isWinner: !tied && iWon,
+        }}
+        right={{
+          name: buddyProfile?.name ?? 'Buddy',
+          mainValue: `${buddyScore}%`,
+          subLabel: `${buddyDaysActive}/${totalDays} days active`,
+          isWinner: !tied && !iWon,
+        }}
+        tied={tied}
+        bothPerfect={bothPerfect}
+      />
 
       <PendingApprovalBanner
         requests={pendingRequests}
