@@ -274,6 +274,14 @@ export default function WeekView({
     )
   }
 
+  function EmptyColumn() {
+    return (
+      <div className="flex items-center justify-center rounded-xl px-4 py-3 border border-dashed border-gray-200 min-h-[46px]">
+        <span className="text-xs text-gray-300 font-semibold">No goals</span>
+      </div>
+    )
+  }
+
   function renderSection(label: string, myGoalList: Goal[], buddyGoalList: Goal[]) {
     if (myGoalList.length === 0 && buddyGoalList.length === 0) return null
     return (
@@ -281,13 +289,13 @@ export default function WeekView({
         <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">{label}</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            {myGoalList.map(goal => isToday
+            {myGoalList.length === 0 ? <EmptyColumn /> : myGoalList.map(goal => isToday
               ? <WeekSummaryCard key={goal.id} goal={goal} allCheckIns={myCheckIns} isOwn={true} />
               : <GoalCard key={goal.id} goal={goal} checkIns={dayMy} allCheckIns={myCheckIns} isOwn={true} />
             )}
           </div>
           <div className="space-y-2">
-            {buddyGoalList.map(goal => isToday
+            {buddyGoalList.length === 0 ? <EmptyColumn /> : buddyGoalList.map(goal => isToday
               ? <WeekSummaryCard key={goal.id} goal={goal} allCheckIns={buddyCheckIns} isOwn={false} />
               : <GoalCard key={goal.id} goal={goal} checkIns={dayBuddy} allCheckIns={buddyCheckIns} isOwn={false} />
             )}
@@ -353,15 +361,26 @@ export default function WeekView({
             {tileLabel(isWinner)}
             <p className="text-sm font-bold text-white/70">{profile?.name ?? 'Buddy'}</p>
             <p className="text-4xl font-black mt-1 text-white">{score}%</p>
-            <p className="text-xs text-white/60 mt-1">this week</p>
+            <p className="text-xs text-white/60 mt-1">week score</p>
           </div>
         ))}
-      </div>
+      {/* "Today" jump pill — only visible when browsing a specific day */}
+      {!isToday && (
+        <div className="flex justify-center mb-3">
+          <button
+            onClick={() => setDayOffset(todayOffset)}
+            className="text-xs font-bold px-4 py-1.5 rounded-full text-white transition active:scale-95 hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #00C9A7, #0077B6)' }}
+          >
+            ↩ Today
+          </button>
+        </div>
+      )}
 
       <div className="space-y-6">
-        {renderSection('Daily Goals',  myDailyGoals,     buddyDailyGoals)}
-        {renderSection('Target Goals', myTargetGoals,    buddyTargetGoals)}
-        {renderSection('Milestones',   myMilestoneGoals, buddyMilestoneGoals)}
+        {renderSection('Daily Goals', myDailyGoals,     buddyDailyGoals)}
+        {renderSection('Ongoing',     myTargetGoals,    buddyTargetGoals)}
+        {renderSection('Milestones',  myMilestoneGoals, buddyMilestoneGoals)}
       </div>
 
       {/* Empty state for specific days with no goals */}

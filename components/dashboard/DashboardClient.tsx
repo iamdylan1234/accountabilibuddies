@@ -326,6 +326,16 @@ export default function DashboardClient({
           </div>
         )}
       </div>
+
+      {/* Empty state — shown when no goals exist for today */}
+      {myTodayGoals.length === 0 && myOptionalGoals.length === 0 && myMilestoneGoals.length === 0 &&
+        buddyTodayGoals.length === 0 && buddyOptionalGoals.length === 0 && buddyMilestoneGoals.length === 0 && (
+        <div className="text-center py-12 text-gray-400">
+          <p className="text-3xl mb-2">🎉</p>
+          <p className="font-semibold text-sm">No goals today</p>
+          <p className="text-xs mt-1">Enjoy the rest day</p>
+        </div>
+      )}
     </div>
   )
 }
