@@ -150,55 +150,71 @@ export default function DashboardClient({
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
           myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) ||
-          buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0)) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
-            <GoalPairGrid
-              myColumn={[
-                ...myGoals
-                  .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, optimisticCheckIns) > 0)
-                  .map(g => (
-                    <MissedGoalCard
-                      key={`missed-${g.id}`}
-                      goal={g}
-                      missedDays={missedCount(g, optimisticCheckIns)}
-                      isMyGoal={true}
-                      onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
-                    />
-                  )),
-                ...myTodayGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                    isMyGoal={true} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, myCheckIns, today)}
-                    remaining={getRemaining(goal, myCheckIns)}
-                    hasFailed={failedGoals.has(goal.id)} />
-                )),
-              ]}
-              buddyColumn={[
-                ...buddyGoals
-                  .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, buddyCheckIns) > 0)
-                  .map(g => (
-                    <MissedGoalCard
-                      key={`missed-${g.id}`}
-                      goal={g}
-                      missedDays={missedCount(g, buddyCheckIns)}
-                      isMyGoal={false}
-                      onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
-                    />
-                  )),
-                ...buddyTodayGoals.map(goal => (
-                  <GoalCard key={goal.id} goal={goal}
-                    checkIn={getCheckIn(goal.id, buddyCheckIns)}
-                    reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
-                    isMyGoal={false} today={today} onToggle={handleToggle}
-                    streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                    remaining={getRemaining(goal, buddyCheckIns)} />
-                )),
-              ]}
-            />
-          </div>
-        )}
+          buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0)) && (() => {
+          const myMissedIds = new Set(
+            myGoals
+              .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, optimisticCheckIns) > 0)
+              .map(g => g.id)
+          )
+          const buddyMissedIds = new Set(
+            buddyGoals
+              .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, buddyCheckIns) > 0)
+              .map(g => g.id)
+          )
+          return (
+            <div>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
+              <GoalPairGrid
+                myColumn={[
+                  ...myGoals
+                    .filter(g => myMissedIds.has(g.id))
+                    .map(g => (
+                      <MissedGoalCard
+                        key={`missed-${g.id}`}
+                        goal={g}
+                        missedDays={missedCount(g, optimisticCheckIns)}
+                        isMyGoal={true}
+                        onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
+                      />
+                    )),
+                  ...myTodayGoals
+                    .filter(goal => !myMissedIds.has(goal.id))
+                    .map(goal => (
+                      <GoalCard key={goal.id} goal={goal}
+                        checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                        isMyGoal={true} today={today} onToggle={handleToggle}
+                        streak={getCurrentStreak(goal, myCheckIns, today)}
+                        remaining={getRemaining(goal, myCheckIns)}
+                        hasFailed={failedGoals.has(goal.id)} />
+                    )),
+                ]}
+                buddyColumn={[
+                  ...buddyGoals
+                    .filter(g => buddyMissedIds.has(g.id))
+                    .map(g => (
+                      <MissedGoalCard
+                        key={`missed-${g.id}`}
+                        goal={g}
+                        missedDays={missedCount(g, buddyCheckIns)}
+                        isMyGoal={false}
+                        onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
+                      />
+                    )),
+                  ...buddyTodayGoals
+                    .filter(goal => !buddyMissedIds.has(goal.id))
+                    .map(goal => (
+                      <GoalCard key={goal.id} goal={goal}
+                        checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                        reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                        isMyGoal={false} today={today} onToggle={handleToggle}
+                        streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                        remaining={getRemaining(goal, buddyCheckIns)} />
+                    )),
+                ]}
+              />
+            </div>
+          )
+        })()}
 
         {/* Section 2: Optional — frequency (not scheduled) + cumulative; catch-up shown red */}
         {(myOptionalGoals.length > 0 || buddyOptionalGoals.length > 0) && (
@@ -255,7 +271,9 @@ export default function DashboardClient({
 
       {/* Empty state — shown when no goals exist for today */}
       {myTodayGoals.length === 0 && myOptionalGoals.length === 0 && myMilestoneGoals.length === 0 &&
-        buddyTodayGoals.length === 0 && buddyOptionalGoals.length === 0 && buddyMilestoneGoals.length === 0 && (
+        buddyTodayGoals.length === 0 && buddyOptionalGoals.length === 0 && buddyMilestoneGoals.length === 0 &&
+        !myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) &&
+        !buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0) && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-3xl mb-2">🎉</p>
           <p className="font-semibold text-sm">No goals today</p>
