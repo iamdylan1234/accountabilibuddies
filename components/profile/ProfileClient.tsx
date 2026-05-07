@@ -87,11 +87,15 @@ export default function ProfileClient({
       (new Date(challenge.end_date).getTime() - new Date(challenge.start_date).getTime()) / 86400000
     ) + 1
 
-    const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, challenge.start_date, challenge.end_date, true)
-    const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, challenge.start_date, challenge.end_date, true)
+    // For active challenges, score against today (not end_date which is in the future)
+    const effectiveToday = challenge.status === 'active'
+      ? new Date().toISOString().slice(0, 10)
+      : challenge.end_date
+    const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, challenge.start_date, effectiveToday, true)
+    const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, challenge.start_date, effectiveToday, true)
 
     let result: 'win' | 'loss' | 'tie' | 'in-progress'
-    if (challenge.status === 'active') result = 'in-progress'
+    if (challenge.status === 'active' || challenge.status === 'pending') result = 'in-progress'
     else if (myScore > buddyScore) result = 'win'
     else if (myScore < buddyScore) result = 'loss'
     else result = 'tie'

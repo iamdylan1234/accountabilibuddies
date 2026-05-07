@@ -27,30 +27,33 @@ export default function ChallengeHistoryCard({
   const badge = BADGE[result]
 
   return (
-    <Link
-      href={result === 'in-progress' ? '/wrap-up' : `/wrap-up?challenge=${challengeId}`}
-      className="block rounded-2xl bg-gray-50 px-4 py-3 mb-3 hover:bg-gray-100 transition active:scale-[0.99]"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-gray-800 text-sm truncate">{name}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{dateRange}</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            vs {buddyName} · <span className="font-semibold text-gray-600">{myScore}%</span>
-            {' '}vs <span className="font-semibold text-gray-500">{buddyScore}%</span>
-          </p>
-        </div>
+    <>
+      {/* in-progress cards link to /wrap-up without ID — RSC infers the active challenge from session context */}
+      <Link
+        href={result === 'in-progress' ? '/wrap-up' : `/wrap-up?challenge=${challengeId}`}
+        className="block rounded-2xl bg-gray-50 px-4 py-3 mb-3 hover:bg-gray-100 transition active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-gray-800 text-sm truncate">{name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{dateRange}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              vs {buddyName} · <span className="font-semibold text-gray-600">{myScore}%</span>
+              {' '}vs <span className="font-semibold text-gray-500">{buddyScore}%</span>
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span
-            className={`text-xs font-black px-2 py-1 rounded-full ${badge.className}`}
-            style={badge.style}
-          >
-            {badge.label}
-          </span>
-          <span className="text-gray-300 font-bold">›</span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span
+              className={`text-xs font-black px-2 py-1 rounded-full ${badge.className}`}
+              style={badge.style}
+            >
+              {badge.label}
+            </span>
+            <span className="text-gray-300 font-bold">›</span>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </>
   )
 }
