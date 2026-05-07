@@ -23,56 +23,60 @@ function MiniCalendar({ startDate, endDate }: { startDate: string; endDate: stri
   const [sy, sm, sd] = startDate.split('-').map(Number)
   const [ey, em, ed] = endDate.split('-').map(Number)
 
-  // Show the month of startDate
-  const year = sy
-  const month = sm - 1  // 0-based
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7  // 0 = Mon
-
   const streakStart = new Date(sy, sm - 1, sd)
   const streakEnd = new Date(ey, em - 1, ed)
 
-  return (
-    <div className="mt-3 bg-gray-50 rounded-xl p-3">
-      <p className="text-xs font-bold text-gray-400 text-center mb-2">
-        {MONTHS[month]} {year}
-      </p>
+  // Guard for empty/invalid dates
+  if (!startDate || !endDate) return null
 
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-0.5 mb-1">
-        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-          <div key={i} className="text-center" style={{ fontSize: '9px' }}>
-            <span className="text-gray-300 font-semibold">{d}</span>
-          </div>
-        ))}
-      </div>
+  function renderMonth(year: number, month: number) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7  // 0 = Mon
 
-      {/* Date cells */}
-      <div className="grid grid-cols-7 gap-0.5">
-        {Array.from({ length: firstDow }, (_, i) => (
-          <div key={`empty-${i}`} />
-        ))}
-        {Array.from({ length: daysInMonth }, (_, i) => {
-          const dayNum = i + 1
-          const cellDate = new Date(year, month, dayNum)
-          const inStreak = cellDate >= streakStart && cellDate <= streakEnd
-
-          return (
-            <div
-              key={dayNum}
-              className={`aspect-square flex items-center justify-center rounded-full text-xs font-semibold ${
-                inStreak
-                  ? 'bg-orange-400 text-white'
-                  : 'text-gray-300'
-              }`}
-              style={{ fontSize: '10px' }}
-            >
-              {dayNum}
+    return (
+      <div className="mt-3 bg-gray-50 rounded-xl p-3">
+        <p className="text-xs font-bold text-gray-400 text-center mb-2">
+          {MONTHS[month]} {year}
+        </p>
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
+          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+            <div key={i} className="text-center" style={{ fontSize: '9px' }}>
+              <span className="text-gray-300 font-semibold">{d}</span>
             </div>
-          )
-        })}
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {Array.from({ length: firstDow }, (_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+          {Array.from({ length: daysInMonth }, (_, i) => {
+            const dayNum = i + 1
+            const cellDate = new Date(year, month, dayNum)
+            const inStreak = cellDate >= streakStart && cellDate <= streakEnd
+            return (
+              <div
+                key={dayNum}
+                className={`aspect-square flex items-center justify-center rounded-full text-xs font-semibold ${
+                  inStreak ? 'bg-orange-400 text-white' : 'text-gray-300'
+                }`}
+                style={{ fontSize: '10px' }}
+              >
+                {dayNum}
+              </div>
+            )
+          })}
+        </div>
       </div>
-    </div>
+    )
+  }
+
+  const spansMonths = sy !== ey || sm !== em
+
+  return (
+    <>
+      {renderMonth(sy, sm - 1)}
+      {spansMonths && renderMonth(ey, em - 1)}
+    </>
   )
 }
 
@@ -80,15 +84,28 @@ export default function StreakDetailSheet({ best, current, onClose }: Props) {
   const [mounted, setMounted] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
   const touchStartY = useRef(0)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setMounted(true))
     return () => cancelAnimationFrame(frame)
   }, [])
 
+  useEffect(() => () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+  }, [])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   function handleClose() {
     setMounted(false)
-    setTimeout(onClose, 280)
+    closeTimerRef.current = setTimeout(onClose, 280)
   }
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -124,6 +141,9 @@ export default function StreakDetailSheet({ best, current, onClose }: Props) {
       {/* Sheet */}
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Streak details"
         className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto transition-transform duration-300 ease-out ${mounted ? 'translate-y-0' : 'translate-y-full'}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
