@@ -21,7 +21,7 @@ export default function BuddyMessageRow({ myProfile, buddyProfile, today, onEdit
         type="button"
         onClick={onEditOpen}
         className="bg-white rounded-xl px-3 py-2.5 text-left min-h-[44px] flex items-center gap-2.5 shadow-sm active:scale-95 hover:opacity-90 transition"
-        style={{ borderLeft: '3px solid #0d9488' }}
+        style={{ borderLeft: '3px solid #00C9A7' }}
       >
         <img
           src={getAvatarUrl(myProfile.id, myProfile.avatar_style)}

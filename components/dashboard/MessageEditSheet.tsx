@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { updateDailyMessage } from '@/app/dashboard/checkin-actions'
+import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
   currentMessage: string   // empty string if no message today
+  today: string
   onClose: () => void
 }
 
-export default function MessageEditSheet({ currentMessage, onClose }: Props) {
+export default function MessageEditSheet({ currentMessage, today, onClose }: Props) {
   const [text, setText] = useState(currentMessage.slice(0, 150))
   const [mounted, setMounted] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -25,7 +27,7 @@ export default function MessageEditSheet({ currentMessage, onClose }: Props) {
 
   function handleSave() {
     startTransition(async () => {
-      const result = await updateDailyMessage(text)
+      const result = await updateDailyMessage(text, today)
       if (result?.error) {
         console.error('[MessageEditSheet] save error:', result.error)
       }
@@ -35,7 +37,7 @@ export default function MessageEditSheet({ currentMessage, onClose }: Props) {
 
   function handleClear() {
     startTransition(async () => {
-      const result = await updateDailyMessage('')
+      const result = await updateDailyMessage('', today)
       if (result?.error) {
         console.error('[MessageEditSheet] clear error:', result.error)
       }
@@ -96,7 +98,7 @@ export default function MessageEditSheet({ currentMessage, onClose }: Props) {
               onClick={handleSave}
               disabled={isPending}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-              style={{ background: 'linear-gradient(90deg,#0d9488,#3b82f6)' }}
+              style={{ background: BRAND_GRADIENT }}
             >
               {isPending ? 'Saving…' : 'Save'}
             </button>

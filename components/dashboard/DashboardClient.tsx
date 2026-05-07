@@ -311,6 +311,7 @@ export default function DashboardClient({
       {messageSheetOpen && (
         <MessageEditSheet
           currentMessage={myProfile?.message_date === today ? (myProfile?.daily_message ?? '') : ''}
+          today={today}
           onClose={() => setMessageSheetOpen(false)}
         />
       )}
