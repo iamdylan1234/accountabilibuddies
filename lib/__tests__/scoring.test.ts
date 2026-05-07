@@ -1,8 +1,10 @@
 import {
   scoreGoal, scoreChallenge, getWeekStart,
   isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
+  getBestStreak,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
+import type { GoalStreakContext } from '../scoring'
 
 const baseGoal = (type: Goal['type'], target_count: number | null = null): Goal => ({
   id: 'g1', challenge_id: 'c1', user_id: 'u1',
@@ -217,9 +219,6 @@ const makeCheckIn = (overrides: {
 })
 
 // ─── getBestStreak ────────────────────────────────────────────────────────────
-
-import { getBestStreak } from '../scoring'
-import type { GoalStreakContext } from '../scoring'
 
 describe('getBestStreak', () => {
   const ctx = (goal: Goal, challengeName = 'Jan Challenge', buddyName = 'Alex'): GoalStreakContext => ({
