@@ -4,7 +4,8 @@ export type ChallengeStatus = 'pending' | 'active' | 'completed'
 export interface Profile {
   id: string
   name: string
-  avatar_url: string | null
+  avatar_url: string | null      // reserved for future photo upload
+  avatar_style: string           // DiceBear style slug, default 'avataaars'
   notification_time: string
   created_at: string
 }
