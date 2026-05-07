@@ -22,14 +22,15 @@ interface SummaryGoalCardProps {
   startDate: string
   today: string
   pendingRequests: GoalChangeRequest[]
+  isHistorical: boolean
   onOpen: (target: SheetTarget) => void
 }
 
 function SummaryGoalCard({
-  goal, checkIns, isOwn, totalDays, startDate, today, pendingRequests, onOpen,
+  goal, checkIns, isOwn, totalDays, startDate, today, pendingRequests, isHistorical, onOpen,
 }: SummaryGoalCardProps) {
   const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
-  const isPending = isOwn && pendingRequests.some(r => r.goal_id === goal.id)
+  const isPending = !isHistorical && isOwn && pendingRequests.some(r => r.goal_id === goal.id)
   const streak = getCurrentStreak(goal, checkIns, today)
   const complete = pct === 100 && !isPending
   const showBar = goal.type !== 'milestone'
@@ -93,12 +94,15 @@ interface Props {
   challengeId: string
   myId: string
   pendingRequests: GoalChangeRequest[]
+  isHistorical?: boolean
+  backHref?: string
 }
 
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
   startDate, endDate, today, challengeId, myId, pendingRequests,
+  isHistorical = false, backHref,
 }: Props) {
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today, true)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today, true)
@@ -127,6 +131,14 @@ export default function ScoreSummary({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      {backHref && (
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-400 hover:text-gray-600 transition mb-4"
+        >
+          ← Back to profile
+        </Link>
+      )}
       {/* Slim teal strip */}
       <div
         className="rounded-2xl px-5 py-3 mb-4 text-white text-center"
@@ -156,11 +168,13 @@ export default function ScoreSummary({
         bothPerfect={bothPerfect}
       />
 
-      <PendingApprovalBanner
-        requests={pendingRequests}
-        goals={[...myGoals, ...buddyGoals]}
-        myId={myId}
-      />
+      {!isHistorical && (
+        <PendingApprovalBanner
+          requests={pendingRequests}
+          goals={[...myGoals, ...buddyGoals]}
+          myId={myId}
+        />
+      )}
 
       <div className="space-y-6">
         {/* Daily Goals */}
@@ -171,12 +185,12 @@ export default function ScoreSummary({
               myColumn={myDailyGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
               buddyColumn={buddyDailyGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
             />
           </div>
@@ -190,12 +204,12 @@ export default function ScoreSummary({
               myColumn={myTargetGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
               buddyColumn={buddyTargetGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
             />
           </div>
@@ -209,19 +223,19 @@ export default function ScoreSummary({
               myColumn={myMilestoneGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
               buddyColumn={buddyMilestoneGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
                   totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} onOpen={setSheet} />
+                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
               ))}
             />
           </div>
         )}
       </div>
 
-      {isComplete && (
+      {isComplete && !isHistorical && (
         <Link
           href="/dashboard"
           className="block w-full text-center py-3 rounded-xl font-bold text-sm mt-6"
@@ -236,7 +250,7 @@ export default function ScoreSummary({
           goal={sheet.goal}
           checkIns={sheet.checkIns}
           isOwn={sheet.isOwn}
-          isPending={sheet.isOwn && pendingRequests.some(r => r.goal_id === sheet.goal.id)}
+          isPending={!isHistorical && sheet.isOwn && pendingRequests.some(r => r.goal_id === sheet.goal.id)}
           startDate={startDate}
           endDate={endDate}
           today={today}
