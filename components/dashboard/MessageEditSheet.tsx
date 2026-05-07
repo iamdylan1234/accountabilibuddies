@@ -25,14 +25,20 @@ export default function MessageEditSheet({ currentMessage, onClose }: Props) {
 
   function handleSave() {
     startTransition(async () => {
-      await updateDailyMessage(text)
+      const result = await updateDailyMessage(text)
+      if (result?.error) {
+        console.error('[MessageEditSheet] save error:', result.error)
+      }
       handleClose()
     })
   }
 
   function handleClear() {
     startTransition(async () => {
-      await updateDailyMessage('')
+      const result = await updateDailyMessage('')
+      if (result?.error) {
+        console.error('[MessageEditSheet] clear error:', result.error)
+      }
       handleClose()
     })
   }
@@ -65,6 +71,7 @@ export default function MessageEditSheet({ currentMessage, onClose }: Props) {
             placeholder="What's on your mind today?"
             maxLength={150}
             rows={3}
+            disabled={isPending}
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
             autoFocus
           />
