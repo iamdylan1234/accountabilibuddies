@@ -9,7 +9,7 @@ interface Props {
 }
 
 export default function MessageEditSheet({ currentMessage, onClose }: Props) {
-  const [text, setText] = useState(currentMessage)
+  const [text, setText] = useState(currentMessage.slice(0, 150))
   const [mounted, setMounted] = useState(false)
   const [isPending, startTransition] = useTransition()
 
