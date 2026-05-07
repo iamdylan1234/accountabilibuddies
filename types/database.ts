@@ -8,6 +8,8 @@ export interface Profile {
   avatar_style: string           // DiceBear style slug, default 'avataaars'
   notification_time: string
   created_at: string
+  daily_message: string | null
+  message_date: string | null
 }
 
 export interface ChallengeMonth {

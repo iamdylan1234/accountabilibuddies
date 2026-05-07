@@ -91,3 +91,25 @@ export async function logValue(goalId: string, date: string, value: number) {
   if (error) console.error('[logValue] error:', error)
   revalidatePath('/dashboard')
 }
+
+export async function updateDailyMessage(message: string): Promise<{ error: string } | undefined> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  // Use UTC date — acceptable for a daily message (no strict timezone requirement)
+  const today = new Date().toISOString().split('T')[0]
+  const trimmed = message.trim().slice(0, 150)
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      daily_message: trimmed || null,
+      message_date: trimmed ? today : null,
+    })
+    .eq('id', user.id)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard')
+}
