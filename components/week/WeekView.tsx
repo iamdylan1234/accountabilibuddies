@@ -26,7 +26,7 @@ interface Props {
 // Day names indexed 0–7 to cover Mon(0)…Sun(6) plus next-Mon(7)
 // Offset -1 maps to last Sunday.
 const DAY_NAMES: Record<number, string> = {
-  [-1]: 'Sun', 0: 'Mon', 1: 'Tue', 2: 'Wed', 3: 'Thu', 4: 'Fri', 5: 'Sat', 6: 'Sun', 7: 'Mon',
+  [-1]: 'Sunday', 0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday', 7: 'Monday',
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -331,9 +331,9 @@ export default function WeekView({
 
   // ── Banner label helpers ───────────────────────────────────────────────────
   function bannerTitle() {
-    if (isToday)      return 'This Week'
-    if (isYesterday)  return `${DAY_NAMES[dayOffset]} · Yesterday`
-    if (isTomorrow)   return `${DAY_NAMES[dayOffset]} · Tomorrow`
+    if (isToday)     return 'This Week'
+    if (isYesterday) return 'Yesterday'
+    if (isTomorrow)  return 'Tomorrow'
     return DAY_NAMES[dayOffset] ?? '—'
   }
 
