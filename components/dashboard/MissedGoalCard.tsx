@@ -1,4 +1,4 @@
-import type { Goal, CheckIn } from '@/types/database'
+import type { Goal } from '@/types/database'
 
 interface Props {
   goal: Goal
