@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
-import { scoreChallenge, scoreGoal, getCurrentStreak } from '@/lib/scoring'
+import { scoreChallenge, scoreGoal, getCurrentStreak, getMissedDays } from '@/lib/scoring'
+import MissedGoalCard from '@/components/dashboard/MissedGoalCard'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
@@ -118,6 +119,18 @@ export default function ScoreSummary({
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
 
+  // Missed daily goals — shown as pink tiles in Summary (not Today tab)
+  const myMissedDailyIds = new Set(
+    myDailyGoals
+      .filter(g => getMissedDays(g, myCheckIns, today, startDate) > 0)
+      .map(g => g.id)
+  )
+  const buddyMissedDailyIds = new Set(
+    buddyDailyGoals
+      .filter(g => getMissedDays(g, buddyCheckIns, today, startDate) > 0)
+      .map(g => g.id)
+  )
+
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
   const myDaysActive = new Set(myCheckIns.filter(c => c.completed).map(c => c.date)).size
@@ -182,16 +195,42 @@ export default function ScoreSummary({
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Daily Goals</p>
             <GoalPairGrid
-              myColumn={myDailyGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-              ))}
-              buddyColumn={buddyDailyGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-              ))}
+              myColumn={[
+                ...myDailyGoals
+                  .filter(g => myMissedDailyIds.has(g.id))
+                  .map(g => (
+                    <MissedGoalCard
+                      key={`missed-${g.id}`}
+                      goal={g}
+                      missedDays={getMissedDays(g, myCheckIns, today, startDate)}
+                      isMyGoal={true}
+                      onOpen={() => setSheet({ goal: g, checkIns: myCheckIns, isOwn: true })}
+                    />
+                  )),
+                ...myDailyGoals.map(goal => (
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
+                )),
+              ]}
+              buddyColumn={[
+                ...buddyDailyGoals
+                  .filter(g => buddyMissedDailyIds.has(g.id))
+                  .map(g => (
+                    <MissedGoalCard
+                      key={`missed-${g.id}`}
+                      goal={g}
+                      missedDays={getMissedDays(g, buddyCheckIns, today, startDate)}
+                      isMyGoal={false}
+                      onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
+                    />
+                  )),
+                ...buddyDailyGoals.map(goal => (
+                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                    totalDays={totalDays} startDate={startDate} today={today}
+                    pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
+                )),
+              ]}
             />
           </div>
         )}

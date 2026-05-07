@@ -28,11 +28,11 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen }: P
   return (
     <div
       className="w-full flex items-center gap-3 rounded-xl px-4 py-3 text-white"
-      style={{ background: 'linear-gradient(135deg, #fda4af, #fb7185)' }}
+      style={{ background: 'linear-gradient(135deg, #fb7185, #f43f5e)' }}
     >
-      <span className="w-5 h-5 rounded-full border-2 border-white/50 flex-shrink-0" />
+      <span className="w-5 h-5 rounded-full border-2 border-white/60 flex-shrink-0" />
       <span className="text-sm font-bold flex-1 truncate">{goal.title}</span>
-      <span className="text-xs font-black text-white/70 flex-shrink-0 ml-2">{label}</span>
+      <span className="text-xs font-black text-white/80 flex-shrink-0 ml-2">{label}</span>
     </div>
   )
 }

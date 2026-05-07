@@ -161,16 +161,16 @@ export default function DashboardClient({
       <div className="mt-4 space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
-          myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) ||
-          buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0)) && (() => {
+          myGoals.some(g => g.type === 'frequency' && missedCount(g, optimisticCheckIns) > 0) ||
+          buddyGoals.some(g => g.type === 'frequency' && missedCount(g, buddyCheckIns) > 0)) && (() => {
           const myMissedIds = new Set(
             myGoals
-              .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, optimisticCheckIns) > 0)
+              .filter(g => g.type === 'frequency' && missedCount(g, optimisticCheckIns) > 0)
               .map(g => g.id)
           )
           const buddyMissedIds = new Set(
             buddyGoals
-              .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, buddyCheckIns) > 0)
+              .filter(g => g.type === 'frequency' && missedCount(g, buddyCheckIns) > 0)
               .map(g => g.id)
           )
           return (
@@ -179,7 +179,7 @@ export default function DashboardClient({
               <GoalPairGrid
                 myColumn={[
                   ...myGoals
-                    .filter(g => myMissedIds.has(g.id))
+                    .filter(g => g.type === 'frequency' && myMissedIds.has(g.id))
                     .map(g => (
                       <MissedGoalCard
                         key={`missed-${g.id}`}
@@ -202,7 +202,7 @@ export default function DashboardClient({
                 ]}
                 buddyColumn={[
                   ...buddyGoals
-                    .filter(g => buddyMissedIds.has(g.id))
+                    .filter(g => g.type === 'frequency' && buddyMissedIds.has(g.id))
                     .map(g => (
                       <MissedGoalCard
                         key={`missed-${g.id}`}
