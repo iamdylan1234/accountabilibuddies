@@ -4,6 +4,8 @@ import { useState } from 'react'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import MissedGoalCard from './MissedGoalCard'
+import BuddyMessageRow from './BuddyMessageRow'
+import MessageEditSheet from './MessageEditSheet'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
@@ -48,6 +50,7 @@ export default function DashboardClient({
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
   const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
+  const [messageSheetOpen, setMessageSheetOpen] = useState(false)
 
   const { isRefreshing } = useDashboardRealtime(myId, buddy?.id)
   const { optimisticCheckIns, failedGoals, handleToggle } = useCheckInToggle(myCheckIns, myId, today)
@@ -145,6 +148,15 @@ export default function DashboardClient({
         tied={todayTied}
         bothPerfect={bothPerfect}
       />
+
+      {buddy && myProfile && (
+        <BuddyMessageRow
+          myProfile={myProfile}
+          buddyProfile={buddy}
+          today={today}
+          onEditOpen={() => setMessageSheetOpen(true)}
+        />
+      )}
 
       <div className="space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
@@ -293,6 +305,13 @@ export default function DashboardClient({
           challengeId={challenge.id}
           myId={myId}
           onClose={() => setSheet(null)}
+        />
+      )}
+
+      {messageSheetOpen && (
+        <MessageEditSheet
+          currentMessage={myProfile?.message_date === today ? (myProfile?.daily_message ?? '') : ''}
+          onClose={() => setMessageSheetOpen(false)}
         />
       )}
     </div>

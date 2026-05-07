@@ -38,6 +38,12 @@ export function useDashboardRealtime(myId: string, buddyId: string | undefined) 
         table: 'reactions',
         filter: reactionFilter,
       }, () => startRefreshTransition(() => router.refresh()))
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: buddyId ? `id=eq.${buddyId}` : undefined,
+      }, () => startRefreshTransition(() => router.refresh()))
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
