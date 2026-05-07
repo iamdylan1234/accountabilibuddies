@@ -42,6 +42,7 @@ export default function ProfileClient({
   const [showPicker, setShowPicker] = useState(false)
   const [showStreakSheet, setShowStreakSheet] = useState(false)
   const [showWinBreakdown, setShowWinBreakdown] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
 
   const avatarUrl = getAvatarUrl(userId, avatarStyle)
 
@@ -125,6 +126,9 @@ export default function ProfileClient({
         </button>
         <h1 className="text-xl font-black text-gray-800">{profile.name}</h1>
         <p className="text-sm text-gray-400 font-semibold">{activeLine}</p>
+        {avatarError && (
+          <p className="text-xs text-red-500 font-semibold text-center mt-1">{avatarError}</p>
+        )}
       </div>
 
       {/* Stats row */}
@@ -189,6 +193,10 @@ export default function ProfileClient({
           currentStyle={avatarStyle}
           onStyleChange={setAvatarStyle}
           onClose={() => setShowPicker(false)}
+          onError={(msg) => {
+            setAvatarError(msg)
+            setTimeout(() => setAvatarError(null), 3000)
+          }}
         />
       )}
 

@@ -18,18 +18,26 @@ interface Props {
   currentStyle: string
   onStyleChange: (newStyle: string) => void
   onClose: () => void
+  onError: (msg: string) => void
 }
 
-export default function AvatarPicker({ userId, currentStyle, onStyleChange, onClose }: Props) {
+export default function AvatarPicker({ userId, currentStyle, onStyleChange, onClose, onError }: Props) {
   const [mounted, setMounted] = useState(false)
   const sheetRef = useRef<HTMLDivElement>(null)
   const touchStartY = useRef(0)
   const [, startTransition] = useTransition()
-  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setMounted(true))
     return () => cancelAnimationFrame(frame)
+  }, [])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') handleClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   }, [])
 
   function handleClose() {
@@ -56,8 +64,7 @@ export default function AvatarPicker({ userId, currentStyle, onStyleChange, onCl
       if (result.error) {
         // Roll back
         onStyleChange(currentStyle)
-        setToast('Failed to save avatar. Please try again.')
-        setTimeout(() => setToast(null), 3000)
+        onError('Failed to save avatar. Please try again.')
       }
     })
   }
@@ -73,6 +80,9 @@ export default function AvatarPicker({ userId, currentStyle, onStyleChange, onCl
       {/* Sheet */}
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose your avatar"
         className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto transition-transform duration-300 ease-out ${mounted ? 'translate-y-0' : 'translate-y-full'}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -127,12 +137,6 @@ export default function AvatarPicker({ userId, currentStyle, onStyleChange, onCl
         </div>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-red-500 text-white text-sm font-semibold px-4 py-2 rounded-full shadow-lg">
-          {toast}
-        </div>
-      )}
     </>
   )
 }
