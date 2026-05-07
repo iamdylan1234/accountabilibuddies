@@ -105,3 +105,101 @@ export function scoreChallenge(
   const total = scorable.reduce((sum, g) => sum + scoreGoal(g, checkIns, totalDays, startDate, today, useTargetCount), 0)
   return Math.round((total / scorable.length) * 100)
 }
+
+// ── Best Streak ───────────────────────────────────────────────────────────────
+
+export interface BestStreakResult {
+  days: number
+  goalTitle: string
+  challengeName: string
+  buddyName: string
+  startDate: string  // YYYY-MM-DD
+  endDate: string    // YYYY-MM-DD
+}
+
+export interface GoalStreakContext {
+  goal: Goal
+  challengeName: string
+  buddyName: string
+}
+
+export function getBestStreak(
+  goalContexts: GoalStreakContext[],
+  allCheckIns: CheckIn[],
+): BestStreakResult | null {
+  let best: BestStreakResult | null = null
+
+  for (const { goal, challengeName, buddyName } of goalContexts) {
+    const done = new Set(
+      allCheckIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date)
+    )
+    if (done.size === 0) continue
+
+    const { days, startDate, endDate } = findBestRun(goal, done)
+    if (days > (best?.days ?? 0)) {
+      best = { days, goalTitle: goal.title, challengeName, buddyName, startDate, endDate }
+    }
+  }
+
+  return best
+}
+
+function findBestRun(
+  goal: Goal,
+  done: Set<string>,
+): { days: number; startDate: string; endDate: string } {
+  if (!goal.schedule_dates || goal.schedule_dates.length === 0) {
+    // Daily goal: longest run of consecutive calendar days
+    return longestConsecutiveCalendarRun([...done].sort())
+  }
+
+  // Frequency goal: longest run of consecutive *scheduled* dates that are completed
+  const scheduled = [...goal.schedule_dates].sort()
+  let bestDays = 0, bestStart = '', bestEnd = ''
+  let runStart = '', runLen = 0
+
+  for (const date of scheduled) {
+    if (done.has(date)) {
+      if (runLen === 0) runStart = date
+      runLen++
+      if (runLen > bestDays) {
+        bestDays = runLen
+        bestStart = runStart
+        bestEnd = date
+      }
+    } else {
+      runLen = 0
+    }
+  }
+
+  return { days: bestDays, startDate: bestStart, endDate: bestEnd }
+}
+
+function longestConsecutiveCalendarRun(
+  sortedDates: string[],
+): { days: number; startDate: string; endDate: string } {
+  if (sortedDates.length === 0) return { days: 0, startDate: '', endDate: '' }
+
+  let bestDays = 1, bestStart = sortedDates[0], bestEnd = sortedDates[0]
+  let runStart = sortedDates[0], runLen = 1
+
+  for (let i = 1; i < sortedDates.length; i++) {
+    const prev = new Date(sortedDates[i - 1])
+    const curr = new Date(sortedDates[i])
+    const diff = Math.round((curr.getTime() - prev.getTime()) / 86400000)
+
+    if (diff === 1) {
+      runLen++
+      if (runLen > bestDays) {
+        bestDays = runLen
+        bestStart = runStart
+        bestEnd = sortedDates[i]
+      }
+    } else {
+      runStart = sortedDates[i]
+      runLen = 1
+    }
+  }
+
+  return { days: bestDays, startDate: bestStart, endDate: bestEnd }
+}

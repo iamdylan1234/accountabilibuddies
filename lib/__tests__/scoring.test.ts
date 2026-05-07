@@ -180,3 +180,126 @@ describe('scoreGoal — cumulative', () => {
     expect(scoreChallenge(goals, [], 30)).toBe(0)
   })
 })
+
+// ─── getBestStreak helpers ────────────────────────────────────────────────────
+
+const makeGoal = (overrides: {
+  id?: string
+  type: Goal['type']
+  title?: string
+  target_count?: number | null
+  schedule_dates?: string[] | null
+}): Goal => ({
+  id: overrides.id ?? 'g1',
+  challenge_id: 'c1',
+  user_id: 'u1',
+  title: overrides.title ?? 'Test Goal',
+  type: overrides.type,
+  target_count: overrides.target_count ?? null,
+  target_unit: null,
+  schedule_dates: overrides.schedule_dates ?? null,
+  catch_up: false,
+  created_at: '',
+})
+
+const makeCheckIn = (overrides: {
+  goal_id: string
+  date: string
+  completed?: boolean
+}): CheckIn => ({
+  id: overrides.date + '-' + overrides.goal_id,
+  goal_id: overrides.goal_id,
+  user_id: 'u1',
+  date: overrides.date,
+  completed: overrides.completed ?? true,
+  value: null,
+  created_at: '',
+})
+
+// ─── getBestStreak ────────────────────────────────────────────────────────────
+
+import { getBestStreak } from '../scoring'
+import type { GoalStreakContext } from '../scoring'
+
+describe('getBestStreak', () => {
+  const ctx = (goal: Goal, challengeName = 'Jan Challenge', buddyName = 'Alex'): GoalStreakContext => ({
+    goal, challengeName, buddyName,
+  })
+
+  it('returns null when no check-ins exist', () => {
+    const goal = makeGoal({ type: 'daily' })
+    expect(getBestStreak([ctx(goal)], [])).toBeNull()
+  })
+
+  it('returns a single-day streak for one check-in', () => {
+    const goal = makeGoal({ id: 'g1', type: 'daily' })
+    const result = getBestStreak([ctx(goal)], [makeCheckIn({ goal_id: 'g1', date: '2026-01-01' })])
+    expect(result).not.toBeNull()
+    expect(result!.days).toBe(1)
+    expect(result!.startDate).toBe('2026-01-01')
+    expect(result!.endDate).toBe('2026-01-01')
+  })
+
+  it('finds a consecutive calendar-day streak for a daily goal', () => {
+    const goal = makeGoal({ id: 'g1', type: 'daily' })
+    const checkIns = [
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-01' }),
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-02' }),
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-03' }),
+      // gap
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-05' }),
+    ]
+    const result = getBestStreak([ctx(goal)], checkIns)
+    expect(result!.days).toBe(3)
+    expect(result!.startDate).toBe('2026-01-01')
+    expect(result!.endDate).toBe('2026-01-03')
+  })
+
+  it('finds best streak across multiple goals, picks highest', () => {
+    const g1 = makeGoal({ id: 'g1', type: 'daily' })
+    const g2 = makeGoal({ id: 'g2', type: 'daily' })
+    const checkIns = [
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-01' }),
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-02' }),
+      makeCheckIn({ goal_id: 'g2', date: '2026-02-01' }),
+      makeCheckIn({ goal_id: 'g2', date: '2026-02-02' }),
+      makeCheckIn({ goal_id: 'g2', date: '2026-02-03' }),
+      makeCheckIn({ goal_id: 'g2', date: '2026-02-04' }),
+    ]
+    const result = getBestStreak([ctx(g1, 'Jan', 'Alex'), ctx(g2, 'Feb', 'Alex')], checkIns)
+    expect(result!.days).toBe(4)
+    expect(result!.goalTitle).toBe('Test Goal')
+    expect(result!.challengeName).toBe('Feb')
+  })
+
+  it('counts consecutive schedule_dates for a frequency goal (not calendar days)', () => {
+    // schedule: every Monday/Wednesday/Friday
+    const goal = makeGoal({
+      id: 'g1',
+      type: 'frequency',
+      target_count: 3,
+      schedule_dates: ['2026-01-05', '2026-01-07', '2026-01-09', '2026-01-12', '2026-01-14'],
+    })
+    // Completed first 3 scheduled dates = streak of 3
+    const checkIns = [
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-05' }),
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-07' }),
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-09' }),
+      // missed Jan 12
+      makeCheckIn({ goal_id: 'g1', date: '2026-01-14' }),
+    ]
+    const result = getBestStreak([ctx(goal)], checkIns)
+    expect(result!.days).toBe(3)
+    expect(result!.startDate).toBe('2026-01-05')
+    expect(result!.endDate).toBe('2026-01-09')
+  })
+
+  it('attaches correct goal title, challenge name, buddy name', () => {
+    const goal = makeGoal({ id: 'g1', type: 'daily', title: 'Attend BJJ' })
+    const checkIns = [makeCheckIn({ goal_id: 'g1', date: '2026-03-01' })]
+    const result = getBestStreak([ctx(goal, 'Mar Challenge', 'Alex')], checkIns)
+    expect(result!.goalTitle).toBe('Attend BJJ')
+    expect(result!.challengeName).toBe('Mar Challenge')
+    expect(result!.buddyName).toBe('Alex')
+  })
+})
