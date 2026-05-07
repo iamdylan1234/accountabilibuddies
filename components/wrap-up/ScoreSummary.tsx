@@ -36,11 +36,8 @@ function SummaryGoalCard({
   const complete = pct === 100 && !isPending
   const isMissed = (missedDays ?? 0) > 0 && !complete && !isPending
   const showBar = goal.type !== 'milestone'
-  const label = isMissed
-    ? (missedDays === 1 ? '1 day late' : `${missedDays} days late`)
-    : goal.type === 'milestone'
-    ? (complete ? '✓ Done' : 'Not yet')
-    : `${pct}%`
+  const label = goal.type === 'milestone' ? (complete ? '✓ Done' : 'Not yet') : `${pct}%`
+  const missedLabel = missedDays === 1 ? '1 day late' : `${missedDays} days late`
 
   return (
     <button
@@ -51,46 +48,47 @@ function SummaryGoalCard({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400',
         isPending ? 'opacity-60 bg-gray-50 text-gray-400'
           : complete ? 'text-white'
-          : isMissed ? 'text-gray-800'
           : 'bg-gray-50 text-gray-700',
       ].join(' ')}
       style={
         complete ? { background: BRAND_GRADIENT } :
-        isMissed ? { background: '#fff1f2', borderLeft: '3px solid #f43f5e' } :
+        isMissed ? { borderLeft: '3px solid #fca5a5' } :
         {}
       }
     >
-      {/* Title + badge */}
+      {/* Title + % badge (always teal/white, never red) */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold flex-1 leading-tight">
           {goal.title}{isPending && <span className="ml-1 text-xs">⏳</span>}
         </span>
-        <span className={`text-xs font-black flex-shrink-0 ${
-          complete ? 'text-white/80' : isMissed ? 'text-red-500' : 'text-teal-600'
-        }`}>
+        <span className={`text-xs font-black flex-shrink-0 ${complete ? 'text-white/80' : 'text-teal-600'}`}>
           {label}
         </span>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar — always teal/white, celebrate the work done */}
       {showBar && (
         <div className={`mt-2 h-1 rounded-full overflow-hidden ${complete ? 'bg-white/30' : 'bg-gray-200'}`}>
           <div
             className="h-full rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              background: complete
-                ? 'rgba(255,255,255,0.7)'
-                : isMissed ? '#f43f5e'
-                : BRAND_GRADIENT_H,
+              background: complete ? 'rgba(255,255,255,0.7)' : BRAND_GRADIENT_H,
             }}
           />
         </div>
       )}
 
-      {/* Streak */}
-      {streak >= 2 && (
-        <p className={`text-xs font-bold mt-2 ${complete ? 'text-white/70' : 'text-orange-400'}`}>🔥{streak}</p>
+      {/* Footer: streak (left) + missed flag (right) */}
+      {(streak >= 2 || isMissed) && (
+        <div className="flex items-center justify-between mt-2 gap-2">
+          {streak >= 2 ? (
+            <p className={`text-xs font-bold ${complete ? 'text-white/70' : 'text-orange-400'}`}>🔥{streak}</p>
+          ) : <span />}
+          {isMissed && (
+            <span className="text-xs font-black text-red-400 flex-shrink-0">{missedLabel}</span>
+          )}
+        </div>
       )}
     </button>
   )
