@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import type { Goal, CheckIn } from '@/types/database'
 import GoalEditButton from '@/components/wrap-up/GoalEditButton'
 import { BRAND_GRADIENT } from '@/lib/brand'
 import { formatYMD } from '@/lib/dateUtils'
+import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 
 interface Props {
   goal: Goal
@@ -59,6 +60,10 @@ export default function GoalCalendarSheet({
   const initialOffset = Math.min(Math.max(todayAbs, startAbs), endAbs) - startAbs
   const [offset, setOffset] = useState(initialOffset)
 
+  const [, startTransition] = useTransition()
+  // localOverrides: date string → true (locally marked done) | false (locally removed)
+  const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map())
+
   // Slide-up animation
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -95,6 +100,13 @@ export default function GoalCalendarSheet({
     checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date)
   )
 
+  // Effective done set: base doneSet XORed with local optimistic overrides
+  const effectiveDoneSet = new Set(doneSet)
+  for (const [d, isDone] of localOverrides) {
+    if (isDone) effectiveDoneSet.add(d)
+    else effectiveDoneSet.delete(d)
+  }
+
   const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate()
   const firstDow = (new Date(curYear, curMonth, 1).getDay() + 6) % 7 // 0 = Mon
 
@@ -114,7 +126,7 @@ export default function GoalCalendarSheet({
     }
 
     if (goal.type === 'milestone') {
-      return doneSet.has(dateStr) ? 'done' : 'blank'
+      return effectiveDoneSet.has(dateStr) ? 'done' : 'blank'
     }
 
     // daily / frequency: check if this day is a committed date
@@ -123,10 +135,24 @@ export default function GoalCalendarSheet({
       goal.schedule_dates.includes(dateStr)
 
     if (!isScheduled) return 'blank'
-    if (doneSet.has(dateStr)) return 'done'
+    if (effectiveDoneSet.has(dateStr)) return 'done'
     if (dateStr === today) return 'today-open'
     if (dateStr > today) return 'future'
     return 'missed'
+  }
+
+  function handleDayToggle(dateStr: string) {
+    if (!isOwn || isHistorical || dateStr > today) return
+    const currentlyDone = effectiveDoneSet.has(dateStr)
+    // Optimistic update
+    setLocalOverrides(prev => new Map(prev).set(dateStr, !currentlyDone))
+    startTransition(async () => {
+      const result = await toggleCheckIn(goal.id, dateStr)
+      if (result?.error) {
+        // Roll back on failure
+        setLocalOverrides(prev => new Map(prev).set(dateStr, currentlyDone))
+      }
+    })
   }
 
   function getCumulativeValue(dateStr: string): number {
@@ -287,12 +313,21 @@ export default function GoalCalendarSheet({
 
               return (
                 <div key={dateStr} className="flex flex-col items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${textCls} ${ringCls}`}
-                    style={circleStyle}
-                  >
-                    <span className="text-xs">{num}</span>
-                  </div>
+                  {(() => {
+                    const canToggle = isOwn && !isHistorical && dateStr <= today && state !== 'future'
+                    const Tag = canToggle ? 'button' : 'div'
+                    return (
+                      <Tag
+                        {...(canToggle ? { type: 'button', onClick: () => handleDayToggle(dateStr) } : {})}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ${textCls} ${ringCls} ${
+                          canToggle ? 'active:scale-90 transition cursor-pointer' : ''
+                        }`}
+                        style={circleStyle}
+                      >
+                        <span className="text-xs">{num}</span>
+                      </Tag>
+                    )
+                  })()}
                 </div>
               )
             })}

@@ -48,6 +48,8 @@ export async function toggleCheckIn(goalId: string, date: string): Promise<{ err
   }
 
   revalidatePath('/dashboard')
+  revalidatePath('/week')
+  revalidatePath('/wrap-up')
 }
 
 export async function addReaction(checkInId: string, emoji: string) {
