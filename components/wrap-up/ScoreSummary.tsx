@@ -251,6 +251,7 @@ export default function ScoreSummary({
           checkIns={sheet.checkIns}
           isOwn={sheet.isOwn}
           isPending={!isHistorical && sheet.isOwn && pendingRequests.some(r => r.goal_id === sheet.goal.id)}
+          isHistorical={isHistorical}
           startDate={startDate}
           endDate={endDate}
           today={today}

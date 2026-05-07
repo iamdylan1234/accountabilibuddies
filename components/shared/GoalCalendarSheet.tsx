@@ -11,6 +11,7 @@ interface Props {
   checkIns: CheckIn[]
   isOwn: boolean
   isPending: boolean
+  isHistorical?: boolean
   startDate: string
   endDate: string
   today: string
@@ -44,7 +45,7 @@ const GOAL_TYPE_LABEL: Record<string, string> = {
 }
 
 export default function GoalCalendarSheet({
-  goal, checkIns, isOwn, isPending,
+  goal, checkIns, isOwn, isPending, isHistorical = false,
   startDate, endDate, today, challengeId, myId, onClose,
 }: Props) {
   const [startY, startM] = parseYM(startDate)
@@ -175,7 +176,7 @@ export default function GoalCalendarSheet({
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {isOwn && !isPending && (
+              {isOwn && !isPending && !isHistorical && (
                 <GoalEditButton
                   goal={goal}
                   challengeId={challengeId}
