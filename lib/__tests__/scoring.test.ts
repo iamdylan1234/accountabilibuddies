@@ -1,7 +1,7 @@
 import {
   scoreGoal, scoreChallenge, getWeekStart,
   isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
-  getBestStreak,
+  getBestStreak, getMissedDays,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 import type { GoalStreakContext } from '../scoring'
@@ -300,5 +300,70 @@ describe('getBestStreak', () => {
     expect(result!.goalTitle).toBe('Attend BJJ')
     expect(result!.challengeName).toBe('Mar Challenge')
     expect(result!.buddyName).toBe('Alex')
+  })
+})
+
+describe('getMissedDays', () => {
+  // Helper: goal with no schedule_dates (daily)
+  const daily = baseGoal('daily')
+
+  // Helper: frequency goal with specific dates
+  const freq = (dates: string[]): Goal => ({
+    ...baseGoal('frequency'),
+    schedule_dates: dates,
+  })
+
+  it('returns 0 for cumulative goals', () => {
+    expect(getMissedDays(baseGoal('cumulative'), [], '2026-05-07', '2026-05-01')).toBe(0)
+  })
+
+  it('returns 0 for milestone goals', () => {
+    expect(getMissedDays(baseGoal('milestone'), [], '2026-05-07', '2026-05-01')).toBe(0)
+  })
+
+  it('returns 0 when challenge started today', () => {
+    expect(getMissedDays(daily, [], '2026-05-07', '2026-05-07')).toBe(0)
+  })
+
+  it('daily: counts days before today with no check-in', () => {
+    // challenge started May 1, today May 5, no check-ins → 4 missed days (May 1–4)
+    expect(getMissedDays(daily, [], '2026-05-05', '2026-05-01')).toBe(4)
+  })
+
+  it('daily: does not count today', () => {
+    // today is not missed — it is still open
+    expect(getMissedDays(daily, [ci('2026-05-01'), ci('2026-05-02'), ci('2026-05-03'), ci('2026-05-04')], '2026-05-05', '2026-05-01')).toBe(0)
+  })
+
+  it('daily: partially done reduces count', () => {
+    // challenge May 1, today May 5 — May 2 done, so 3 missed (May 1, 3, 4)
+    expect(getMissedDays(daily, [ci('2026-05-02')], '2026-05-05', '2026-05-01')).toBe(3)
+  })
+
+  it('daily: caps lookback at 7 days', () => {
+    // challenge started Apr 1, today May 7 — only looks back to Apr 30 (7 days)
+    // Apr 30 – May 6 = 7 days, all missed → 7
+    expect(getMissedDays(daily, [], '2026-05-07', '2026-04-01')).toBe(7)
+  })
+
+  it('frequency: counts missed schedule_dates in window', () => {
+    // dates: May 1, May 3, May 6 — today May 7, window May 1–6
+    // May 1 done, May 3 missed, May 6 missed → 2
+    const goal = freq(['2026-05-01', '2026-05-03', '2026-05-06', '2026-05-10'])
+    expect(getMissedDays(goal, [ci('2026-05-01')], '2026-05-07', '2026-05-01')).toBe(2)
+  })
+
+  it('frequency: returns 0 when all past scheduled dates done', () => {
+    const goal = freq(['2026-05-01', '2026-05-03'])
+    expect(getMissedDays(goal, [ci('2026-05-01'), ci('2026-05-03')], '2026-05-07', '2026-05-01')).toBe(0)
+  })
+
+  it('frequency: ignores future schedule_dates', () => {
+    const goal = freq(['2026-05-10', '2026-05-15'])
+    expect(getMissedDays(goal, [], '2026-05-07', '2026-05-01')).toBe(0)
+  })
+
+  it('frequency: no schedule_dates returns 0', () => {
+    expect(getMissedDays(baseGoal('frequency'), [], '2026-05-07', '2026-05-01')).toBe(0)
   })
 })

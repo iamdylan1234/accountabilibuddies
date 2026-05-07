@@ -203,3 +203,48 @@ function longestConsecutiveCalendarRun(
 
   return { days: bestDays, startDate: bestStart, endDate: bestEnd }
 }
+
+// Number of past scheduled days (within 7-day lookback from today) that have no completed check-in.
+// Returns 0 for cumulative and milestone goals — they are never "missed" in this sense.
+export function getMissedDays(
+  goal: Goal,
+  checkIns: CheckIn[],
+  today: string,
+  challengeStart: string,
+): number {
+  if (goal.type === 'cumulative' || goal.type === 'milestone') return 0
+
+  const [ty, tm, td] = today.split('-').map(Number)
+  const yesterday = formatDate(new Date(ty, tm - 1, td - 1))
+
+  // 7-day lookback window: the later of (challengeStart) and (today − 7 days)
+  const lookbackDate = new Date(ty, tm - 1, td - 7)
+  const lookbackStart = formatDate(lookbackDate) > challengeStart
+    ? formatDate(lookbackDate)
+    : challengeStart
+
+  // If challenge started today, yesterday is before challengeStart
+  if (yesterday < lookbackStart) return 0
+
+  const doneSet = new Set(
+    checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date)
+  )
+
+  if (goal.type === 'frequency') {
+    if (!goal.schedule_dates || goal.schedule_dates.length === 0) return 0
+    return goal.schedule_dates.filter(
+      d => d >= lookbackStart && d <= yesterday && !doneSet.has(d)
+    ).length
+  }
+
+  // daily: walk every calendar day in [lookbackStart, yesterday]
+  let missed = 0
+  const [ls, lm, ld] = lookbackStart.split('-').map(Number)
+  const cursor = new Date(ls, lm - 1, ld)
+  const end = new Date(ty, tm - 1, td - 1)
+  while (cursor <= end) {
+    if (!doneSet.has(formatDate(cursor))) missed++
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return missed
+}
