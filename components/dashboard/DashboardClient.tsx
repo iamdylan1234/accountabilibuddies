@@ -52,7 +52,7 @@ export default function DashboardClient({
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
   const [messageSheetOpen, setMessageSheetOpen] = useState(false)
 
-  const { isRefreshing } = useDashboardRealtime(myId, buddy?.id)
+  const { isRefreshing } = useDashboardRealtime(myId, buddy?.id, messageSheetOpen)
   const { optimisticCheckIns, failedGoals, handleToggle } = useCheckInToggle(myCheckIns, myId, today)
 
   function getCheckIn(goalId: string, checkIns: CheckIn[]) {

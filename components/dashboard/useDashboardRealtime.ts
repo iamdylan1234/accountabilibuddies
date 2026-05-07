@@ -1,4 +1,4 @@
-import { useEffect, useTransition } from 'react'
+import { useEffect, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -9,10 +9,14 @@ import { createClient } from '@/lib/supabase/client'
  * Returns `isRefreshing` — true while the refresh transition is pending,
  * used to dim the score tiles during reload.
  */
-export function useDashboardRealtime(myId: string, buddyId: string | undefined) {
+export function useDashboardRealtime(myId: string, buddyId: string | undefined, suppressProfileRefresh = false) {
   const router = useRouter()
   const supabase = createClient()
   const [isRefreshing, startRefreshTransition] = useTransition()
+
+  // Ref so the subscription closure always sees the latest value without re-subscribing
+  const suppressRef = useRef(suppressProfileRefresh)
+  suppressRef.current = suppressProfileRefresh
 
   useEffect(() => {
     // Scope to only the two participants so we don't trigger a full refresh
@@ -43,7 +47,7 @@ export function useDashboardRealtime(myId: string, buddyId: string | undefined) 
         schema: 'public',
         table: 'profiles',
         filter: buddyId ? `id=eq.${buddyId}` : undefined,
-      }, () => startRefreshTransition(() => router.refresh()))
+      }, () => { if (!suppressRef.current) startRefreshTransition(() => router.refresh()) })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
