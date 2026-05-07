@@ -1,20 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { usePathname } from 'next/navigation'
 import { BRAND_GRADIENT } from '@/lib/brand'
 
-export default function Navbar() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const supabase = createClient()
+interface Props {
+  avatarUrl: string | null
+}
 
-  async function signOut() {
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
-  }
+export default function Navbar({ avatarUrl }: Props) {
+  const pathname = usePathname()
 
   const navItems = [
     { href: '/dashboard', label: 'Today' },
@@ -32,12 +27,30 @@ export default function Navbar() {
         <span className="text-white font-black text-lg tracking-tight">
           Accountabilibuddies
         </span>
-        <button
-          onClick={signOut}
-          className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+
+        {/* Avatar circle → /profile */}
+        <Link
+          href="/profile"
+          className="w-8 h-8 rounded-full overflow-hidden border-2 border-white/40 hover:border-white/80 transition flex-shrink-0"
+          aria-label="Your profile"
         >
-          Sign out
-        </button>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              width={32}
+              height={32}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                ;(e.target as HTMLImageElement).style.display = 'none'
+              }}
+            />
+          ) : (
+            <div className="w-full h-full bg-white/20 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">?</span>
+            </div>
+          )}
+        </Link>
       </div>
 
       {/* Nav tab bar */}
