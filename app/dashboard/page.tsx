@@ -11,15 +11,28 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // Find the user's active or pending challenge
-  const { data: challenge } = await supabase
+  // Prefer active challenge; fall back to pending only if no active challenge exists.
+  // Querying ['active','pending'] ordered by created_at would surface a newly-created
+  // pending challenge ahead of an older active one, showing the wrong "waiting" screen.
+  const { data: activeChallenge } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
-    .in('status', ['active', 'pending'])
+    .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(1)
     .single()
+
+  const { data: pendingChallenge } = !activeChallenge ? await supabase
+    .from('challenge_months')
+    .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single() : { data: null }
+
+  const challenge = activeChallenge ?? pendingChallenge
 
   // No challenge yet — show create form
   if (!challenge) {
