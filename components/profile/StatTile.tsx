@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
+
 interface Props {
   value: string
   label: string
   subtitle?: string        // small text below label (e.g. "Attend BJJ · Alex")
   onClick?: () => void
-  children?: React.ReactNode  // inline expansion content (win rate breakdown)
+  children?: ReactNode  // inline expansion content (win rate breakdown)
 }
 
 export default function StatTile({ value, label, subtitle, onClick, children }: Props) {
