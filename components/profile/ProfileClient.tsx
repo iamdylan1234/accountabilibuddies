@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, ChallengeWithProfiles, Goal, CheckIn } from '@/types/database'
 import { getAvatarUrl } from '@/lib/avatar'
+import { scoreChallenge } from '@/lib/scoring'
 import AvatarPicker from './AvatarPicker'
 import StatTile from './StatTile'
 import StreakDetailSheet from './StreakDetailSheet'
+import ChallengeHistoryCard from './ChallengeHistoryCard'
 import type { ProfileStats } from '@/app/profile/page'
 
 interface Props {
@@ -18,6 +20,16 @@ interface Props {
   allCheckIns: CheckIn[]
   stats: ProfileStats
   userId: string
+}
+
+function formatDateRange(start: string, end: string): string {
+  const fmt = (d: string) => {
+    const [y, m, day] = d.split('-').map(Number)
+    return new Date(y, m - 1, day).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  }
+  return `${fmt(start)} – ${fmt(end)}`
 }
 
 export default function ProfileClient({
@@ -56,10 +68,44 @@ export default function ProfileClient({
 
   const total = stats.wins + stats.losses + stats.ties
   const winRateDisplay = total === 0 ? '—' : `${Math.round((stats.wins / total) * 100)}%`
-
   const streakSubtitle = stats.bestStreak
     ? `${stats.bestStreak.goalTitle.slice(0, 12)} · ${stats.bestStreak.buddyName.split(' ')[0]}`
     : undefined
+
+  // Build challenge history rows (most recent first — already ordered from RSC)
+  const historyRows = challenges.map(challenge => {
+    const buddyId = challenge.creator_id === userId ? challenge.buddy_id : challenge.creator_id
+    const buddyProfile = challenge.creator_id === userId ? challenge.buddy : challenge.creator
+    const buddyName = buddyProfile?.name ?? 'Buddy'
+
+    const myGoals = allGoals.filter(g => g.challenge_id === challenge.id && g.user_id === userId)
+    const buddyGoals = allGoals.filter(g => g.challenge_id === challenge.id && g.user_id === buddyId)
+    const myCheckIns = allCheckIns.filter(c => c.user_id === userId && myGoals.some(g => g.id === c.goal_id))
+    const buddyCheckIns = allCheckIns.filter(c => c.user_id === buddyId && buddyGoals.some(g => g.id === c.goal_id))
+
+    const totalDays = Math.floor(
+      (new Date(challenge.end_date).getTime() - new Date(challenge.start_date).getTime()) / 86400000
+    ) + 1
+
+    const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, challenge.start_date, challenge.end_date, true)
+    const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, challenge.start_date, challenge.end_date, true)
+
+    let result: 'win' | 'loss' | 'tie' | 'in-progress'
+    if (challenge.status === 'active') result = 'in-progress'
+    else if (myScore > buddyScore) result = 'win'
+    else if (myScore < buddyScore) result = 'loss'
+    else result = 'tie'
+
+    return {
+      challengeId: challenge.id,
+      name: challenge.month_name,
+      dateRange: formatDateRange(challenge.start_date, challenge.end_date),
+      buddyName,
+      myScore,
+      buddyScore,
+      result,
+    }
+  })
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -79,20 +125,15 @@ export default function ProfileClient({
 
       {/* Stats row */}
       <div className="grid grid-cols-4 gap-3 mb-8">
-        {/* Tile 1: Challenges */}
-        <StatTile
-          value={String(stats.totalChallenges || '—')}
-          label="completed"
-        />
+        <StatTile value={String(stats.totalChallenges || '—')} label="completed" />
 
-        {/* Tile 2: Win Rate */}
         <StatTile
           value={winRateDisplay}
           label="win rate"
           onClick={() => setShowWinBreakdown(v => !v)}
         >
           {showWinBreakdown && total > 0 && (
-            <div className="rounded-xl bg-gray-50 px-3 py-2 text-center col-span-1">
+            <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
               <div className="flex justify-around text-xs font-bold">
                 <span className="text-teal-500">{stats.wins}W</span>
                 <span className="text-red-400">{stats.losses}L</span>
@@ -102,7 +143,6 @@ export default function ProfileClient({
           )}
         </StatTile>
 
-        {/* Tile 3: Best Streak */}
         <StatTile
           value={stats.bestStreak ? `🔥${stats.bestStreak.days}` : '—'}
           label="best streak"
@@ -110,20 +150,23 @@ export default function ProfileClient({
           onClick={stats.bestStreak ? () => setShowStreakSheet(true) : undefined}
         />
 
-        {/* Tile 4: Check-ins */}
-        <StatTile
-          value={String(stats.totalCheckIns || '—')}
-          label="check-ins"
-        />
+        <StatTile value={String(stats.totalCheckIns || '—')} label="check-ins" />
       </div>
 
-      {/* History placeholder */}
+      {/* Challenge History */}
       <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">
         Challenge History
       </p>
-      <div className="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400">
-        Loading history…
-      </div>
+
+      {historyRows.length === 0 ? (
+        <div className="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400">
+          No challenges yet
+        </div>
+      ) : (
+        historyRows.map(row => (
+          <ChallengeHistoryCard key={row.challengeId} {...row} />
+        ))
+      )}
 
       {/* Sign out */}
       <div className="mt-12 flex justify-center">
