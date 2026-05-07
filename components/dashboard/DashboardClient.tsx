@@ -158,7 +158,7 @@ export default function DashboardClient({
         />
       )}
 
-      <div className="space-y-6">
+      <div className="mt-4 space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
           myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) ||
