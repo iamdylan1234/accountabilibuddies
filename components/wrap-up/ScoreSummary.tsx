@@ -232,6 +232,8 @@ export default function ScoreSummary({
           requests={pendingRequests}
           goals={[...myGoals, ...buddyGoals]}
           myId={myId}
+          myProfile={myProfile}
+          buddyProfile={buddyProfile}
         />
       )}
 
