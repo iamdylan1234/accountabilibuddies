@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
 import { scoreChallenge, scoreGoal, getCurrentStreak, getMissedDays } from '@/lib/scoring'
-import MissedGoalCard from '@/components/dashboard/MissedGoalCard'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
@@ -24,18 +23,24 @@ interface SummaryGoalCardProps {
   today: string
   pendingRequests: GoalChangeRequest[]
   isHistorical: boolean
+  missedDays?: number
   onOpen: (target: SheetTarget) => void
 }
 
 function SummaryGoalCard({
-  goal, checkIns, isOwn, totalDays, startDate, today, pendingRequests, isHistorical, onOpen,
+  goal, checkIns, isOwn, totalDays, startDate, today, pendingRequests, isHistorical, missedDays, onOpen,
 }: SummaryGoalCardProps) {
   const pct = Math.round(scoreGoal(goal, checkIns, totalDays, startDate, today, true) * 100)
   const isPending = !isHistorical && isOwn && pendingRequests.some(r => r.goal_id === goal.id)
   const streak = getCurrentStreak(goal, checkIns, today)
   const complete = pct === 100 && !isPending
+  const isMissed = (missedDays ?? 0) > 0 && !complete && !isPending
   const showBar = goal.type !== 'milestone'
-  const label = goal.type === 'milestone' ? (complete ? '✓ Done' : 'Not yet') : `${pct}%`
+  const label = isMissed
+    ? (missedDays === 1 ? '1 day late' : `${missedDays} days late`)
+    : goal.type === 'milestone'
+    ? (complete ? '✓ Done' : 'Not yet')
+    : `${pct}%`
 
   return (
     <button
@@ -44,16 +49,25 @@ function SummaryGoalCard({
       className={[
         'w-full text-left rounded-xl px-4 py-3 transition active:scale-95 hover:opacity-90',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400',
-        isPending ? 'opacity-60 bg-gray-50 text-gray-400' : complete ? 'text-white' : 'bg-gray-50 text-gray-700',
+        isPending ? 'opacity-60 bg-gray-50 text-gray-400'
+          : complete ? 'text-white'
+          : isMissed ? 'text-gray-800'
+          : 'bg-gray-50 text-gray-700',
       ].join(' ')}
-      style={complete ? { background: BRAND_GRADIENT } : {}}
+      style={
+        complete ? { background: BRAND_GRADIENT } :
+        isMissed ? { background: '#fff1f2', borderLeft: '3px solid #f43f5e' } :
+        {}
+      }
     >
       {/* Title + badge */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold flex-1 leading-tight">
           {goal.title}{isPending && <span className="ml-1 text-xs">⏳</span>}
         </span>
-        <span className={`text-xs font-black flex-shrink-0 ${complete ? 'text-white/80' : 'text-teal-600'}`}>
+        <span className={`text-xs font-black flex-shrink-0 ${
+          complete ? 'text-white/80' : isMissed ? 'text-red-500' : 'text-teal-600'
+        }`}>
           {label}
         </span>
       </div>
@@ -65,7 +79,10 @@ function SummaryGoalCard({
             className="h-full rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              background: complete ? 'rgba(255,255,255,0.7)' : BRAND_GRADIENT_H,
+              background: complete
+                ? 'rgba(255,255,255,0.7)'
+                : isMissed ? '#f43f5e'
+                : BRAND_GRADIENT_H,
             }}
           />
         </div>
@@ -118,18 +135,6 @@ export default function ScoreSummary({
   const buddyTargetGoals = buddyGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
   const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
   const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
-
-  // Missed daily goals — shown as pink tiles in Summary (not Today tab)
-  const myMissedDailyIds = new Set(
-    myDailyGoals
-      .filter(g => getMissedDays(g, myCheckIns, today, startDate) > 0)
-      .map(g => g.id)
-  )
-  const buddyMissedDailyIds = new Set(
-    buddyDailyGoals
-      .filter(g => getMissedDays(g, buddyCheckIns, today, startDate) > 0)
-      .map(g => g.id)
-  )
 
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
@@ -195,42 +200,20 @@ export default function ScoreSummary({
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Daily Goals</p>
             <GoalPairGrid
-              myColumn={[
-                ...myDailyGoals
-                  .filter(g => myMissedDailyIds.has(g.id))
-                  .map(g => (
-                    <MissedGoalCard
-                      key={`missed-${g.id}`}
-                      goal={g}
-                      missedDays={getMissedDays(g, myCheckIns, today, startDate)}
-                      isMyGoal={true}
-                      onOpen={() => setSheet({ goal: g, checkIns: myCheckIns, isOwn: true })}
-                    />
-                  )),
-                ...myDailyGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-                )),
-              ]}
-              buddyColumn={[
-                ...buddyDailyGoals
-                  .filter(g => buddyMissedDailyIds.has(g.id))
-                  .map(g => (
-                    <MissedGoalCard
-                      key={`missed-${g.id}`}
-                      goal={g}
-                      missedDays={getMissedDays(g, buddyCheckIns, today, startDate)}
-                      isMyGoal={false}
-                      onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
-                    />
-                  )),
-                ...buddyDailyGoals.map(goal => (
-                  <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                    totalDays={totalDays} startDate={startDate} today={today}
-                    pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-                )),
-              ]}
+              myColumn={myDailyGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} isHistorical={isHistorical}
+                  missedDays={getMissedDays(goal, myCheckIns, today, startDate)}
+                  onOpen={setSheet} />
+              ))}
+              buddyColumn={buddyDailyGoals.map(goal => (
+                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
+                  totalDays={totalDays} startDate={startDate} today={today}
+                  pendingRequests={pendingRequests} isHistorical={isHistorical}
+                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate)}
+                  onOpen={setSheet} />
+              ))}
             />
           </div>
         )}
