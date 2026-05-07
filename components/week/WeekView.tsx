@@ -214,10 +214,12 @@ export default function WeekView({
     currentWeekStart.getDate() + dayOffset,
   )
   const selectedStr = formatDate(selectedDate)
-  const isToday = selectedStr === todayStr
-  const isFuture = selectedStr > todayStr
-  const isYesterday = dayOffset === -1
-  const isTomorrow  = dayOffset === maxOffset && maxOffset === 7
+  const yesterdayStr = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))
+  const tomorrowStr  = formatDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))
+  const isToday     = selectedStr === todayStr
+  const isYesterday = selectedStr === yesterdayStr
+  const isTomorrow  = selectedStr === tomorrowStr
+  const isFuture    = selectedStr > todayStr
 
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
