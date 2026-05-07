@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, ChallengeWithProfiles } from '@/types/database'
 import { getAvatarUrl } from '@/lib/avatar'
+import AvatarPicker from './AvatarPicker'
 
 interface Props {
   profile: Profile
@@ -11,9 +13,14 @@ interface Props {
   avatarUrl: string
 }
 
-export default function ProfileClient({ profile, activeChallenge, avatarUrl }: Props) {
+export default function ProfileClient({ profile, activeChallenge, avatarUrl: _initialAvatarUrl }: Props) {
   const router = useRouter()
   const supabase = createClient()
+
+  const [avatarStyle, setAvatarStyle] = useState(profile.avatar_style)
+  const [showPicker, setShowPicker] = useState(false)
+
+  const avatarUrl = getAvatarUrl(profile.id, avatarStyle)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -40,7 +47,12 @@ export default function ProfileClient({ profile, activeChallenge, avatarUrl }: P
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Avatar + name */}
       <div className="flex flex-col items-center gap-2 mb-8">
-        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setShowPicker(true)}
+          className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm hover:opacity-80 transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+          aria-label="Change avatar"
+        >
           <img
             src={avatarUrl}
             alt="Your avatar"
@@ -48,7 +60,7 @@ export default function ProfileClient({ profile, activeChallenge, avatarUrl }: P
             height={96}
             className="w-full h-full object-cover"
           />
-        </div>
+        </button>
         <h1 className="text-xl font-black text-gray-800">{profile.name}</h1>
         <p className="text-sm text-gray-400 font-semibold">{activeLine}</p>
       </div>
@@ -80,6 +92,16 @@ export default function ProfileClient({ profile, activeChallenge, avatarUrl }: P
           Sign out
         </button>
       </div>
+
+      {/* Avatar picker sheet */}
+      {showPicker && (
+        <AvatarPicker
+          userId={profile.id}
+          currentStyle={avatarStyle}
+          onStyleChange={setAvatarStyle}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   )
 }
