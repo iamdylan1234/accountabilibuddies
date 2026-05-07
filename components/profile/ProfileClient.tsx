@@ -17,7 +17,6 @@ interface Props {
   allGoals: Goal[]
   allCheckIns: CheckIn[]
   stats: ProfileStats
-  avatarUrl: string
   userId: string
 }
 
@@ -83,7 +82,7 @@ export default function ProfileClient({
         {/* Tile 1: Challenges */}
         <StatTile
           value={String(stats.totalChallenges || '—')}
-          label="challenges"
+          label="completed"
         />
 
         {/* Tile 2: Win Rate */}

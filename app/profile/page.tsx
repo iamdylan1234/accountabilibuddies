@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getAvatarUrl } from '@/lib/avatar'
 import ProfileClient from '@/components/profile/ProfileClient'
 import type { ChallengeWithProfiles, Goal, CheckIn, Profile } from '@/types/database'
 import { getBestStreak, getCurrentStreak, scoreChallenge } from '@/lib/scoring'
@@ -40,22 +39,16 @@ export default async function ProfilePage() {
   const challenges = (challengesData ?? []) as ChallengeWithProfiles[]
   const challengeIds = challenges.map(c => c.id)
 
-  // Collect all unique user IDs from challenges (user + all buddies)
-  const allUserIds = [...new Set([
-    user.id,
-    ...challenges.flatMap(c => [c.creator_id, c.buddy_id].filter((id): id is string => !!id)),
-  ])]
-
   // Fetch all goals and check-ins for all challenges
-  const [allGoalsRes, allCheckInsRes] = await (challengeIds.length > 0
-    ? Promise.all([
-        supabase.from('goals').select('*').in('challenge_id', challengeIds),
-        supabase.from('check_ins').select('*').in('user_id', allUserIds),
-      ])
-    : Promise.resolve([{ data: [] }, { data: [] }]))
+  const allGoals: Goal[] = challengeIds.length > 0
+    ? (await supabase.from('goals').select('*').in('challenge_id', challengeIds)).data ?? []
+    : []
 
-  const allGoals: Goal[] = allGoalsRes.data ?? []
-  const allCheckIns: CheckIn[] = allCheckInsRes.data ?? []
+  const goalIds = allGoals.map(g => g.id)
+
+  const allCheckIns: CheckIn[] = goalIds.length > 0
+    ? (await supabase.from('check_ins').select('*').in('goal_id', goalIds)).data ?? []
+    : []
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -135,8 +128,6 @@ export default async function ProfilePage() {
     totalCheckIns,
   }
 
-  const avatarUrl = getAvatarUrl(user.id, profile.avatar_style)
-
   return (
     <ProfileClient
       profile={profile}
@@ -145,7 +136,6 @@ export default async function ProfilePage() {
       allGoals={allGoals}
       allCheckIns={allCheckIns}
       stats={stats}
-      avatarUrl={avatarUrl}
       userId={user.id}
     />
   )
