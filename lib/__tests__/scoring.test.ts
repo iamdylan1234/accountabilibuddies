@@ -305,7 +305,7 @@ describe('getBestStreak', () => {
 
 describe('getMissedDays', () => {
   // Helper: goal with no schedule_dates (daily)
-  const daily = baseGoal('daily')
+  const daily = () => baseGoal('daily')
 
   // Helper: frequency goal with specific dates
   const freq = (dates: string[]): Goal => ({
@@ -322,28 +322,34 @@ describe('getMissedDays', () => {
   })
 
   it('returns 0 when challenge started today', () => {
-    expect(getMissedDays(daily, [], '2026-05-07', '2026-05-07')).toBe(0)
+    expect(getMissedDays(daily(), [], '2026-05-07', '2026-05-07')).toBe(0)
   })
 
   it('daily: counts days before today with no check-in', () => {
     // challenge started May 1, today May 5, no check-ins → 4 missed days (May 1–4)
-    expect(getMissedDays(daily, [], '2026-05-05', '2026-05-01')).toBe(4)
+    expect(getMissedDays(daily(), [], '2026-05-05', '2026-05-01')).toBe(4)
   })
 
   it('daily: does not count today', () => {
     // today is not missed — it is still open
-    expect(getMissedDays(daily, [ci('2026-05-01'), ci('2026-05-02'), ci('2026-05-03'), ci('2026-05-04')], '2026-05-05', '2026-05-01')).toBe(0)
+    expect(getMissedDays(daily(), [ci('2026-05-01'), ci('2026-05-02'), ci('2026-05-03'), ci('2026-05-04')], '2026-05-05', '2026-05-01')).toBe(0)
   })
 
   it('daily: partially done reduces count', () => {
     // challenge May 1, today May 5 — May 2 done, so 3 missed (May 1, 3, 4)
-    expect(getMissedDays(daily, [ci('2026-05-02')], '2026-05-05', '2026-05-01')).toBe(3)
+    expect(getMissedDays(daily(), [ci('2026-05-02')], '2026-05-05', '2026-05-01')).toBe(3)
   })
 
   it('daily: caps lookback at 7 days', () => {
     // challenge started Apr 1, today May 7 — only looks back to Apr 30 (7 days)
     // Apr 30 – May 6 = 7 days, all missed → 7
-    expect(getMissedDays(daily, [], '2026-05-07', '2026-04-01')).toBe(7)
+    expect(getMissedDays(daily(), [], '2026-05-07', '2026-04-01')).toBe(7)
+  })
+
+  it('daily: challengeStart exactly at lookback boundary is included', () => {
+    // challengeStart = today - 7 = Apr 30, today = May 7
+    // window is [Apr 30, May 6], Apr 30 has no check-in → 7 missed
+    expect(getMissedDays(daily(), [], '2026-05-07', '2026-04-30')).toBe(7)
   })
 
   it('frequency: counts missed schedule_dates in window', () => {

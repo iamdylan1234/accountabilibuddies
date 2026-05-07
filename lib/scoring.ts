@@ -219,9 +219,8 @@ export function getMissedDays(
 
   // 7-day lookback window: the later of (challengeStart) and (today − 7 days)
   const lookbackDate = new Date(ty, tm - 1, td - 7)
-  const lookbackStart = formatDate(lookbackDate) > challengeStart
-    ? formatDate(lookbackDate)
-    : challengeStart
+  const lookbackFormatted = formatDate(lookbackDate)
+  const lookbackStart = lookbackFormatted > challengeStart ? lookbackFormatted : challengeStart
 
   // If challenge started today, yesterday is before challengeStart
   if (yesterday < lookbackStart) return 0
