@@ -1,13 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
+import MissedGoalCard from './MissedGoalCard'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
+import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import { useDashboardRealtime } from './useDashboardRealtime'
 import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalCatchUp, getCurrentStreak } from '@/lib/scoring'
+import { isGoalCatchUp, getCurrentStreak, getMissedDays } from '@/lib/scoring'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 import { formatDate } from '@/lib/dateUtils'
 
@@ -23,6 +26,7 @@ interface Props {
   totalDays: number
 }
 
+type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
 
 export default function DashboardClient({
   challenge,
@@ -43,6 +47,7 @@ export default function DashboardClient({
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
   const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
+  const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
   const { isRefreshing } = useDashboardRealtime(myId, buddy?.id)
   const { optimisticCheckIns, failedGoals, handleToggle } = useCheckInToggle(myCheckIns, myId, today)
@@ -60,6 +65,10 @@ export default function DashboardClient({
   function getReaction(checkInId: string | undefined) {
     if (!checkInId) return null
     return reactions.find(r => r.check_in_id === checkInId) ?? null
+  }
+
+  function missedCount(goal: Goal, checkIns: CheckIn[]): number {
+    return getMissedDays(goal, checkIns, today, challenge.start_date)
   }
 
   // Section 1: Today's Goals — daily goals + frequency goals scheduled today
@@ -139,26 +148,54 @@ export default function DashboardClient({
 
       <div className="space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
-        {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0) && (
+        {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
+          myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) ||
+          buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0)) && (
           <div>
             <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
             <GoalPairGrid
-              myColumn={myTodayGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal}
-                  checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                  isMyGoal={true} today={today} onToggle={handleToggle}
-                  streak={getCurrentStreak(goal, myCheckIns, today)}
-                  remaining={getRemaining(goal, myCheckIns)}
-                  hasFailed={failedGoals.has(goal.id)} />
-              ))}
-              buddyColumn={buddyTodayGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal}
-                  checkIn={getCheckIn(goal.id, buddyCheckIns)}
-                  reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
-                  isMyGoal={false} today={today} onToggle={handleToggle}
-                  streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                  remaining={getRemaining(goal, buddyCheckIns)} />
-              ))}
+              myColumn={[
+                ...myGoals
+                  .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, optimisticCheckIns) > 0)
+                  .map(g => (
+                    <MissedGoalCard
+                      key={`missed-${g.id}`}
+                      goal={g}
+                      missedDays={missedCount(g, optimisticCheckIns)}
+                      isMyGoal={true}
+                      onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
+                    />
+                  )),
+                ...myTodayGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                    isMyGoal={true} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, myCheckIns, today)}
+                    remaining={getRemaining(goal, myCheckIns)}
+                    hasFailed={failedGoals.has(goal.id)} />
+                )),
+              ]}
+              buddyColumn={[
+                ...buddyGoals
+                  .filter(g => (g.type === 'daily' || g.type === 'frequency') && missedCount(g, buddyCheckIns) > 0)
+                  .map(g => (
+                    <MissedGoalCard
+                      key={`missed-${g.id}`}
+                      goal={g}
+                      missedDays={missedCount(g, buddyCheckIns)}
+                      isMyGoal={false}
+                      onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
+                    />
+                  )),
+                ...buddyTodayGoals.map(goal => (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                    reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                    isMyGoal={false} today={today} onToggle={handleToggle}
+                    streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                    remaining={getRemaining(goal, buddyCheckIns)} />
+                )),
+              ]}
             />
           </div>
         )}
@@ -224,6 +261,21 @@ export default function DashboardClient({
           <p className="font-semibold text-sm">No goals today</p>
           <p className="text-xs mt-1">Enjoy the rest day</p>
         </div>
+      )}
+
+      {sheet && (
+        <GoalCalendarSheet
+          goal={sheet.goal}
+          checkIns={sheet.checkIns}
+          isOwn={sheet.isOwn}
+          isPending={false}
+          startDate={challenge.start_date}
+          endDate={challenge.end_date}
+          today={today}
+          challengeId={challenge.id}
+          myId={myId}
+          onClose={() => setSheet(null)}
+        />
       )}
     </div>
   )
