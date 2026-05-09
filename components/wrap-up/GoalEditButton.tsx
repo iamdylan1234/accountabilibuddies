@@ -38,9 +38,9 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
         title,
         type,
         target_count: (type === 'frequency' || type === 'cumulative') ? (parseInt(targetCount) || null) : null,
-        target_unit: targetUnit.trim() || null,
-        schedule_dates: scheduleDates.length > 0 ? scheduleDates : null,
-        catch_up: catchUp,
+        target_unit: (type === 'cumulative') ? (targetUnit.trim() || null) : null,
+        schedule_dates: (type === 'frequency' && scheduleDates.length > 0) ? scheduleDates : null,
+        catch_up: (type === 'frequency') ? catchUp : false,
       })
       setSaving(false)
       if (result?.error) {
@@ -88,7 +88,14 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">Type</label>
               <div className="flex gap-2 flex-wrap">
                 {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
-                  <button key={t} type="button" onClick={() => setType(t)}
+                  <button key={t} type="button" onClick={() => {
+                    setType(t)
+                    // Reset type-specific state so old fields don't leak into the new type
+                    setScheduleDates([])
+                    setCatchUp(false)
+                    if (t !== 'frequency' && t !== 'cumulative') setTargetCount('')
+                    if (t !== 'cumulative') setTargetUnit('')
+                  }}
                     className={`px-3 py-1 rounded-full text-xs font-semibold transition ${type === t ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
                     style={type === t ? { background: BRAND_GRADIENT } : {}}>
                     {t}

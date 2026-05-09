@@ -86,7 +86,7 @@ export async function approveChange(requestId: string) {
 
   // Use admin client to bypass RLS — the approver doesn't own the goal
   const admin = createAdminClient()
-  await admin.from('goals').update({
+  const { error: updateError } = await admin.from('goals').update({
     title: req.proposed_title,
     type: req.proposed_type,
     target_count: req.proposed_target_count,
@@ -94,6 +94,11 @@ export async function approveChange(requestId: string) {
     schedule_dates: req.proposed_schedule_dates,
     catch_up: req.proposed_catch_up,
   }).eq('id', req.goal_id)
+
+  if (updateError) {
+    // Surface the failure instead of silently marking the request approved
+    throw new Error(`Failed to apply goal change: ${updateError.message}`)
+  }
 
   await supabase.from('goal_change_requests')
     .update({ status: 'approved' }).eq('id', requestId)
