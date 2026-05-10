@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import type { ChallengeStatus } from '@/types/database'
 
 type ResultBadge = 'win' | 'loss' | 'tie' | 'in-progress'
 
@@ -12,6 +13,7 @@ interface Props {
   myScore: number         // 0-100
   buddyScore: number      // 0-100
   result: ResultBadge
+  status: ChallengeStatus
 }
 
 const BADGE: Record<ResultBadge, { label: string; className: string; style?: CSSProperties }> = {
@@ -22,15 +24,20 @@ const BADGE: Record<ResultBadge, { label: string; className: string; style?: CSS
 }
 
 export default function ChallengeHistoryCard({
-  challengeId, name, dateRange, buddyName, myScore, buddyScore, result,
+  challengeId, name, dateRange, buddyName, myScore, buddyScore, result, status,
 }: Props) {
   const badge = BADGE[result]
 
   return (
     <>
-      {/* in-progress cards link to /wrap-up without ID — RSC infers the active challenge from session context */}
       <Link
-        href={result === 'in-progress' ? '/wrap-up' : `/wrap-up?challenge=${challengeId}`}
+        href={
+          status === 'pending'
+            ? `/setup?challenge=${challengeId}`
+            : status === 'active'
+            ? '/wrap-up'
+            : `/wrap-up?challenge=${challengeId}`
+        }
         className="block rounded-2xl bg-gray-50 px-4 py-3 mb-3 hover:bg-gray-100 transition active:scale-[0.99]"
       >
         <div className="flex items-center justify-between gap-2">

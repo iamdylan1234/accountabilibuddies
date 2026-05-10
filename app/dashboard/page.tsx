@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createChallenge } from './actions'
 import CopyButton from '@/components/layout/CopyButton'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import type { ChallengeWithProfiles } from '@/types/database'
 import { BRAND_GRADIENT } from '@/lib/brand'
 
@@ -90,6 +91,7 @@ export default async function DashboardPage() {
         <p className="text-sm text-gray-400 mt-4">
           Once your buddy joins and sets their goals, the challenge begins.
         </p>
+        <PendingChallengeActions challengeId={typedChallenge.id} />
       </div>
     )
   }

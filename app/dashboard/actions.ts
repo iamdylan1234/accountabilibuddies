@@ -1,12 +1,29 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 export async function createChallenge(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
+
+  // Idempotency: if user already has a pending challenge they created,
+  // don't make a duplicate — send them to its setup page instead.
+  const { data: existingPending } = await supabase
+    .from('challenge_months')
+    .select('id')
+    .eq('creator_id', user.id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (existingPending) {
+    redirect(`/setup?challenge=${existingPending.id}`)
+  }
 
   const monthName = formData.get('month_name') as string
   const startDate = formData.get('start_date') as string
@@ -29,4 +46,31 @@ export async function createChallenge(formData: FormData) {
 
   if (error) throw new Error(error.message)
   redirect(`/setup?challenge=${data.id}`)
+}
+
+export async function deleteChallenge(challengeId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Only allow the creator to delete, and only while pending
+  const { data: challenge } = await supabase
+    .from('challenge_months')
+    .select('id, creator_id, status')
+    .eq('id', challengeId)
+    .single()
+
+  if (!challenge) throw new Error('Challenge not found')
+  if (challenge.creator_id !== user.id) throw new Error('Only the creator can cancel this challenge')
+  if (challenge.status !== 'pending') throw new Error('Only pending challenges can be cancelled')
+
+  // Use admin client to ensure clean cascade through goals + check-ins + reactions
+  // (relies on ON DELETE CASCADE FK constraints in Supabase)
+  const admin = createAdminClient()
+  const { error } = await admin.from('challenge_months').delete().eq('id', challengeId)
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard')
+  revalidatePath('/profile')
+  redirect('/dashboard')
 }

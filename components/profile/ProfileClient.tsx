@@ -109,6 +109,7 @@ export default function ProfileClient({
       myScore,
       buddyScore,
       result,
+      status: challenge.status,
     }
   })
 
