@@ -13,27 +13,43 @@ interface GoalDraft {
   catch_up: boolean
 }
 
-export async function saveGoals(challengeId: string, goals: GoalDraft[]) {
+export async function saveGoals(
+  challengeId: string,
+  goals: GoalDraft[],
+): Promise<{ error: string } | undefined> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  if (!user) return { error: 'Not signed in. Please log in again.' }
 
-  const { data: challenge } = await supabase
+  const { data: challenge, error: challengeError } = await supabase
     .from('challenge_months').select('id, status')
     .eq('id', challengeId)
     .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
-    .single()
+    .maybeSingle()
 
-  if (!challenge) throw new Error('Challenge not found or access denied.')
-  if (challenge.status === 'active') throw new Error('Goals are locked once the challenge is active.')
+  if (challengeError) {
+    console.error('[saveGoals] challenge fetch error:', challengeError)
+    return { error: `Could not load challenge: ${challengeError.message}` }
+  }
+  if (!challenge) {
+    return { error: 'Challenge not found — it may have been cancelled. Refresh and try again.' }
+  }
+  if (challenge.status === 'active') {
+    return { error: 'Goals are locked once the challenge is active.' }
+  }
 
-  await supabase.from('goals').delete()
+  const { error: deleteError } = await supabase.from('goals').delete()
     .eq('challenge_id', challengeId).eq('user_id', user.id)
+
+  if (deleteError) {
+    console.error('[saveGoals] delete error:', deleteError)
+    return { error: `Could not clear old goals: ${deleteError.message}` }
+  }
 
   const rows = goals.map(g => ({
     challenge_id: challengeId,
     user_id: user.id,
-    title: g.title,
+    title: g.title.trim().slice(0, 200),
     type: g.type,
     target_count: (g.type === 'frequency' || g.type === 'cumulative')
       ? (parseInt(g.target_count) || null)
@@ -43,7 +59,11 @@ export async function saveGoals(challengeId: string, goals: GoalDraft[]) {
     catch_up: g.catch_up,
   }))
 
-  const { error } = await supabase.from('goals').insert(rows)
-  if (error) throw new Error(error.message)
+  const { error: insertError } = await supabase.from('goals').insert(rows)
+  if (insertError) {
+    console.error('[saveGoals] insert error:', insertError, '\nrows:', JSON.stringify(rows, null, 2))
+    return { error: `Could not save goals: ${insertError.message}` }
+  }
+
   redirect('/dashboard')
 }

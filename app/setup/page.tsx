@@ -36,7 +36,7 @@ export default async function SetupPage({ searchParams }: Props) {
     target_unit: string; schedule_dates: string[]; catch_up: boolean
   }[]) {
     'use server'
-    await saveGoals(challengeId!, goals as any)
+    return await saveGoals(challengeId!, goals as any)
   }
 
   return (

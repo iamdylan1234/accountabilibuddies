@@ -30,7 +30,7 @@ interface Props {
   challengeStartDate: string   // "YYYY-MM-DD"
   challengeEndDate: string     // "YYYY-MM-DD"
   existingGoals: Goal[]
-  onSubmit: (goals: GoalDraft[]) => Promise<void>
+  onSubmit: (goals: GoalDraft[]) => Promise<{ error: string } | undefined>
 }
 
 export default function GoalSetupForm({
@@ -56,16 +56,19 @@ export default function GoalSetupForm({
 
   function update(i: number, field: keyof GoalDraft, value: unknown) {
     setGoals(prev => prev.map((g, idx) => idx === i ? { ...g, [field]: value } : g))
+    if (error) setError('')
   }
 
   function addGoal() {
     if (goals.length >= 8) return
     setGoals(prev => [...prev, emptyGoal()])
+    if (error) setError('')
   }
 
   function removeGoal(i: number) {
     if (goals.length <= 1) return
     setGoals(prev => prev.filter((_, idx) => idx !== i))
+    if (error) setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -87,8 +90,19 @@ export default function GoalSetupForm({
       }
     }
     setSubmitting(true)
-    try { await onSubmit(filled) }
-    catch (err) { setError(String(err)); setSubmitting(false) }
+    try {
+      const result = await onSubmit(filled)
+      if (result?.error) {
+        setError(result.error)
+        setSubmitting(false)
+      }
+      // On success, the server action redirects — no need to clear submitting state
+    } catch (err) {
+      // Fallback for unexpected throws (network, framework errors, etc.)
+      console.error('[GoalSetupForm] unexpected error:', err)
+      setError('Something went wrong. Check your connection and try again.')
+      setSubmitting(false)
+    }
   }
 
   return (
