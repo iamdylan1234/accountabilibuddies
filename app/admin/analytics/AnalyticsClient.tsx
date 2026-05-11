@@ -64,6 +64,16 @@ export default function AnalyticsClient(props: Props) {
         </div>
       </div>
 
+      {/* Hero KPIs intro */}
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <p className="text-xs font-black text-gray-400 uppercase tracking-wide">At-a-glance health</p>
+        <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+          Snapshot of the product&apos;s pulse. <strong>Activated %</strong> under 50 hints at an onboarding leak.
+          {' '}<strong>DAU / Total</strong> ratio above 30% is sticky (healthy for a daily-habit app).
+          {' '}<strong>Engaged pairs</strong> is the truest signal — buddy relationships that are actually functioning.
+        </p>
+      </div>
+
       {/* Hero KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Kpi label="Total users" value={props.hero.totalUsers} />
@@ -77,7 +87,10 @@ export default function AnalyticsClient(props: Props) {
       </div>
 
       {/* Trajectory */}
-      <Card title="Engagement — last 30 days">
+      <Card
+        title="Engagement — last 30 days"
+        description="Daily check-in volume (blue) and unique users (teal). Climbing lines = real growth. Flat = plateau. Diverging — check-ins up but users flat — means your core users are intensifying. Sustained downward trend usually means notifications are missing."
+      >
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={props.trajectory}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -95,7 +108,10 @@ export default function AnalyticsClient(props: Props) {
       </Card>
 
       {/* Funnel */}
-      <Card title="Funnel — drop-off by stage">
+      <Card
+        title="Funnel — drop-off by stage"
+        description="Where users die between signup and active use. The biggest red number is your biggest leak. 'In challenge → Set goals' drop = users don't know what goals to set (templates would help). 'First check-in → Active 3d' drop = retention problem (push notifications fix most of these)."
+      >
         <div className="space-y-2">
           {props.funnel.map((stage, i) => {
             const prev = i === 0 ? null : props.funnel[i - 1].count
@@ -120,7 +136,10 @@ export default function AnalyticsClient(props: Props) {
       </Card>
 
       {/* Goal mix */}
-      <Card title="Goal mix + completion rate">
+      <Card
+        title="Goal mix + completion rate"
+        description="What people choose and how well they stick to it. Low count on a type = not discoverable enough. Low completion (<30%) on a type = users set them too ambitiously OR the UX makes checking in painful. Compare across types to spot which goal types your users actually finish."
+      >
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={props.goalMix}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -145,7 +164,10 @@ export default function AnalyticsClient(props: Props) {
       </Card>
 
       {/* Pair health */}
-      <Card title="Pair health (anonymised)">
+      <Card
+        title="Pair health (anonymised)"
+        description="How balanced each buddy pair is. Both columns roughly equal = healthy. One side at zero = ghost pair (the engaged person will eventually quit because their buddy isn't showing up). Big gap = lopsided — the active partner may feel they're carrying the relationship."
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -176,7 +198,10 @@ export default function AnalyticsClient(props: Props) {
       </Card>
 
       {/* User table */}
-      <Card title="Users (anonymised)">
+      <Card
+        title="Users (anonymised)"
+        description="Per-user activity status. 'never' = onboarding cliff — signed up but never checked in (the biggest fixable leak right now). 'lapsed' = was engaged, then stopped (push notifications would catch most of these). 'engaged' = your core users. Sorted by days active so power users surface first."
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -223,11 +248,14 @@ function Kpi({ label, value }: { label: string; value: number | string }) {
   )
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-xl shadow-sm p-4">
-      <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">{title}</p>
-      {children}
+      <p className="text-xs font-black text-gray-400 uppercase tracking-wide">{title}</p>
+      {description && (
+        <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{description}</p>
+      )}
+      <div className="mt-3">{children}</div>
     </div>
   )
 }
