@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Goal, CheckIn, Profile, GoalChangeRequest } from '@/types/database'
 import { scoreChallenge, scoreGoal, getCurrentStreak, getMissedDays } from '@/lib/scoring'
+import { formatDate } from '@/lib/dateUtils'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
@@ -160,9 +161,14 @@ interface Props {
 export default function ScoreSummary({
   myGoals, buddyGoals, myCheckIns, buddyCheckIns,
   myProfile, buddyProfile, totalDays, challengeName, isComplete,
-  startDate, endDate, today, challengeId, myId, pendingRequests,
+  startDate, endDate, today: serverToday, challengeId, myId, pendingRequests,
   isHistorical = false, backHref,
 }: Props) {
+  // For active challenges, recompute today in the user's local timezone.
+  // The server passes UTC date which can be a day off for non-UTC users
+  // (e.g. NZ at 7am local = 7pm previous day UTC) and undercounts missed days.
+  // For historical views, the server passes end_date, which is correct as-is.
+  const today = isHistorical ? serverToday : formatDate(new Date())
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today, true)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today, true)
   const iWon = myScore > buddyScore
