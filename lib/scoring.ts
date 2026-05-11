@@ -211,14 +211,17 @@ export function getMissedDays(
   checkIns: CheckIn[],
   today: string,
   challengeStart: string,
+  lookbackDays: number = 7,
 ): number {
   if (goal.type === 'cumulative' || goal.type === 'milestone') return 0
 
   const [ty, tm, td] = today.split('-').map(Number)
   const yesterday = formatDate(new Date(ty, tm - 1, td - 1))
 
-  // 7-day lookback window: the later of (challengeStart) and (today − 7 days)
-  const lookbackDate = new Date(ty, tm - 1, td - 7)
+  // Lookback window: the later of (challengeStart) and (today − lookbackDays).
+  // Default 7 days for Today-tab urgency view; pass a large number (e.g. 9999)
+  // from Summary contexts to get the full lifetime missed-day count.
+  const lookbackDate = new Date(ty, tm - 1, td - lookbackDays)
   const lookbackFormatted = formatDate(lookbackDate)
   const lookbackStart = lookbackFormatted > challengeStart ? lookbackFormatted : challengeStart
 

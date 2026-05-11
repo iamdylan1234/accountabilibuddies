@@ -253,14 +253,14 @@ export default function ScoreSummary({
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
                   totalDays={totalDays} startDate={startDate} today={today}
                   pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, myCheckIns, today, startDate)}
+                  missedDays={getMissedDays(goal, myCheckIns, today, startDate, 9999)}
                   onOpen={setSheet} />
               ))}
               buddyColumn={buddyDailyGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
                   totalDays={totalDays} startDate={startDate} today={today}
                   pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate)}
+                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate, 9999)}
                   onOpen={setSheet} />
               ))}
             />
@@ -276,14 +276,14 @@ export default function ScoreSummary({
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
                   totalDays={totalDays} startDate={startDate} today={today}
                   pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, myCheckIns, today, startDate)}
+                  missedDays={getMissedDays(goal, myCheckIns, today, startDate, 9999)}
                   onOpen={setSheet} />
               ))}
               buddyColumn={buddyTargetGoals.map(goal => (
                 <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
                   totalDays={totalDays} startDate={startDate} today={today}
                   pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate)}
+                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate, 9999)}
                   onOpen={setSheet} />
               ))}
             />
