@@ -73,7 +73,21 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
+              <p className="text-red-600 text-sm font-medium">
+                {/^invalid (login credentials|email or password)/i.test(error)
+                  ? 'Email or password is incorrect.'
+                  : error}
+              </p>
+              <Link
+                href="/auth/forgot-password"
+                className="inline-block mt-1 text-xs font-bold text-teal-600 hover:text-teal-700"
+              >
+                Forgot your password? Reset it →
+              </Link>
+            </div>
+          )}
 
           <button
             type="submit"
