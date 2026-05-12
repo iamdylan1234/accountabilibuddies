@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useTransition } from 'react'
 import type { Goal, CheckIn } from '@/types/database'
 import GoalEditButton from '@/components/wrap-up/GoalEditButton'
 import { BRAND_GRADIENT } from '@/lib/brand'
-import { formatYMD } from '@/lib/dateUtils'
+import { formatDate, formatYMD } from '@/lib/dateUtils'
 import { toggleCheckIn } from '@/app/dashboard/checkin-actions'
 
 interface Props {
@@ -33,12 +33,15 @@ function parseYM(s: string): [number, number] {
 }
 
 type DayState =
-  | 'done'         // completed past/today
-  | 'missed'       // scheduled, not completed, in the past
+  | 'done'         // scheduled, completed
+  | 'missed'       // scheduled past, not completed
   | 'today-open'   // scheduled today, not yet done
   | 'future'       // scheduled future day
+  | 'makeup'       // NON-scheduled day with completion, when an earlier scheduled miss exists
+  | 'extra'        // NON-scheduled day with completion, no pending misses
+  | 'open'         // NON-scheduled in-range day, no completion (tappable to add)
   | 'value'        // cumulative: logged value
-  | 'blank'        // not scheduled or out of challenge range
+  | 'blank'        // out of challenge range
 
 const GOAL_TYPE_LABEL: Record<string, string> = {
   daily: 'Daily', frequency: 'Frequency',
@@ -107,6 +110,36 @@ export default function GoalCalendarSheet({
     else effectiveDoneSet.delete(d)
   }
 
+  // For frequency goals: classify each non-scheduled completion as 'makeup' (compensates
+  // for an earlier missed scheduled day) or 'extra' (bonus credit, no misses pending).
+  // Walks the challenge timeline in order, tracking pending misses.
+  const nonScheduledClassification: Record<string, 'makeup' | 'extra'> = {}
+  if (goal.type === 'frequency' && goal.schedule_dates && goal.schedule_dates.length > 0) {
+    const scheduleSet = new Set(goal.schedule_dates)
+    const [sy, sm, sd] = startDate.split('-').map(Number)
+    const [ey, em, ed] = endDate.split('-').map(Number)
+    const cursor = new Date(sy, sm - 1, sd)
+    const stopAt = new Date(ey, em - 1, ed)
+    let pendingMisses = 0
+    while (cursor <= stopAt) {
+      const ds = formatDate(cursor)
+      if (ds > today) break
+      const scheduled = scheduleSet.has(ds)
+      const completed = effectiveDoneSet.has(ds)
+      if (scheduled && !completed) {
+        pendingMisses++
+      } else if (!scheduled && completed) {
+        if (pendingMisses > 0) {
+          nonScheduledClassification[ds] = 'makeup'
+          pendingMisses--
+        } else {
+          nonScheduledClassification[ds] = 'extra'
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1)
+    }
+  }
+
   const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate()
   const firstDow = (new Date(curYear, curMonth, 1).getDay() + 6) % 7 // 0 = Mon
 
@@ -134,7 +167,15 @@ export default function GoalCalendarSheet({
       !goal.schedule_dates || goal.schedule_dates.length === 0 ||
       goal.schedule_dates.includes(dateStr)
 
-    if (!isScheduled) return 'blank'
+    if (!isScheduled) {
+      // Non-scheduled: check for completion, classify as makeup/extra/open
+      if (effectiveDoneSet.has(dateStr)) {
+        return nonScheduledClassification[dateStr] ?? 'extra'
+      }
+      // Non-scheduled, no completion. Tappable if in-range and past/today.
+      if (goal.type === 'frequency' && dateStr <= today) return 'open'
+      return 'blank'
+    }
     if (effectiveDoneSet.has(dateStr)) return 'done'
     if (dateStr === today) return 'today-open'
     if (dateStr > today) return 'future'
@@ -142,7 +183,7 @@ export default function GoalCalendarSheet({
   }
 
   function handleDayToggle(dateStr: string) {
-    if (!isOwn || isHistorical || dateStr > today) return
+    if (!isOwn || isHistorical || dateStr > today || dateStr < startDate) return
     const currentlyDone = effectiveDoneSet.has(dateStr)
     // Optimistic update
     setLocalOverrides(prev => new Map(prev).set(dateStr, !currentlyDone))
@@ -292,19 +333,27 @@ export default function GoalCalendarSheet({
               const circleStyle: React.CSSProperties =
                 state === 'done'
                   ? { background: BRAND_GRADIENT }
+                  : state === 'makeup'
+                  ? { background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)' }
+                  : state === 'extra'
+                  ? { background: 'linear-gradient(135deg, #5eead4 0%, #2dd4bf 100%)' }
                   : state === 'missed'
                   ? { background: '#fee2e2', border: '2px solid #fca5a5' }
                   : state === 'today-open'
                   ? { background: 'transparent', border: '2px solid #00C9A7' }
+                  : state === 'open'
+                  ? { background: 'transparent', border: '1px dashed #cbd5e1' }
                   : { background: 'transparent', border: '2px solid #bae6fd' } // future
 
               const textCls =
-                state === 'done'
+                state === 'done' || state === 'makeup' || state === 'extra'
                   ? 'text-white font-bold'
                   : state === 'missed'
                   ? 'text-red-400 font-bold'
                   : state === 'today-open'
                   ? 'text-teal-600 font-bold'
+                  : state === 'open'
+                  ? 'text-gray-300'
                   : 'text-blue-300 font-semibold'
 
               const ringCls = isToday
@@ -336,7 +385,7 @@ export default function GoalCalendarSheet({
 
         {/* Legend */}
         {goal.type !== 'cumulative' && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BRAND_GRADIENT }} />
               Done
@@ -345,9 +394,21 @@ export default function GoalCalendarSheet({
               <span className="w-3 h-3 rounded-full flex-shrink-0 bg-red-100 border border-red-300" />
               Missed
             </span>
+            {goal.type === 'frequency' && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }} />
+                  Make-up
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #5eead4, #2dd4bf)' }} />
+                  Extra
+                </span>
+              </>
+            )}
             {goal.type !== 'milestone' && (
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full flex-shrink-0 border border-sky-200" />
+                <span className="w-3 h-3 rounded-full flex-shrink-0 border-2 border-blue-200" />
                 Upcoming
               </span>
             )}
