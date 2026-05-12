@@ -11,29 +11,47 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <div
-        className="flex flex-col items-center justify-center flex-1 text-white px-6 py-24 text-center"
+        className="relative flex flex-col items-center justify-center flex-1 text-white px-6 py-24 text-center overflow-hidden"
         style={{ background: BRAND_GRADIENT }}
       >
-        <h1 className="text-5xl font-black tracking-tight mb-4">
-          Accountabilibuddies
-        </h1>
-        <p className="text-xl text-white/80 max-w-md mb-10">
-          Set goals. Track daily. Hold each other accountable. One month at a time.
-        </p>
-        <div className="flex gap-4">
-          <Link
-            href="/auth/signup"
-            className="px-8 py-3 rounded-full font-bold text-sm"
-            style={{ background: '#F9F871', color: '#0077B6' }}
-          >
-            Get started
-          </Link>
-          <Link
-            href="/auth/login"
-            className="px-8 py-3 rounded-full font-bold text-sm bg-white/20 hover:bg-white/30 transition"
-          >
-            Log in
-          </Link>
+        {/* Yellow halo glow behind the logo */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            top: '22%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '420px',
+            height: '420px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(249,248,113,0.28) 0%, rgba(249,248,113,0) 65%)',
+          }}
+        />
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-32 h-32 rounded-3xl overflow-hidden bg-white shadow-xl mb-8 p-2.5">
+            <img src="/icon.png" alt="Accountabilibuddies" className="w-full h-full object-contain" />
+          </div>
+          <h1 className="text-5xl font-black tracking-tight mb-2 leading-none">
+            2 mates.
+          </h1>
+          <h1 className="text-5xl font-black tracking-tight mb-10 leading-none">
+            No excuses.
+          </h1>
+          <div className="flex gap-3">
+            <Link
+              href="/auth/signup"
+              className="px-7 py-3 rounded-full font-bold text-sm transition active:scale-95"
+              style={{ background: '#F9F871', color: '#0077B6', boxShadow: '0 4px 16px rgba(249,248,113,0.35)' }}
+            >
+              Start a month →
+            </Link>
+            <Link
+              href="/auth/login"
+              className="px-7 py-3 rounded-full font-bold text-sm border-2 border-white/40 hover:bg-white/10 transition"
+            >
+              Log in
+            </Link>
+          </div>
         </div>
       </div>
 

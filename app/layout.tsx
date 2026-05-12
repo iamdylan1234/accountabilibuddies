@@ -8,13 +8,23 @@ import { getAvatarUrl } from '@/lib/avatar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Accountabilibuddies',
-  description: 'Track goals with your accountability buddy',
-  icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
-  },
+  title: 'Accountabilibuddies — 2 mates. No excuses.',
+  description: 'Pair up with one buddy. Set monthly goals. Check in daily. Real accountability between two people.',
   manifest: '/manifest.json',
+  // Next.js auto-detects app/icon.png and app/apple-icon.png — no explicit icons block needed.
+  themeColor: '#00C9A7',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Buddies',
+  },
+  openGraph: {
+    title: 'Accountabilibuddies',
+    description: '2 mates. No excuses.',
+    url: 'https://accountabilibuddies.vercel.app',
+    siteName: 'Accountabilibuddies',
+    type: 'website',
+  },
 }
 
 export default async function RootLayout({

@@ -1,17 +1,36 @@
 {
   "name": "Accountabilibuddies",
   "short_name": "Buddies",
-  "description": "Track goals with your accountability buddy",
+  "description": "2 mates. No excuses. Track goals with your accountability buddy.",
   "start_url": "/dashboard",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#00C9A7",
-  "theme_color": "#0077B6",
+  "theme_color": "#00C9A7",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

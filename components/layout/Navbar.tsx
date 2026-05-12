@@ -24,9 +24,14 @@ export default function Navbar({ avatarUrl }: Props) {
         className="w-full px-4 py-3 flex items-center justify-between"
         style={{ background: BRAND_GRADIENT }}
       >
-        <span className="text-white font-black text-lg tracking-tight">
-          Accountabilibuddies
-        </span>
+        <Link href="/dashboard" className="flex items-center gap-2.5 -my-1">
+          <span className="w-8 h-8 rounded-lg overflow-hidden bg-white shadow-sm flex-shrink-0">
+            <img src="/icon.png" alt="" className="w-full h-full object-contain" />
+          </span>
+          <span className="text-white font-black text-lg tracking-tight">
+            Accountabilibuddies
+          </span>
+        </Link>
 
         {/* Avatar circle → /profile */}
         <Link
