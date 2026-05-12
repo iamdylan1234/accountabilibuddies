@@ -1,23 +1,56 @@
+import { BRAND_GRADIENT } from '@/lib/brand'
+
 export default function DashboardLoading() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 animate-pulse">
-      {/* Header card */}
-      <div className="rounded-2xl p-6 mb-6 h-28 bg-gray-200" />
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center text-white px-6 overflow-hidden"
+      style={{ background: BRAND_GRADIENT }}
+    >
+      {/* Yellow halo glow behind logo */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          top: '32%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '420px',
+          height: '420px',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle, rgba(249,248,113,0.30) 0%, rgba(249,248,113,0) 65%)',
+        }}
+      />
 
-      <div className="grid grid-cols-2 gap-4">
-        {[0, 1].map(col => (
-          <div key={col}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="h-5 w-16 bg-gray-200 rounded-full" />
-              <div className="h-6 w-20 bg-gray-200 rounded-full" />
-            </div>
-            <div className="space-y-2">
-              {[0, 1, 2, 3, 4].map(i => (
-                <div key={i} className="h-12 bg-gray-100 rounded-xl" />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="relative z-10 flex flex-col items-center">
+        {/* Logo card */}
+        <div className="w-36 h-36 rounded-3xl overflow-hidden bg-white shadow-xl mb-9 p-2.5">
+          <img
+            src="/icon.png"
+            alt="Accountabilibuddies"
+            className="w-full h-full object-contain"
+          />
+        </div>
+
+        {/* Headline */}
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none text-center mb-2">
+          2 mates.
+        </h1>
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none text-center">
+          No excuses.
+        </h1>
+      </div>
+
+      {/* Wordmark */}
+      <div
+        className="absolute z-10 text-[10px] font-bold tracking-[2.5px] uppercase"
+        style={{
+          bottom: '36px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: 'rgba(255,255,255,0.5)',
+        }}
+      >
+        accountabilibuddies
       </div>
     </div>
   )
