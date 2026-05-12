@@ -212,11 +212,13 @@ export function getMissedDays(
   today: string,
   challengeStart: string,
   lookbackDays: number = 7,
+  endOffset: number = 1,
 ): number {
   if (goal.type === 'cumulative' || goal.type === 'milestone') return 0
 
   const [ty, tm, td] = today.split('-').map(Number)
-  const yesterday = formatDate(new Date(ty, tm - 1, td - 1))
+  // endOffset = 1 (default) → end at yesterday; endOffset = 2 → end at day-before-yesterday
+  const yesterday = formatDate(new Date(ty, tm - 1, td - endOffset))
 
   // Lookback window: the later of (challengeStart) and (today − lookbackDays).
   // Default 7 days for Today-tab urgency view; pass a large number (e.g. 9999)
@@ -243,7 +245,7 @@ export function getMissedDays(
   let missed = 0
   const [ls, lm, ld] = lookbackStart.split('-').map(Number)
   const cursor = new Date(ls, lm - 1, ld)
-  const end = new Date(ty, tm - 1, td - 1)
+  const end = new Date(ty, tm - 1, td - endOffset)
   while (cursor <= end) {
     if (!doneSet.has(formatDate(cursor))) missed++
     cursor.setDate(cursor.getDate() + 1)

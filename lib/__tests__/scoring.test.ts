@@ -372,4 +372,21 @@ describe('getMissedDays', () => {
   it('frequency: no schedule_dates returns 0', () => {
     expect(getMissedDays(baseGoal('frequency'), [], '2026-05-07', '2026-05-01')).toBe(0)
   })
+
+  it('daily: endOffset=2 excludes yesterday from the count', () => {
+    // Today May 7, challenge May 1, no check-ins. With endOffset=2, we count May 1–5 (5 days).
+    expect(getMissedDays(daily(), [], '2026-05-07', '2026-05-01', 7, 2)).toBe(5)
+  })
+
+  it('daily: endOffset=1 (default) includes yesterday', () => {
+    // Same scenario; default endOffset=1 means we count May 1–6 (6 days).
+    expect(getMissedDays(daily(), [], '2026-05-07', '2026-05-01')).toBe(6)
+  })
+
+  it('frequency: endOffset=2 excludes yesterday scheduled date', () => {
+    // dates: May 5 (day-before-yesterday) and May 6 (yesterday). Both missed.
+    // With endOffset=2, only May 5 counts → 1.
+    const goal = freq(['2026-05-05', '2026-05-06'])
+    expect(getMissedDays(goal, [], '2026-05-07', '2026-05-01', 7, 2)).toBe(1)
+  })
 })

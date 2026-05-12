@@ -45,6 +45,8 @@ export default function DashboardClient({
   const now = new Date()
   const today = formatDate(now)
   const [ty, tm, td] = today.split('-').map(Number)
+  const yesterdayDate = new Date(ty, tm - 1, td - 1)
+  const yesterday = formatDate(yesterdayDate)
   const todayMidnight = new Date(ty, tm - 1, td)
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
@@ -55,8 +57,8 @@ export default function DashboardClient({
   const { isRefreshing } = useDashboardRealtime(myId, buddy?.id, messageSheetOpen)
   const { optimisticCheckIns, failedGoals, handleToggle } = useCheckInToggle(myCheckIns, myId, today)
 
-  function getCheckIn(goalId: string, checkIns: CheckIn[]) {
-    return checkIns.find(c => c.goal_id === goalId && c.date === today) ?? null
+  function getCheckIn(goalId: string, checkIns: CheckIn[], date: string = today) {
+    return checkIns.find(c => c.goal_id === goalId && c.date === date) ?? null
   }
 
   function getRemaining(goal: Goal, checkIns: CheckIn[]): number | undefined {
@@ -71,7 +73,8 @@ export default function DashboardClient({
   }
 
   function missedCount(goal: Goal, checkIns: CheckIn[]): number {
-    return getMissedDays(goal, checkIns, today, challenge.start_date)
+    // endOffset=2 means we don't count yesterday — yesterday gets its own card.
+    return getMissedDays(goal, checkIns, today, challenge.start_date, 7, 2)
   }
 
   // Section 1: Today's Goals — daily goals + frequency goals scheduled today
@@ -83,6 +86,30 @@ export default function DashboardClient({
     g.type === 'daily' ||
     (g.type === 'frequency' && g.schedule_dates?.includes(today))
   )
+
+  // Yesterday's missed scheduled goals — appear inline on Today tab with a YESTERDAY badge.
+  // Filter: yesterday is in range AND was scheduled AND wasn't completed yesterday.
+  const yesterdayInRange = yesterday >= challenge.start_date
+
+  const myYesterdayGoals = !yesterdayInRange ? [] : myGoals.filter(g => {
+    const wasScheduled = g.type === 'daily' ||
+      (g.type === 'frequency' && g.schedule_dates?.includes(yesterday))
+    if (!wasScheduled) return false
+    const doneYesterday = optimisticCheckIns.some(
+      c => c.goal_id === g.id && c.date === yesterday && c.completed
+    )
+    return !doneYesterday
+  })
+
+  const buddyYesterdayGoals = !yesterdayInRange ? [] : buddyGoals.filter(g => {
+    const wasScheduled = g.type === 'daily' ||
+      (g.type === 'frequency' && g.schedule_dates?.includes(yesterday))
+    if (!wasScheduled) return false
+    const doneYesterday = buddyCheckIns.some(
+      c => c.goal_id === g.id && c.date === yesterday && c.completed
+    )
+    return !doneYesterday
+  })
 
   // Section 2: Optional — frequency (not scheduled today) + cumulative; catch-up rendered red
   const myOptionalGoals = myGoals.filter(g =>
@@ -161,6 +188,7 @@ export default function DashboardClient({
       <div className="mt-4 space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
+          myYesterdayGoals.length > 0 || buddyYesterdayGoals.length > 0 ||
           myGoals.some(g => g.type === 'frequency' && missedCount(g, optimisticCheckIns) > 0) ||
           buddyGoals.some(g => g.type === 'frequency' && missedCount(g, buddyCheckIns) > 0)) && (() => {
           const myMissedIds = new Set(
@@ -189,6 +217,12 @@ export default function DashboardClient({
                         onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
                       />
                     )),
+                  ...myYesterdayGoals.map(goal => (
+                    <GoalCard key={`yest-${goal.id}`} goal={goal}
+                      checkIn={getCheckIn(goal.id, optimisticCheckIns, yesterday)} reaction={null}
+                      isMyGoal={true} today={today} onToggle={(goalId) => handleToggle(goalId, yesterday)}
+                      isYesterday={true} />
+                  )),
                   // Today's regular goal cards — shown even when a missed tile exists
                   // for the same goal, so users can mark today done without first
                   // resolving the outstanding miss.
@@ -213,6 +247,13 @@ export default function DashboardClient({
                         onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
                       />
                     )),
+                  ...buddyYesterdayGoals.map(goal => (
+                    <GoalCard key={`yest-${goal.id}`} goal={goal}
+                      checkIn={getCheckIn(goal.id, buddyCheckIns, yesterday)}
+                      reaction={getReaction(getCheckIn(goal.id, buddyCheckIns, yesterday)?.id)}
+                      isMyGoal={false} today={today} onToggle={handleToggle}
+                      isYesterday={true} />
+                  )),
                   ...buddyTodayGoals.map(goal => (
                     <GoalCard key={goal.id} goal={goal}
                       checkIn={getCheckIn(goal.id, buddyCheckIns)}

@@ -5,10 +5,8 @@ import type { CheckIn } from '@/types/database'
 /**
  * Manages optimistic check-in state for the current user's goals.
  *
- * Returns:
- * - `optimisticCheckIns` — the check-in list with pending toggles applied
- * - `failedGoals`        — set of goalIds whose last toggle failed (shown in error state for 3 s)
- * - `handleToggle`       — call with a goalId to optimistically toggle today's check-in
+ * `handleToggle(goalId, date?)` — date defaults to today, but can be passed
+ * (e.g., yesterday) to log a check-in for a different date.
  */
 export function useCheckInToggle(myCheckIns: CheckIn[], myId: string, today: string) {
   const [, startTransition] = useTransition()
@@ -16,15 +14,15 @@ export function useCheckInToggle(myCheckIns: CheckIn[], myId: string, today: str
 
   const [optimisticCheckIns, applyOptimistic] = useOptimistic(
     myCheckIns,
-    (state: CheckIn[], { goalId, action }: { goalId: string; action: 'add' | 'remove' }) => {
+    (state: CheckIn[], { goalId, date, action }: { goalId: string; date: string; action: 'add' | 'remove' }) => {
       if (action === 'remove') {
-        return state.filter(c => !(c.goal_id === goalId && c.date === today))
+        return state.filter(c => !(c.goal_id === goalId && c.date === date))
       }
       return [...state, {
-        id: `optimistic-${goalId}`,
+        id: `optimistic-${goalId}-${date}`,
         goal_id: goalId,
         user_id: myId,
-        date: today,
+        date,
         completed: true,
         value: null,
         created_at: '',
@@ -32,14 +30,13 @@ export function useCheckInToggle(myCheckIns: CheckIn[], myId: string, today: str
     }
   )
 
-  function handleToggle(goalId: string) {
-    const existing = optimisticCheckIns.find(c => c.goal_id === goalId && c.date === today)
+  function handleToggle(goalId: string, date: string = today) {
+    const existing = optimisticCheckIns.find(c => c.goal_id === goalId && c.date === date)
     startTransition(async () => {
-      applyOptimistic({ goalId, action: existing ? 'remove' : 'add' })
-      const result = await toggleCheckIn(goalId, today)
+      applyOptimistic({ goalId, date, action: existing ? 'remove' : 'add' })
+      const result = await toggleCheckIn(goalId, date)
       if (result?.error) {
-        // Roll back the optimistic update and briefly mark the goal as failed
-        applyOptimistic({ goalId, action: existing ? 'add' : 'remove' })
+        applyOptimistic({ goalId, date, action: existing ? 'add' : 'remove' })
         setFailedGoals(prev => new Set([...prev, goalId]))
         setTimeout(() => setFailedGoals(prev => {
           const next = new Set(prev)
