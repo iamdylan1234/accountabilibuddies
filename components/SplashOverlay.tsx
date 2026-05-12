@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { BRAND_GRADIENT } from '@/lib/brand'
 
 const SESSION_FLAG = 'accountabilibuddies-splash-shown'
-const VISIBLE_MS = 1500
+const VISIBLE_MS = 2500
 const FADE_MS = 500
 
 export default function SplashOverlay() {
