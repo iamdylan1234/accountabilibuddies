@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { GoalType } from '@/types/database'
 
@@ -65,5 +66,11 @@ export async function saveGoals(
     return { error: `Could not save goals: ${insertError.message}` }
   }
 
+  // Invalidate the dashboard's cached render so the goals/challenge state is fresh
+  // when we redirect. Without this, mobile browsers (Safari iOS PWA in particular)
+  // can show the stale "create challenge" form instead of the "waiting for buddy" view.
+  revalidatePath('/dashboard')
+  revalidatePath('/week')
+  revalidatePath('/wrap-up')
   redirect('/dashboard')
 }

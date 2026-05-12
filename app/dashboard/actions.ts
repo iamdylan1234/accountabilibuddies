@@ -22,6 +22,7 @@ export async function createChallenge(formData: FormData) {
     .maybeSingle()
 
   if (existingPending) {
+    revalidatePath('/dashboard')
     redirect(`/setup?challenge=${existingPending.id}`)
   }
 
@@ -40,11 +41,19 @@ export async function createChallenge(formData: FormData) {
       month_name: monthName,
       start_date: startDate,
       end_date: endDate,
+      status: 'pending',
     })
     .select()
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[createChallenge] insert failed:', error)
+    throw new Error(`Couldn't create challenge: ${error.message}`)
+  }
+
+  // Invalidate the dashboard's cached render so the new challenge appears
+  // immediately on subsequent renders (avoids stale "create form" race on mobile).
+  revalidatePath('/dashboard')
   redirect(`/setup?challenge=${data.id}`)
 }
 

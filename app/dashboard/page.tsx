@@ -7,31 +7,44 @@ import PendingChallengeActions from '@/components/dashboard/PendingChallengeActi
 import type { ChallengeWithProfiles } from '@/types/database'
 import { BRAND_GRADIENT } from '@/lib/brand'
 
+// Force dynamic rendering — this page depends on the authenticated user's data
+// and must not be cached at the route level. Without this, mobile browsers
+// (esp. Safari iOS in PWA mode) can serve a stale "no challenge" version
+// to a user who has just created one.
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   // Prefer active challenge; fall back to pending only if no active challenge exists.
-  // Querying ['active','pending'] ordered by created_at would surface a newly-created
-  // pending challenge ahead of an older active one, showing the wrong "waiting" screen.
-  const { data: activeChallenge } = await supabase
+  // Use .maybeSingle() (not .single()) — .single() errors on 0 rows in some Postgrest
+  // edge cases and the error is harder to surface. maybeSingle returns null cleanly.
+  const { data: activeChallenge, error: activeErr } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
-  const { data: pendingChallenge } = !activeChallenge ? await supabase
+  if (activeErr) console.error('[DashboardPage] active challenge query failed:', activeErr)
+
+  const pendingResult = !activeChallenge ? await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
-    .single() : { data: null }
+    .maybeSingle() : { data: null, error: null }
+
+  const pendingChallenge = pendingResult.data
+  if (pendingResult.error) {
+    console.error('[DashboardPage] pending challenge query failed:', pendingResult.error)
+  }
 
   const challenge = activeChallenge ?? pendingChallenge
 
