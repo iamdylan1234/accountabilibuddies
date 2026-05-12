@@ -159,20 +159,27 @@ function GoalCard({
     ? { background: BRAND_GRADIENT }
     : { background: '#f9fafb' }
 
+  const hasFooter = streak >= 2
+  const streakPillClass = done
+    ? 'text-[10px] font-black px-2 py-0.5 rounded-full bg-white/25 text-white whitespace-nowrap'
+    : 'text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap'
+
   return (
     <button type="button" onClick={() => onOpen({ goal, checkIns: allCheckIns, isOwn })}
-      className={`w-full flex items-center gap-3 rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${
-        done ? 'text-white' : 'text-gray-700'
-      }`}
+      className={`w-full h-full flex flex-col rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${done ? 'text-white' : 'text-gray-700'}`}
       style={cardStyle}>
-      <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-        done ? 'border-white bg-white/30' : 'border-gray-300'
-      }`}>
-        {done && <span className="text-white text-xs font-bold">✓</span>}
-      </span>
-      <span className="text-sm font-semibold flex-1">{goal.title}</span>
-      {streak >= 2 && (
-        <span className={`text-xs font-bold ${done ? 'text-white/80' : 'text-orange-400'}`}>🔥{streak}</span>
+      <div className="flex items-center gap-3 w-full">
+        <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+          done ? 'border-white bg-white/30' : 'border-gray-300'
+        }`}>
+          {done && <span className="text-white text-xs font-bold">✓</span>}
+        </span>
+        <span className="text-sm font-semibold flex-1">{goal.title}</span>
+      </div>
+      {hasFooter && (
+        <div className="flex justify-end mt-auto pt-2">
+          <span className={streakPillClass}>🔥{streak}</span>
+        </div>
       )}
     </button>
   )
