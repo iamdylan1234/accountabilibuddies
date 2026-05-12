@@ -66,6 +66,7 @@ export default function GoalCalendarSheet({
   const [, startTransition] = useTransition()
   // localOverrides: date string → true (locally marked done) | false (locally removed)
   const [localOverrides, setLocalOverrides] = useState<Map<string, boolean>>(new Map())
+  const [toggleError, setToggleError] = useState<string | null>(null)
 
   // Slide-up animation
   const [mounted, setMounted] = useState(false)
@@ -187,11 +188,16 @@ export default function GoalCalendarSheet({
     const currentlyDone = effectiveDoneSet.has(dateStr)
     // Optimistic update
     setLocalOverrides(prev => new Map(prev).set(dateStr, !currentlyDone))
+    setToggleError(null)
     startTransition(async () => {
       const result = await toggleCheckIn(goal.id, dateStr)
       if (result?.error) {
-        // Roll back on failure
+        // Roll back on failure + surface the error so we can debug instead of swallowing it
         setLocalOverrides(prev => new Map(prev).set(dateStr, currentlyDone))
+        const msg = `Couldn't update ${dateStr}: ${result.error}`
+        console.error('[GoalCalendarSheet] toggle failed:', result.error, { goalId: goal.id, date: dateStr })
+        setToggleError(msg)
+        setTimeout(() => setToggleError(null), 5000)
       }
     })
   }
@@ -281,6 +287,13 @@ export default function GoalCalendarSheet({
               className="w-8 h-8 flex items-center justify-center rounded-full text-lg text-gray-500 disabled:opacity-20 hover:bg-gray-100 transition"
             >›</button>
           </div>
+
+          {/* Error banner — shown when a tap-to-log fails */}
+          {toggleError && (
+            <div className="mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+              <strong className="font-bold">Save failed:</strong> {toggleError.replace(/^Couldn't update [\d-]+: /, '')}
+            </div>
+          )}
 
           {/* Day-of-week labels */}
           <div className="grid grid-cols-7 mb-1">
