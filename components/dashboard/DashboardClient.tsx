@@ -181,8 +181,11 @@ export default function DashboardClient({
           const myTodayIds = new Set(myTodayGoals.map(g => g.id))
           const buddyTodayIds = new Set(buddyTodayGoals.map(g => g.id))
           return (
-            <div>
-              <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Today&apos;s Goals</p>
+            <section>
+              <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+                Today&apos;s Goals
+              </h2>
+              <div className="rounded-2xl bg-gray-50 p-3">
               <GoalPairGrid
                 myColumn={[
                   ...myGoals
@@ -232,14 +235,18 @@ export default function DashboardClient({
                   )),
                 ]}
               />
-            </div>
+              </div>
+            </section>
           )
         })()}
 
         {/* Section 2: Optional — frequency (not scheduled) + cumulative; catch-up shown red */}
         {(myOptionalGoals.length > 0 || buddyOptionalGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Optional</p>
+          <section>
+            <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+              Optional
+            </h2>
+            <div className="rounded-2xl bg-gray-50 p-3">
             <GoalPairGrid
               myColumn={myOptionalGoals.map(goal => goal.type === 'cumulative'
                 ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
@@ -264,13 +271,17 @@ export default function DashboardClient({
                       remaining={getRemaining(goal, buddyCheckIns)} />
               })}
             />
-          </div>
+            </div>
+          </section>
         )}
 
         {/* Section 3: Milestones */}
         {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
+          <section>
+            <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+              Milestones
+            </h2>
+            <div className="rounded-2xl bg-gray-50 p-3">
             <GoalPairGrid
               myColumn={myMilestoneGoals.map(goal => (
                 <GoalCard key={goal.id} goal={goal}
@@ -285,7 +296,8 @@ export default function DashboardClient({
                   onToggle={handleToggle} />
               })}
             />
-          </div>
+            </div>
+          </section>
         )}
       </div>
 

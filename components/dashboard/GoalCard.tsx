@@ -44,11 +44,13 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
     ? { background: '#fff1f2', border: '1.5px solid #fca5a5' }
     : {}
 
+  // Default tile is white — it sits inside a gray-50 section card, so the
+  // contrast comes from the section background, not the tile itself.
   const baseClass = done
     ? 'text-white'
     : isCatchUp
     ? 'text-red-600'
-    : 'bg-gray-50 text-gray-700'
+    : 'bg-white text-gray-700'
 
   // Decide which pills to show. `Failed` overrides `LATE` — you wouldn't say
   // both about the same tile, and Failed is the stronger signal.
@@ -70,13 +72,13 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   ].filter(Boolean).slice(0, 2)
   const hasFooter = visiblePills.length > 0
 
-  // Footer is anchored to the bottom via `mt-auto`. In a paired grid row where
-  // one tile has a footer and one doesn't, CSS grid stretches both to the taller
-  // tile's height — anchoring the footer at the bottom keeps titles aligned
-  // across the row, with whitespace falling naturally below the no-footer tile.
-  // No `flex-wrap` — pills stay in a single row (left-to-right), never stacked.
+  // Tile content (title row + optional footer) is vertically centered as a
+  // group via `justify-center` on the tile. For a stretched 1-row tile in a
+  // row with a 2-row partner, this puts the title in the middle of the tile
+  // rather than hugging the top — looks balanced regardless of word length
+  // or which paired tile is taller.
   const footer = hasFooter && (
-    <div className="flex justify-end gap-1.5 mt-auto pt-2">
+    <div className="flex justify-end gap-1.5">
       {visiblePills}
     </div>
   )
@@ -94,9 +96,9 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
     </div>
   )
 
-  // `h-full` makes the tile fill its grid cell so paired tiles in the same row
-  // share the same height when one has a footer and one doesn't.
-  const layoutClass = `w-full h-full flex flex-col rounded-xl px-4 py-3 transition ${hasFailed ? 'ring-2 ring-red-400 ring-offset-1' : ''} ${baseClass}`
+  // `h-full` makes the tile fill its grid cell so paired tiles share row
+  // height. `justify-center` vertically centers the content block.
+  const layoutClass = `w-full h-full flex flex-col justify-center rounded-xl px-4 py-3 transition ${hasFooter ? 'gap-2' : ''} ${hasFailed ? 'ring-2 ring-red-400 ring-offset-1' : ''} ${baseClass}`
 
   if (isMyGoal) {
     return (
