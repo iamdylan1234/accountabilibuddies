@@ -73,10 +73,11 @@ function SummaryGoalCard({
     subscript = complete ? 'Done' : 'Pending'
   }
 
-  // Flag wording: daily = "missed" (final), frequency = "late" (catch-up still possible)
+  // Flag wording: daily = "X days missed" (final). Frequency = "X to catch up"
+  // (action-oriented; avoids "late" which users misread as "1 day ago").
   const flagLabel = goal.type === 'daily'
     ? (missedDays === 1 ? '1 day missed' : `${missedDays} days missed`)
-    : (missedDays === 1 ? '1 day late' : `${missedDays} days late`)
+    : (missedDays === 1 ? '1 to catch up' : `${missedDays} to catch up`)
 
   return (
     <button

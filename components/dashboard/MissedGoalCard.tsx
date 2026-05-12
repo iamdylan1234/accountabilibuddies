@@ -8,7 +8,10 @@ interface Props {
 }
 
 export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen }: Props) {
-  const label = missedDays === 1 ? '1 day late' : `${missedDays} days late`
+  // For frequency goals (the only type that reaches this component today),
+  // the missed count is "outstanding sessions to catch up" — not "days overdue".
+  // Avoid the word "late" because users read it as "1 day ago" rather than "1 outstanding".
+  const label = missedDays === 1 ? '1 to catch up' : `${missedDays} to catch up`
 
   if (isMyGoal) {
     return (

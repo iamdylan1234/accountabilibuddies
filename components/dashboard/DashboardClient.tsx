@@ -189,16 +189,17 @@ export default function DashboardClient({
                         onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
                       />
                     )),
-                  ...myTodayGoals
-                    .filter(goal => !myMissedIds.has(goal.id))
-                    .map(goal => (
-                      <GoalCard key={goal.id} goal={goal}
-                        checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                        isMyGoal={true} today={today} onToggle={handleToggle}
-                        streak={getCurrentStreak(goal, myCheckIns, today)}
-                        remaining={getRemaining(goal, myCheckIns)}
-                        hasFailed={failedGoals.has(goal.id)} />
-                    )),
+                  // Today's regular goal cards — shown even when a missed tile exists
+                  // for the same goal, so users can mark today done without first
+                  // resolving the outstanding miss.
+                  ...myTodayGoals.map(goal => (
+                    <GoalCard key={goal.id} goal={goal}
+                      checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
+                      isMyGoal={true} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, myCheckIns, today)}
+                      remaining={getRemaining(goal, myCheckIns)}
+                      hasFailed={failedGoals.has(goal.id)} />
+                  )),
                 ]}
                 buddyColumn={[
                   ...buddyGoals
@@ -212,16 +213,14 @@ export default function DashboardClient({
                         onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
                       />
                     )),
-                  ...buddyTodayGoals
-                    .filter(goal => !buddyMissedIds.has(goal.id))
-                    .map(goal => (
-                      <GoalCard key={goal.id} goal={goal}
-                        checkIn={getCheckIn(goal.id, buddyCheckIns)}
-                        reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
-                        isMyGoal={false} today={today} onToggle={handleToggle}
-                        streak={getCurrentStreak(goal, buddyCheckIns, today)}
-                        remaining={getRemaining(goal, buddyCheckIns)} />
-                    )),
+                  ...buddyTodayGoals.map(goal => (
+                    <GoalCard key={goal.id} goal={goal}
+                      checkIn={getCheckIn(goal.id, buddyCheckIns)}
+                      reaction={getReaction(getCheckIn(goal.id, buddyCheckIns)?.id)}
+                      isMyGoal={false} today={today} onToggle={handleToggle}
+                      streak={getCurrentStreak(goal, buddyCheckIns, today)}
+                      remaining={getRemaining(goal, buddyCheckIns)} />
+                  )),
                 ]}
               />
             </div>
