@@ -77,6 +77,16 @@ export default function DashboardClient({
     return getMissedDays(goal, checkIns, today, challenge.start_date, 7, 1)
   }
 
+  // Count make-up check-ins logged today for a frequency goal. A "make-up" is
+  // a completion on a non-scheduled day; if today IS scheduled for this goal
+  // then a completion today is a regular check-in, not a make-up. Returning 0
+  // in that case keeps the locked/amber states mutually exclusive.
+  function caughtUpToday(goal: Goal, checkIns: CheckIn[]): number {
+    if (goal.type !== 'frequency') return 0
+    if (goal.schedule_dates?.includes(today)) return 0
+    return checkIns.filter(c => c.goal_id === goal.id && c.date === today && c.completed).length
+  }
+
   // Section 1: Today's Goals — daily goals + frequency goals scheduled today
   const myTodayGoals = myGoals.filter(g =>
     g.type === 'daily' ||
@@ -164,16 +174,18 @@ export default function DashboardClient({
       <div className="mt-4 space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
         {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
-          myGoals.some(g => g.type === 'frequency' && missedCount(g, optimisticCheckIns) > 0) ||
-          buddyGoals.some(g => g.type === 'frequency' && missedCount(g, buddyCheckIns) > 0)) && (() => {
+          myGoals.some(g => g.type === 'frequency' && (missedCount(g, optimisticCheckIns) > 0 || caughtUpToday(g, optimisticCheckIns) > 0)) ||
+          buddyGoals.some(g => g.type === 'frequency' && (missedCount(g, buddyCheckIns) > 0 || caughtUpToday(g, buddyCheckIns) > 0))) && (() => {
+          // A frequency goal earns a catch-up tile when EITHER pending misses
+          // exist OR the user has caught up at least one today (amber state).
           const myMissedIds = new Set(
             myGoals
-              .filter(g => g.type === 'frequency' && missedCount(g, optimisticCheckIns) > 0)
+              .filter(g => g.type === 'frequency' && (missedCount(g, optimisticCheckIns) > 0 || caughtUpToday(g, optimisticCheckIns) > 0))
               .map(g => g.id)
           )
           const buddyMissedIds = new Set(
             buddyGoals
-              .filter(g => g.type === 'frequency' && missedCount(g, buddyCheckIns) > 0)
+              .filter(g => g.type === 'frequency' && (missedCount(g, buddyCheckIns) > 0 || caughtUpToday(g, buddyCheckIns) > 0))
               .map(g => g.id)
           )
           // When today is ALSO a scheduled day for the same frequency goal, the
@@ -195,6 +207,7 @@ export default function DashboardClient({
                         key={`missed-${g.id}`}
                         goal={g}
                         missedDays={missedCount(g, optimisticCheckIns)}
+                        caughtUpToday={caughtUpToday(g, optimisticCheckIns)}
                         isMyGoal={true}
                         isLocked={myTodayIds.has(g.id)}
                         onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
@@ -220,6 +233,7 @@ export default function DashboardClient({
                         key={`missed-${g.id}`}
                         goal={g}
                         missedDays={missedCount(g, buddyCheckIns)}
+                        caughtUpToday={caughtUpToday(g, buddyCheckIns)}
                         isMyGoal={false}
                         isLocked={buddyTodayIds.has(g.id)}
                         onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
