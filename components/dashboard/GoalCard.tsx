@@ -1,6 +1,7 @@
 import ReactionPicker from './ReactionPicker'
 import type { Goal, CheckIn, Reaction } from '@/types/database'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { FEATURES } from '@/lib/featureFlags'
 
 interface Props {
   goal: Goal
@@ -92,8 +93,10 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
         {done && <span className="text-white text-xs font-bold">✓</span>}
       </span>
       <span className="text-sm font-semibold flex-1">{goal.title}</span>
-      {/* Buddy tile shows the reaction picker inline (it can't be tapped to toggle) */}
-      {!isMyGoal && done && checkIn && <ReactionPicker checkInId={checkIn.id} existingEmoji={reaction?.emoji} />}
+      {/* Buddy tile shows the reaction picker inline (it can't be tapped to toggle).
+          Gated by FEATURES.reactions — feature is currently off; component and
+          data flow preserved so flipping the flag is a one-line revert. */}
+      {FEATURES.reactions && !isMyGoal && done && checkIn && <ReactionPicker checkInId={checkIn.id} existingEmoji={reaction?.emoji} />}
     </div>
   )
 

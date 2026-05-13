@@ -6,6 +6,7 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import type { ChallengeWithProfiles } from '@/types/database'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { FEATURES } from '@/lib/featureFlags'
 
 // Force dynamic rendering — this page depends on the authenticated user's data
 // and must not be cached at the route level. Without this, mobile browsers
@@ -138,7 +139,9 @@ export default async function DashboardPage() {
     ...(buddyCheckInsRes.data ?? []),
   ].map(c => c.id)
 
-  const reactionsRes = allCheckInIds.length > 0
+  // Reactions fetch gated on FEATURES.reactions. When the flag is off, skip
+  // the network round trip entirely — no need to load data the UI won't render.
+  const reactionsRes = FEATURES.reactions && allCheckInIds.length > 0
     ? await supabase.from('reactions').select('*').in('check_in_id', allCheckInIds)
     : { data: [] }
 
