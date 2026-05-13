@@ -12,7 +12,7 @@ import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import { useDashboardRealtime } from './useDashboardRealtime'
 import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalCatchUp, getCurrentStreak, getMissedDays } from '@/lib/scoring'
+import { isGoalCatchUp, getCurrentStreak, getMissedDays, getTodayMakeupCount } from '@/lib/scoring'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 import { formatDate } from '@/lib/dateUtils'
 
@@ -77,14 +77,14 @@ export default function DashboardClient({
     return getMissedDays(goal, checkIns, today, challenge.start_date, 7, 1)
   }
 
-  // Count make-up check-ins logged today for a frequency goal. A "make-up" is
-  // a completion on a non-scheduled day; if today IS scheduled for this goal
-  // then a completion today is a regular check-in, not a make-up. Returning 0
-  // in that case keeps the locked/amber states mutually exclusive.
+  // Returns 1 if today's check-in is a make-up (a non-scheduled completion
+  // that consumes a pending earlier-missed scheduled day), 0 otherwise.
+  // Importantly: distinguishes make-up from "extra" — a non-scheduled
+  // completion when no pending miss exists is NOT a catch-up, so the amber
+  // tile shouldn't appear. Delegates to scoring.ts so the classification
+  // matches the Summary calendar exactly.
   function caughtUpToday(goal: Goal, checkIns: CheckIn[]): number {
-    if (goal.type !== 'frequency') return 0
-    if (goal.schedule_dates?.includes(today)) return 0
-    return checkIns.filter(c => c.goal_id === goal.id && c.date === today && c.completed).length
+    return getTodayMakeupCount(goal, checkIns, today, challenge.start_date)
   }
 
   // Section 1: Today's Goals — daily goals + frequency goals scheduled today

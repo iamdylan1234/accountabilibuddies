@@ -252,3 +252,51 @@ export function getMissedDays(
   }
   return missed
 }
+
+// For a FREQUENCY goal, return 1 if today's check-in is a "make-up" (a
+// non-scheduled-day completion that compensates for an earlier missed
+// scheduled day), or 0 if today is scheduled, has no check-in, or is just an
+// "extra" (no pending miss to make up). Mirrors the calendar's classification
+// logic in GoalCalendarSheet so the Today tile and Summary calendar agree on
+// whether today counts as a catch-up.
+export function getTodayMakeupCount(
+  goal: Goal,
+  checkIns: CheckIn[],
+  today: string,
+  startDate: string,
+): number {
+  if (goal.type !== 'frequency') return 0
+  if (!goal.schedule_dates || goal.schedule_dates.length === 0) return 0
+  if (goal.schedule_dates.includes(today)) return 0  // today scheduled — not a make-up case
+
+  const todayCompleted = checkIns.some(
+    c => c.goal_id === goal.id && c.date === today && c.completed
+  )
+  if (!todayCompleted) return 0
+
+  const scheduleSet = new Set(goal.schedule_dates)
+  const completedSet = new Set(
+    checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date)
+  )
+
+  // Walk the timeline from startDate up to (but not including) today, counting
+  // pending misses as we go. Each non-scheduled completion consumes a pending
+  // miss if one exists, otherwise is an "extra". If we arrive at today with
+  // pendingMisses > 0, today's completion makes one up.
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const cursor = new Date(sy, sm - 1, sd)
+  let pendingMisses = 0
+  while (true) {
+    const ds = formatDate(cursor)
+    if (ds >= today) break
+    const scheduled = scheduleSet.has(ds)
+    const completed = completedSet.has(ds)
+    if (scheduled && !completed) {
+      pendingMisses++
+    } else if (!scheduled && completed) {
+      if (pendingMisses > 0) pendingMisses--
+    }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return pendingMisses > 0 ? 1 : 0
+}
