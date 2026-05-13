@@ -12,7 +12,7 @@ import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import { useDashboardRealtime } from './useDashboardRealtime'
 import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalCatchUp, getCurrentStreak, getMissedDays, getTodayMakeupCount } from '@/lib/scoring'
+import { isGoalCatchUp, getCurrentStreak, getMissedDays, getCatchUpState } from '@/lib/scoring'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 import { formatDate } from '@/lib/dateUtils'
 
@@ -77,14 +77,11 @@ export default function DashboardClient({
     return getMissedDays(goal, checkIns, today, challenge.start_date, 7, 1)
   }
 
-  // Returns 1 if today's check-in is a make-up (a non-scheduled completion
-  // that consumes a pending earlier-missed scheduled day), 0 otherwise.
-  // Importantly: distinguishes make-up from "extra" — a non-scheduled
-  // completion when no pending miss exists is NOT a catch-up, so the amber
-  // tile shouldn't appear. Delegates to scoring.ts so the classification
-  // matches the Summary calendar exactly.
-  function caughtUpToday(goal: Goal, checkIns: CheckIn[]): number {
-    return getTodayMakeupCount(goal, checkIns, today, challenge.start_date)
+  // Catch-up state for a frequency goal — full-timeline walk that classifies
+  // today's check-in as makeup vs extra and reports the net pending misses
+  // AFTER today's makeup (if any) is applied. The Today tile uses both fields.
+  function catchUpFor(goal: Goal, checkIns: CheckIn[]) {
+    return getCatchUpState(goal, checkIns, today, challenge.start_date)
   }
 
   // Section 1: Today's Goals — daily goals + frequency goals scheduled today
@@ -173,20 +170,26 @@ export default function DashboardClient({
 
       <div className="mt-4 space-y-6">
         {/* Section 1: Today's Goals — daily + frequency scheduled today */}
-        {(myTodayGoals.length > 0 || buddyTodayGoals.length > 0 ||
-          myGoals.some(g => g.type === 'frequency' && (missedCount(g, optimisticCheckIns) > 0 || caughtUpToday(g, optimisticCheckIns) > 0)) ||
-          buddyGoals.some(g => g.type === 'frequency' && (missedCount(g, buddyCheckIns) > 0 || caughtUpToday(g, buddyCheckIns) > 0))) && (() => {
+        {(() => {
           // A frequency goal earns a catch-up tile when EITHER pending misses
           // exist OR the user has caught up at least one today (amber state).
+          // Pre-compute the catch-up state per goal so we evaluate the walk once.
+          const myCatchUp = new Map(
+            myGoals.filter(g => g.type === 'frequency').map(g => [g.id, catchUpFor(g, optimisticCheckIns)])
+          )
+          const buddyCatchUp = new Map(
+            buddyGoals.filter(g => g.type === 'frequency').map(g => [g.id, catchUpFor(g, buddyCheckIns)])
+          )
+          const hasMyCatchUp = [...myCatchUp.values()].some(s => s.caughtUpToday > 0 || s.netPending > 0)
+          const hasBuddyCatchUp = [...buddyCatchUp.values()].some(s => s.caughtUpToday > 0 || s.netPending > 0)
+          if (myTodayGoals.length === 0 && buddyTodayGoals.length === 0 && !hasMyCatchUp && !hasBuddyCatchUp) {
+            return null
+          }
           const myMissedIds = new Set(
-            myGoals
-              .filter(g => g.type === 'frequency' && (missedCount(g, optimisticCheckIns) > 0 || caughtUpToday(g, optimisticCheckIns) > 0))
-              .map(g => g.id)
+            [...myCatchUp.entries()].filter(([, s]) => s.caughtUpToday > 0 || s.netPending > 0).map(([id]) => id)
           )
           const buddyMissedIds = new Set(
-            buddyGoals
-              .filter(g => g.type === 'frequency' && (missedCount(g, buddyCheckIns) > 0 || caughtUpToday(g, buddyCheckIns) > 0))
-              .map(g => g.id)
+            [...buddyCatchUp.entries()].filter(([, s]) => s.caughtUpToday > 0 || s.netPending > 0).map(([id]) => id)
           )
           // When today is ALSO a scheduled day for the same frequency goal, the
           // catch-up tile becomes informational — user logs today's tile first.
@@ -202,17 +205,24 @@ export default function DashboardClient({
                 myColumn={[
                   ...myGoals
                     .filter(g => g.type === 'frequency' && myMissedIds.has(g.id))
-                    .map(g => (
-                      <MissedGoalCard
-                        key={`missed-${g.id}`}
-                        goal={g}
-                        missedDays={missedCount(g, optimisticCheckIns)}
-                        caughtUpToday={caughtUpToday(g, optimisticCheckIns)}
-                        isMyGoal={true}
-                        isLocked={myTodayIds.has(g.id)}
-                        onOpen={() => setSheet({ goal: g, checkIns: optimisticCheckIns, isOwn: true })}
-                      />
-                    )),
+                    .map(g => {
+                      const state = myCatchUp.get(g.id) ?? { caughtUpToday: 0, netPending: 0 }
+                      return (
+                        <MissedGoalCard
+                          key={`missed-${g.id}`}
+                          goal={g}
+                          missedDays={state.netPending}
+                          caughtUpToday={state.caughtUpToday}
+                          isMyGoal={true}
+                          isLocked={myTodayIds.has(g.id)}
+                          // One-tap catch-up: logs TODAY as a make-up check-in. No
+                          // calendar sheet — see Q1/Q3 design decision: missed
+                          // scheduled days are immutable, today is always the
+                          // make-up date.
+                          onOpen={() => handleToggle(g.id)}
+                        />
+                      )
+                    }),
                   // Today's regular goal cards — shown even when a missed tile exists
                   // for the same goal, so users can mark today done without first
                   // resolving the outstanding miss.
@@ -228,17 +238,21 @@ export default function DashboardClient({
                 buddyColumn={[
                   ...buddyGoals
                     .filter(g => g.type === 'frequency' && buddyMissedIds.has(g.id))
-                    .map(g => (
-                      <MissedGoalCard
-                        key={`missed-${g.id}`}
-                        goal={g}
-                        missedDays={missedCount(g, buddyCheckIns)}
-                        caughtUpToday={caughtUpToday(g, buddyCheckIns)}
-                        isMyGoal={false}
-                        isLocked={buddyTodayIds.has(g.id)}
-                        onOpen={() => setSheet({ goal: g, checkIns: buddyCheckIns, isOwn: false })}
-                      />
-                    )),
+                    .map(g => {
+                      const state = buddyCatchUp.get(g.id) ?? { caughtUpToday: 0, netPending: 0 }
+                      return (
+                        <MissedGoalCard
+                          key={`missed-${g.id}`}
+                          goal={g}
+                          missedDays={state.netPending}
+                          caughtUpToday={state.caughtUpToday}
+                          isMyGoal={false}
+                          isLocked={buddyTodayIds.has(g.id)}
+                          // Buddy tile is read-only; onOpen is never invoked.
+                          onOpen={() => {}}
+                        />
+                      )
+                    }),
                   ...buddyTodayGoals.map(goal => (
                     <GoalCard key={goal.id} goal={goal}
                       checkIn={getCheckIn(goal.id, buddyCheckIns)}
@@ -318,8 +332,14 @@ export default function DashboardClient({
       {/* Empty state — shown when no goals exist for today */}
       {myTodayGoals.length === 0 && myOptionalGoals.length === 0 && myMilestoneGoals.length === 0 &&
         buddyTodayGoals.length === 0 && buddyOptionalGoals.length === 0 && buddyMilestoneGoals.length === 0 &&
-        !myGoals.some(g => missedCount(g, optimisticCheckIns) > 0) &&
-        !buddyGoals.some(g => missedCount(g, buddyCheckIns) > 0) && (
+        !myGoals.some(g => {
+          const s = catchUpFor(g, optimisticCheckIns)
+          return s.caughtUpToday > 0 || s.netPending > 0
+        }) &&
+        !buddyGoals.some(g => {
+          const s = catchUpFor(g, buddyCheckIns)
+          return s.caughtUpToday > 0 || s.netPending > 0
+        }) && (
         <div className="text-center py-12 text-gray-400">
           <p className="text-3xl mb-2">🎉</p>
           <p className="font-semibold text-sm">No goals today</p>

@@ -84,8 +84,8 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen, isL
     return <div className={layout} style={style}>{body}</div>
   }
 
-  // Locked tile — button with tap-down feedback but a no-op handler; the
-  // "log today first" pill communicates the actual instruction.
+  // Locked tile — non-interactive (today's also scheduled, can't make up
+  // today). Button kept so user still gets tap-down feedback.
   if (isLocked) {
     return (
       <button type="button" onClick={() => {}}
@@ -96,7 +96,21 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen, isL
     )
   }
 
-  // Amber (caught-up) and red (pending) both open the calendar sheet on tap.
+  // Amber (caught up today) — non-interactive. Today's make-up is already
+  // logged; nothing more to do here. Matches the locked pattern.
+  if (isCaughtUp) {
+    return (
+      <button type="button" onClick={() => {}}
+        className={`${layout} text-left transition active:scale-95`}
+        style={style}>
+        {body}
+      </button>
+    )
+  }
+
+  // Red pending tile — ONE TAP logs today as a make-up. Parent wires onOpen
+  // to handleToggle(goalId), so this triggers a single-action catch-up: no
+  // calendar sheet, no date picker, the missed scheduled date stays missed.
   return (
     <button type="button" onClick={onOpen}
       className={`${layout} text-left transition active:scale-95 hover:opacity-90`}

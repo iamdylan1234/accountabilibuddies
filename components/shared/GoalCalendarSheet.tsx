@@ -376,7 +376,17 @@ export default function GoalCalendarSheet({
               return (
                 <div key={dateStr} className="flex flex-col items-center">
                   {(() => {
-                    const canToggle = isOwn && !isHistorical && dateStr <= today && state !== 'future'
+                    // Grace period: past dates beyond yesterday are immutable.
+                    // Users can fix today's tap or yesterday's miss within 24h,
+                    // but older history is locked — matches the "no retroactive
+                    // edits" rule from the Today-tab one-tap catch-up flow.
+                    const [ty, tm, td] = today.split('-').map(Number)
+                    const [dy, dm, dd] = dateStr.split('-').map(Number)
+                    const daysAgo = Math.round(
+                      (new Date(ty, tm - 1, td).getTime() - new Date(dy, dm - 1, dd).getTime()) / 86400000
+                    )
+                    const inGrace = daysAgo <= 1
+                    const canToggle = isOwn && !isHistorical && dateStr <= today && state !== 'future' && inGrace
                     const Tag = canToggle ? 'button' : 'div'
                     return (
                       <Tag
