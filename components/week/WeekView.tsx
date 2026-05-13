@@ -164,9 +164,15 @@ function GoalCard({
     ? 'text-[10px] font-black px-2 py-0.5 rounded-full bg-white/25 text-white whitespace-nowrap'
     : 'text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap'
 
+  // WeekView lays cards out in `grid grid-cols-2 gap-4` with `space-y-2`
+  // columns — NOT the dashboard's GoalPairGrid pattern. h-full here interacts
+  // with grid auto-row stretching to make cards balloon vertically and push
+  // the streak pill to the bottom via mt-auto, leaving big empty space. The
+  // card sizes to content (no h-full, no mt-auto) — streak pill sits just
+  // below the title with `gap-2` from the parent flex.
   return (
     <button type="button" onClick={() => onOpen({ goal, checkIns: allCheckIns, isOwn })}
-      className={`w-full h-full flex flex-col rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${done ? 'text-white' : 'text-gray-700'}`}
+      className={`w-full flex flex-col rounded-xl px-4 py-3 text-left transition active:scale-95 hover:opacity-90 ${hasFooter ? 'gap-2' : ''} ${done ? 'text-white' : 'text-gray-700'}`}
       style={cardStyle}>
       <div className="flex items-center gap-3 w-full">
         <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
@@ -177,7 +183,7 @@ function GoalCard({
         <span className="text-sm font-semibold flex-1">{goal.title}</span>
       </div>
       {hasFooter && (
-        <div className="flex justify-end mt-auto pt-2">
+        <div className="flex justify-end">
           <span className={streakPillClass}>🔥{streak}</span>
         </div>
       )}
