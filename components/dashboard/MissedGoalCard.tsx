@@ -26,8 +26,10 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen, isL
 
   const body = (
     <>
-      <div className="flex items-center gap-3 w-full">
-        <span className="w-5 h-5 rounded-full border-2 border-white/60 flex-shrink-0" />
+      {/* Title row grows (flex-1) so the pill row anchors to the bottom of
+          the tile, aligning with the paired tile's pill row. */}
+      <div className="flex-1 flex items-center gap-3 w-full">
+        <span className="w-6 h-6 rounded-full border-2 border-white/60 flex-shrink-0" />
         <p className="text-sm font-bold leading-tight flex-1 min-w-0">{goal.title}</p>
       </div>
       {/* Single-row pill footer (no wrap) — at most 2 short pills. */}
@@ -39,9 +41,7 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen, isL
   )
 
   const style = { background: isLocked ? LOCKED_RED : FULL_RED }
-  // `justify-center` vertically centers the title+footer block in the tile,
-  // matching GoalCard's behavior in paired rows.
-  const layout = 'w-full h-full flex flex-col justify-center gap-2 rounded-xl px-4 py-3 text-white'
+  const layout = 'w-full h-full flex flex-col gap-2 rounded-xl px-4 py-3 text-white shadow-sm'
 
   // Buddy's catch-up tile — read-only view, render as div.
   if (!isMyGoal) {

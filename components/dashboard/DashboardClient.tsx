@@ -185,7 +185,7 @@ export default function DashboardClient({
               <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
                 Today&apos;s Goals
               </h2>
-              <div className="rounded-2xl bg-gray-50 p-3">
+              <div className="rounded-2xl bg-gray-100 p-3">
               <GoalPairGrid
                 myColumn={[
                   ...myGoals
@@ -246,7 +246,7 @@ export default function DashboardClient({
             <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
               Optional
             </h2>
-            <div className="rounded-2xl bg-gray-50 p-3">
+            <div className="rounded-2xl bg-gray-100 p-3">
             <GoalPairGrid
               myColumn={myOptionalGoals.map(goal => goal.type === 'cumulative'
                 ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
@@ -281,7 +281,7 @@ export default function DashboardClient({
             <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
               Milestones
             </h2>
-            <div className="rounded-2xl bg-gray-50 p-3">
+            <div className="rounded-2xl bg-gray-100 p-3">
             <GoalPairGrid
               myColumn={myMilestoneGoals.map(goal => (
                 <GoalCard key={goal.id} goal={goal}

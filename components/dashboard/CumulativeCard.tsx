@@ -57,7 +57,7 @@ export default function CumulativeCard({ goal, checkIns, today, isMyGoal }: Prop
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4">
+    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
         <p className="flex-1 text-sm font-semibold text-gray-800">{goal.title}</p>
         <span className="text-xs font-black" style={{ color: '#0077B6' }}>{pct}%</span>

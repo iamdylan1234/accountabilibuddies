@@ -72,21 +72,22 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   ].filter(Boolean).slice(0, 2)
   const hasFooter = visiblePills.length > 0
 
-  // Tile content (title row + optional footer) is vertically centered as a
-  // group via `justify-center` on the tile. For a stretched 1-row tile in a
-  // row with a 2-row partner, this puts the title in the middle of the tile
-  // rather than hugging the top — looks balanced regardless of word length
-  // or which paired tile is taller.
   const footer = hasFooter && (
     <div className="flex justify-end gap-1.5">
       {visiblePills}
     </div>
   )
 
+  // Title row uses `flex-1` to grow and fill the available vertical space —
+  // its `items-center` then centers the checkbox+title vertically inside that
+  // grown area. The footer pill row, having no flex-grow, sits at the
+  // bottom of the tile. Result: title floats vertically centered in short
+  // tiles, while pills always anchor to the bottom so they align horizontally
+  // with the paired tile's pills regardless of title-length differences.
   const checkboxAndTitle = (
-    <div className="flex items-center gap-3 w-full">
-      <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-        done ? 'border-white bg-white/30' : isCatchUp ? 'border-red-300' : 'border-gray-300'
+    <div className="flex-1 flex items-center gap-3 w-full">
+      <span className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+        done ? 'border-white bg-white/30' : isCatchUp ? 'border-red-300' : 'border-gray-400'
       }`}>
         {done && <span className="text-white text-xs font-bold">✓</span>}
       </span>
@@ -97,8 +98,8 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   )
 
   // `h-full` makes the tile fill its grid cell so paired tiles share row
-  // height. `justify-center` vertically centers the content block.
-  const layoutClass = `w-full h-full flex flex-col justify-center rounded-xl px-4 py-3 transition ${hasFooter ? 'gap-2' : ''} ${hasFailed ? 'ring-2 ring-red-400 ring-offset-1' : ''} ${baseClass}`
+  // height. `shadow-sm` gives a subtle floating-card effect on the gray section.
+  const layoutClass = `w-full h-full flex flex-col rounded-xl px-4 py-3 transition shadow-sm ${hasFooter ? 'gap-2' : ''} ${hasFailed ? 'ring-2 ring-red-400 ring-offset-1' : ''} ${baseClass}`
 
   if (isMyGoal) {
     return (
