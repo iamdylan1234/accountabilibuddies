@@ -1,11 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { createChallenge } from './actions'
 import CopyButton from '@/components/layout/CopyButton'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import type { ChallengeWithProfiles } from '@/types/database'
-import { BRAND_GRADIENT } from '@/lib/brand'
 import { FEATURES } from '@/lib/featureFlags'
 
 // Force dynamic rendering — this page depends on the authenticated user's data
@@ -49,42 +48,16 @@ export default async function DashboardPage() {
 
   const challenge = activeChallenge ?? pendingChallenge
 
-  // No challenge yet — show create form
+  // No challenge yet — show create form (client component owns the form so
+  // it can wire up loading state via useFormStatus + visible errors via
+  // useActionState).
   if (!challenge) {
     const today = new Date().toISOString().split('T')[0]
     return (
       <div className="max-w-md mx-auto mt-20 px-6">
         <h1 className="text-3xl font-black text-gray-900 mb-2">Start a challenge</h1>
         <p className="text-gray-500 mb-8">Create a challenge month and invite your buddy.</p>
-        <form action={createChallenge} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Challenge name</label>
-            <input
-              name="month_name"
-              type="text"
-              required
-              defaultValue="May Challenge"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Start date</label>
-            <input
-              name="start_date"
-              type="date"
-              required
-              defaultValue={today}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl font-bold text-white text-sm"
-            style={{ background: BRAND_GRADIENT }}
-          >
-            Create challenge →
-          </button>
-        </form>
+        <CreateChallengeForm defaultDate={today} />
       </div>
     )
   }

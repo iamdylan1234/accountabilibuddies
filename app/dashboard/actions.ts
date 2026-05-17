@@ -6,7 +6,15 @@ import { ensureProfile } from '@/lib/supabase/ensureProfile'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-export async function createChallenge(formData: FormData) {
+// Server action result shape — used by useActionState in the form component
+// so errors surface to the user rather than throwing silently. State type
+// MUST be serialisable across the server-action boundary.
+export type CreateChallengeState = { error: string } | undefined
+
+export async function createChallenge(
+  _prev: CreateChallengeState,
+  formData: FormData,
+): Promise<CreateChallengeState> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -33,10 +41,17 @@ export async function createChallenge(formData: FormData) {
     redirect(`/setup?challenge=${existingPending.id}`)
   }
 
-  const monthName = formData.get('month_name') as string
+  const monthName = (formData.get('month_name') as string)?.trim()
   const startDate = formData.get('start_date') as string
 
+  if (!monthName) return { error: 'Please give your challenge a name.' }
+  if (!startDate) return { error: 'Please pick a start date.' }
+
   const start = new Date(startDate)
+  if (isNaN(start.getTime())) {
+    return { error: `That start date doesn't look right. Try selecting it again.` }
+  }
+
   const end = new Date(start)
   end.setDate(end.getDate() + 29)
   const endDate = end.toISOString().split('T')[0]
@@ -55,7 +70,7 @@ export async function createChallenge(formData: FormData) {
 
   if (error) {
     console.error('[createChallenge] insert failed:', error)
-    throw new Error(`Couldn't create challenge: ${error.message}`)
+    return { error: `Couldn't create challenge: ${error.message}` }
   }
 
   // Invalidate the dashboard's cached render so the new challenge appears

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { acceptInvite } from './actions'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import AcceptInviteButton from './AcceptInviteButton'
 
 interface Props {
   params: Promise<{ token: string }>
@@ -49,13 +50,7 @@ export default async function InvitePage({ params }: Props) {
         </p>
 
         <form action={acceptInvite.bind(null, token)}>
-          <button
-            type="submit"
-            className="w-full py-3 rounded-xl font-bold text-sm"
-            style={{ background: '#F9F871', color: '#0077B6' }}
-          >
-            Accept invite & set my goals →
-          </button>
+          <AcceptInviteButton />
         </form>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import Spinner from '@/components/shared/Spinner'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -122,10 +123,10 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-bold text-white text-sm transition active:scale-95 disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
               style={{ background: BRAND_GRADIENT }}
             >
-              {loading ? 'Updating…' : 'Update password'}
+              {loading ? (<><Spinner /><span>Updating…</span></>) : <span>Update password</span>}
             </button>
           </form>
         )}

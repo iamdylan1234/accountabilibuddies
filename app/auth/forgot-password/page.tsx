@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import Spinner from '@/components/shared/Spinner'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -64,10 +65,10 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-bold text-white text-sm transition active:scale-95 disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
               style={{ background: BRAND_GRADIENT }}
             >
-              {loading ? 'Sending…' : 'Send reset link'}
+              {loading ? (<><Spinner /><span>Sending…</span></>) : <span>Send reset link</span>}
             </button>
           </form>
         ) : (

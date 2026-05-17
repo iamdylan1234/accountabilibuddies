@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import Spinner from '@/components/shared/Spinner'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -92,10 +93,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-bold text-white text-sm transition"
+            className="w-full py-3 rounded-xl font-bold text-white text-sm transition active:scale-95 disabled:opacity-60 disabled:active:scale-100 flex items-center justify-center gap-2"
             style={{ background: BRAND_GRADIENT }}
           >
-            {loading ? 'Logging in…' : 'Log in'}
+            {loading ? (<><Spinner /><span>Logging in…</span></>) : <span>Log in</span>}
           </button>
         </form>
 
