@@ -53,6 +53,9 @@ export default function GoalSetupForm({
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // Which goal row currently has its goal-type info panel expanded.
+  // -1 = none open. Only one open at a time (tapping another closes the first).
+  const [infoOpenFor, setInfoOpenFor] = useState<number>(-1)
 
   function update(i: number, field: keyof GoalDraft, value: unknown) {
     setGoals(prev => prev.map((g, idx) => idx === i ? { ...g, [field]: value } : g))
@@ -125,7 +128,7 @@ export default function GoalSetupForm({
           </div>
 
           {/* Type row */}
-          <div className="flex gap-2 ml-7 flex-wrap">
+          <div className="flex gap-2 ml-7 flex-wrap items-center">
             {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
               <button
                 key={t}
@@ -137,7 +140,26 @@ export default function GoalSetupForm({
                 {t}
               </button>
             ))}
+            {/* Tap "i" to expand a panel that explains all four goal types.
+                Single icon at the end of the row rather than one per chip — keeps
+                the chip row from getting cluttered on narrow screens. */}
+            <button
+              type="button"
+              onClick={() => setInfoOpenFor(infoOpenFor === i ? -1 : i)}
+              aria-label="What do these goal types mean?"
+              className="w-5 h-5 rounded-full text-[10px] font-bold text-gray-400 border border-gray-300 hover:bg-gray-50 transition flex items-center justify-center"
+            >
+              i
+            </button>
           </div>
+          {infoOpenFor === i && (
+            <div className="ml-7 p-3 bg-blue-50 rounded-lg text-xs text-gray-700 space-y-2 border border-blue-100">
+              <p><strong className="text-gray-900">Daily</strong> — Do it every day. One tap to mark done. Good for habits like meditation or no alcohol.</p>
+              <p><strong className="text-gray-900">Frequency</strong> — Specific days you choose (e.g. Mon/Wed/Fri). Misses can be caught up by doing it on a non-scheduled day.</p>
+              <p><strong className="text-gray-900">Cumulative</strong> — Track a number toward a target. Log amounts as you go. Good for &quot;read 10 books&quot; or &quot;save $500&quot;.</p>
+              <p><strong className="text-gray-900">Milestone</strong> — A single one-time achievement during the challenge — e.g. run a 5K, finish a course.</p>
+            </div>
+          )}
 
           {/* Frequency: count input then calendar */}
           {goal.type === 'frequency' && (
