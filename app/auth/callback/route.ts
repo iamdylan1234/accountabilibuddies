@@ -26,7 +26,22 @@ export async function GET(request: NextRequest) {
       }
     )
     const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) return NextResponse.redirect(`${origin}${next}`)
+    if (!error) {
+      // After session exchange, ensure a profiles row exists. Covers OAuth
+      // and email-confirmation flows where the user might not have hit the
+      // signup page's upsert (e.g. they confirmed an email from a different
+      // device, or their profile was deleted out-of-band). Idempotent.
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const name = (user.user_metadata?.name as string | undefined)?.trim()
+          || (user.email?.split('@')[0])
+          || 'User'
+        await supabase
+          .from('profiles')
+          .upsert({ id: user.id, name }, { onConflict: 'id', ignoreDuplicates: true })
+      }
+      return NextResponse.redirect(`${origin}${next}`)
+    }
   }
 
   return NextResponse.redirect(`${origin}/auth/login`)

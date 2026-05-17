@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { ensureProfile } from '@/lib/supabase/ensureProfile'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { GoalType } from '@/types/database'
@@ -21,6 +22,10 @@ export async function saveGoals(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not signed in. Please log in again.' }
+
+  // Same defensive guard as createChallenge — guarantee profiles row exists
+  // so goal inserts (FK on user_id → profiles.id) don't fail silently.
+  await ensureProfile(supabase, user)
 
   const { data: challenge, error: challengeError } = await supabase
     .from('challenge_months').select('id, status')

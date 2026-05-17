@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureProfile } from '@/lib/supabase/ensureProfile'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -9,6 +10,12 @@ export async function createChallenge(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
+
+  // Guarantee a profiles row exists before any FK-bearing INSERT. Without
+  // this, deleting a profile out-of-band (cleanup, GDPR, etc.) leaves the
+  // user able to log in but unable to create a challenge — the insert below
+  // fails the creator_id FK silently. Was a real bug for Diego.
+  await ensureProfile(supabase, user)
 
   // Idempotency: if user already has a pending challenge they created,
   // don't make a duplicate — send them to its setup page instead.
