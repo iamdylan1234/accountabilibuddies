@@ -56,7 +56,7 @@ export default async function DashboardPage() {
     return (
       <div className="max-w-md mx-auto mt-20 px-6">
         <h1 className="text-3xl font-black text-gray-900 mb-2">Start a challenge</h1>
-        <p className="text-gray-500 mb-8">Create a challenge month and invite your buddy.</p>
+        <p className="text-gray-500 mb-8">Set up a 30-day challenge and invite your buddy.</p>
         <CreateChallengeForm defaultDate={today} />
       </div>
     )

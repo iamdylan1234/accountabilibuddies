@@ -46,6 +46,15 @@ export default function DashboardClient({
   const today = formatDate(now)
   const [ty, tm, td] = today.split('-').map(Number)
   const todayMidnight = new Date(ty, tm - 1, td)
+
+  // Day number into the 30-day challenge — clamped to [1, totalDays]. Used
+  // in the greeting strip to give a "where am I" anchor for the user.
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const startMidnight = new Date(sy, sm - 1, sd)
+  const dayNumber = Math.min(
+    totalDays,
+    Math.max(1, Math.floor((todayMidnight.getTime() - startMidnight.getTime()) / 86400000) + 1),
+  )
   const buddy = (challenge.creator_id === myId ? challenge.buddy : challenge.creator) as Profile | null
   const myProfile = (challenge.creator_id === myId ? challenge.creator : challenge.buddy) as Profile | null
   const myFirstName = myProfile?.name?.split(' ')[0] ?? 'there'
@@ -131,6 +140,7 @@ export default function DashboardClient({
         <p className="font-black text-base">Hello, {myFirstName}</p>
         <p className="text-white/70 text-xs font-semibold mt-0.5">
           {localDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {' · '}Day {dayNumber} of {totalDays}
         </p>
       </div>
 

@@ -62,7 +62,7 @@ export default async function LandingPage() {
             <div>
               <div className="text-4xl mb-3">🎯</div>
               <h3 className="font-bold text-gray-900 mb-1">Set goals</h3>
-              <p className="text-sm text-gray-500">Choose 5–8 goals for the month</p>
+              <p className="text-sm text-gray-500">Choose 5–8 goals for the 30 days</p>
             </div>
             <div>
               <div className="text-4xl mb-3">📅</div>

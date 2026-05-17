@@ -26,7 +26,7 @@ export default function WeeklyPlan({
       <div className="mb-6 rounded-2xl p-5 text-white"
         style={{ background: BRAND_GRADIENT }}>
         <p className="font-black text-lg">You&apos;re on track! 🎉</p>
-        <p className="text-white/70 text-sm mt-1">All goals are on pace for the month.</p>
+        <p className="text-white/70 text-sm mt-1">All goals are on pace for the 30 days.</p>
       </div>
     )
   }
