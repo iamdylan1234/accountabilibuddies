@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import NextTopLoader from 'nextjs-toploader'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import { createClient } from '@/lib/supabase/server'
@@ -48,6 +49,16 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        {/* Top-of-page progress bar — fires on ANY navigation (tab clicks,
+            avatar→profile, deep links, back button). Brand teal so it
+            blends with the rest of the visual system. Subtle shadow gives
+            a tiny halo so it's visible against light backgrounds. */}
+        <NextTopLoader
+          color="#00C9A7"
+          height={3}
+          showSpinner={false}
+          shadow="0 0 8px rgba(0, 201, 167, 0.6)"
+        />
         {user && <Navbar avatarUrl={avatarUrl} />}
         <main className="min-h-screen">{children}</main>
       </body>
