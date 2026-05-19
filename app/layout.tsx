@@ -49,15 +49,16 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/* Top-of-page progress bar — fires on ANY navigation (tab clicks,
-            avatar→profile, deep links, back button). Brand teal so it
-            blends with the rest of the visual system. Subtle shadow gives
-            a tiny halo so it's visible against light backgrounds. */}
+        {/* Progress bar for any navigation event. Positioned (via CSS in
+            globals.css) at the bottom edge of the sticky navbar — the bar
+            visually anchors to the tab bar so the user sees navigation
+            feedback right where they took the action. No shadow because
+            the bar sits on white (against the gray tab-bar border), so
+            the brand teal is clearly visible without a halo. */}
         <NextTopLoader
           color="#00C9A7"
           height={3}
           showSpinner={false}
-          shadow="0 0 8px rgba(0, 201, 167, 0.6)"
         />
         {user && <Navbar avatarUrl={avatarUrl} />}
         <main className="min-h-screen">{children}</main>

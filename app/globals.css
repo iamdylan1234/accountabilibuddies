@@ -11,3 +11,19 @@ body {
   font-family: 'Inter', sans-serif;
   background: #f8f9fa;
 }
+
+/*
+ * nextjs-toploader override — position the progress bar at the bottom edge
+ * of the sticky navbar (below the brand strip + tab bar) instead of the
+ * default top of viewport. Two reasons:
+ *   1. The default top-of-viewport position overlaps our teal brand strip,
+ *      making the bar invisible (same colour).
+ *   2. Positioning the bar right below the tab bar associates it spatially
+ *      with the action the user just took (tapping a tab) — clearer signal.
+ *
+ * 92px is the measured height of the navbar (brand strip + tab bar + 1px
+ * border). If the navbar grows or shrinks, this constant needs to update.
+ */
+#nprogress .bar {
+  top: 92px !important;
+}
