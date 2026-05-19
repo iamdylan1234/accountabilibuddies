@@ -14,12 +14,13 @@ interface Props {
   isCatchUp?: boolean
   remaining?: number
   hasFailed?: boolean
+  weeklyStat?: string
 }
 
 // Unified status-pill styling. All status indicators (Failed, LATE, streak, remaining)
 // render as small pills in the bottom-right of a tile's footer row. Pill colour
 // adapts to the tile's background state so contrast stays readable.
-type PillVariant = 'fail' | 'late' | 'streak' | 'remaining'
+type PillVariant = 'fail' | 'late' | 'streak' | 'remaining' | 'weekly'
 type TileState = 'done' | 'catchUp' | 'default'
 
 const PILL_BASE = 'text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap'
@@ -29,13 +30,14 @@ function pillClass(variant: PillVariant, state: TileState): string {
   if (state === 'done') return `${PILL_BASE} bg-white/25 text-white`
   if (variant === 'fail' || variant === 'late') return `${PILL_BASE} bg-red-100 text-red-700`
   if (variant === 'streak') return `${PILL_BASE} bg-orange-100 text-orange-700`
+  if (variant === 'weekly') return `${PILL_BASE} bg-blue-100 text-blue-700`
   // remaining
   return state === 'catchUp'
     ? `${PILL_BASE} bg-red-100 text-red-600`
     : `${PILL_BASE} bg-gray-200 text-gray-600`
 }
 
-export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp, remaining, hasFailed }: Props) {
+export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, streak, isCatchUp, remaining, hasFailed, weeklyStat }: Props) {
   const done = !!checkIn
   const tileState: TileState = done ? 'done' : isCatchUp ? 'catchUp' : 'default'
 
@@ -60,14 +62,16 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   const showStreak = streak !== undefined && streak >= 2
   const showRemaining = goal.type === 'frequency' && remaining !== undefined && remaining > 0
 
-  // Cap visible pills at 2 in priority order Failed > LATE > Remaining > Streak.
+  // Cap visible pills at 2 in priority order Failed > LATE > Weekly > Remaining > Streak.
   // The only realistic 3-pill case is {LATE, Remaining, Streak}, where the
   // streak pill is least meaningful — if you're behind, the streak is broken
   // anyway and bragging about it adds noise. Dropping it keeps the row narrow
   // enough to never wrap onto a second line on a tight mobile column.
+  const showWeekly = !!weeklyStat && !done
   const visiblePills = [
     showFailed && <span key="fail" className={pillClass('fail', tileState)}>Failed</span>,
     showLate && <span key="late" className={pillClass('late', tileState)}>LATE</span>,
+    showWeekly && <span key="weekly" className={pillClass('weekly', tileState)}>{weeklyStat}</span>,
     showRemaining && <span key="remaining" className={pillClass('remaining', tileState)}>{remaining} left</span>,
     showStreak && <span key="streak" className={pillClass('streak', tileState)}>🔥{streak}</span>,
   ].filter(Boolean).slice(0, 2)
