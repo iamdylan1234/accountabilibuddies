@@ -15,7 +15,6 @@ interface Props {
   buddyGoals: Goal[]
   myCheckIns: CheckIn[]     // ALL check-ins for the challenge (for weekly stat & cumulative totals)
   buddyCheckIns: CheckIn[]
-  myId: string
   editable: boolean         // true only when selectedDate is today or yesterday (grace window)
   onToggle: (goalId: string, date: string) => void
 }
@@ -34,7 +33,7 @@ export default function DayDetailSection(props: Props) {
   const {
     selectedDate, weekStart, weekEnd, today,
     myGoals, buddyGoals, myCheckIns, buddyCheckIns,
-    myId, editable, onToggle,
+    editable, onToggle,
   } = props
 
   // For frequency goals, "scheduled on the selected day" means
@@ -44,6 +43,9 @@ export default function DayDetailSection(props: Props) {
     (g.type === 'frequency' && (g.schedule_dates?.includes(day) ?? false))
 
   const dailySection = (gs: Goal[]) => gs.filter(g => isScheduledOn(g, selectedDate))
+  // Ongoing section catches frequency goals with no schedule_dates (always-on
+  // frequency targets) as well as frequency goals scheduled for OTHER days.
+  // `?? false` ensures null/undefined schedule_dates fall through to here.
   const ongoingSection = (gs: Goal[]) => gs.filter(g =>
     g.type === 'cumulative' ||
     (g.type === 'frequency' && !(g.schedule_dates?.includes(selectedDate) ?? false))
@@ -62,13 +64,11 @@ export default function DayDetailSection(props: Props) {
   // or yesterday). Read-only otherwise.
   function renderTile(goal: Goal, ownership: 'mine' | 'buddy') {
     const checkIns = ownership === 'mine' ? myCheckIns : buddyCheckIns
-    const completedOnDay = checkIns.find(c => c.goal_id === goal.id && c.date === selectedDate && c.completed)
-    const checkIn = completedOnDay ?? null
-    const weeklyStat = getWeeklyStatChip(goal, weekStart, weekEnd, checkIns) ?? undefined
 
     if (goal.type === 'cumulative') {
-      // Cumulative tiles are read-only on Week tab regardless of editable
-      // (logging only happens from Today via CumulativeLogSheet).
+      // Cumulative tiles are intentionally read-only on Week tab —
+      // logging happens only from Today via CumulativeLogSheet, regardless
+      // of whether the goal is mine or my buddy's.
       return (
         <CumulativeCard
           key={goal.id}
@@ -80,6 +80,9 @@ export default function DayDetailSection(props: Props) {
       )
     }
 
+    const completedOnDay = checkIns.find(c => c.goal_id === goal.id && c.date === selectedDate && c.completed)
+    const checkIn = completedOnDay ?? null
+    const weeklyStat = getWeeklyStatChip(goal, weekStart, weekEnd, checkIns) ?? undefined
     const isMine = ownership === 'mine'
     const tappable = isMine && editable
 
