@@ -93,9 +93,9 @@ function Row({
           const isSelected = date === selectedDate
           const tappable = isSelectable && state !== 'out-of-range'
           const dayName = DAY_NAMES_LONG[i]
-          const [, , dd] = date.split('-')
-          const monthName = new Date(date.replace(/-/g, '/')).toLocaleDateString('en-US', { month: 'long' })
-          const aria = `${dayName}, ${monthName} ${Number(dd)}`
+          const [y, m, d] = date.split('-').map(Number)
+          const monthName = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long' })
+          const aria = `${dayName}, ${monthName} ${d}`
           if (tappable) {
             return (
               <button
@@ -110,7 +110,7 @@ function Row({
             )
           }
           return (
-            <div key={date} className="flex-1 text-center" aria-label={aria}>
+            <div key={date} className="flex-1 text-center">
               <Dot state={state} isSelected={false} />
             </div>
           )

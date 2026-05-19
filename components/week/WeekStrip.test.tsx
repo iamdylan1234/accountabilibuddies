@@ -56,7 +56,16 @@ describe('WeekStrip', () => {
       />
     )
     // 2026-05-05 (Monday of this week) is BEFORE challenge start, should be unclickable
-    const tueButton = screen.queryByRole('button', { name: /monday.*may 5/i })
-    expect(tueButton).toBeNull()
+    const monButton = screen.queryByRole('button', { name: /monday.*may 5/i })
+    expect(monButton).toBeNull()
+  })
+
+  it('buddy row dots are not buttons (visual-only)', () => {
+    render(<WeekStrip {...baseProps} />)
+    // Only the user's row renders interactive day cells. Seven buttons total
+    // (Mon–Sun), not 14. If this assertion fails, the buddy row has become
+    // interactive and the click-routing invariant is broken.
+    const buttons = screen.getAllByRole('button')
+    expect(buttons.length).toBe(7)
   })
 })
