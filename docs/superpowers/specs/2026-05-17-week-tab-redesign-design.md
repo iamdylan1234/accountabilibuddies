@@ -172,6 +172,18 @@ Position: bottom-right of the tile, same pill row used for streak/remaining/etc.
 
 The chip reflects the **viewed week**, not the current week. When viewing a past week, the chip shows that week's totals. When viewing the current week, the chip is live with optimistic updates.
 
+**Prominence tradeoff (deliberate, documented):**
+
+The current `WeekSummaryCard` makes weekly per-goal stats the *primary content* of the tile in the Today view. The new design demotes them to a footer pill on a tile whose primary content is the goal title plus the selected day's checkbox. The data is preserved but its prominence drops. This is an accepted tradeoff: the strip + score tiles now carry weekly pattern recognition at a higher level of the page, so per-tile chips can be secondary signals rather than headlines. If a future user complaint emerges that the per-goal weekly numbers are "hidden," the mitigation is to either bump the chip's visual weight or add a separate "week summary" surface — but neither is in scope for v1.
+
+**Pill priority (updated for the new chip):**
+
+The Today tab's existing rule caps the footer at 2 visible pills, with priority `Failed > LATE > Remaining > Streak`. Adding the weekly-stat chip on the Week tab requires extending this rule. The new priority is:
+
+`Failed > LATE > Weekly-stat > Remaining > Streak`
+
+Justification: the weekly-stat chip's whole purpose is to surface week-level info on the Week tab — it would be perverse for it to be the one dropped. Streak and remaining are more useful in the Today-tab context and stay prioritised there. The Today tab is unaffected (it doesn't use the weekly-stat chip).
+
 ## 5. Edit behavior
 
 Three edit states, determined by which day is selected and whether the user is on the current week or a past week.
@@ -268,6 +280,16 @@ The new tap-to-toggle-direct behavior on the day-detail tiles deliberately ships
 - Pattern is consistent with the Today tab — users are already trained on it.
 - `active:scale-95` press animation makes the tap feel deliberate (not accidental).
 - An undo toast can be added later if user complaints emerge. Not in scope for v1.
+
+### 7.9 PWA/cache stability
+
+The Today tab had a real bounce-back bug from cache staleness (commit `983b748`, May 13). The same class of issue could affect the Week tab — server components with auth-dependent data are vulnerable to Next.js route-level caching, especially on iOS Safari PWA installs.
+
+- **`app/week/page.tsx` MUST declare `export const dynamic = 'force-dynamic'`** at the top of the file, matching the existing pattern on `app/dashboard/page.tsx`. This prevents stale-route rendering when the user navigates back.
+- **Any server action that mutates check-ins** (the toggle action invoked from the new day-detail tiles) must call `revalidatePath('/week')` before returning. This ensures the next render reflects the new state.
+- If a separate Week-tab action is introduced (e.g. for cross-week navigation if the implementer chooses a server-side approach), it must also revalidate.
+
+Apply the same fixes proactively here rather than discovering them in production.
 
 ## 8. What's being removed
 
