@@ -433,6 +433,10 @@ describe('dayCompletionStatus', () => {
     expect(dayCompletionStatus(goals, '2026-05-14', [], today, start, end)).toBe('empty')
   })
 
+  it('treats today as a past/present day (not future) for an unchecked day', () => {
+    expect(dayCompletionStatus(goals, today, [], today, start, end)).toBe('empty')
+  })
+
   it('returns "partial" when some but not all scheduled goals completed', () => {
     const checkIns: CheckIn[] = [
       { id: 'c1', goal_id: 'g1', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },

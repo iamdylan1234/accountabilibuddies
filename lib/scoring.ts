@@ -325,6 +325,11 @@ export function getCatchUpState(
  *
  * Only daily + frequency-with-this-day-scheduled goals count as "scheduled."
  * Cumulative and milestone goals are not day-specific and don't factor in.
+ *
+ * NOTE — future-rest precedence (§4.2 of the week-tab redesign spec): the
+ * "zero scheduled goals → rest" check runs BEFORE the "day > today → future"
+ * check. A future day with no scheduled goals therefore returns "rest", not
+ * "future". This is intentional and spec-mandated behaviour.
  */
 export type DayStatus = 'full' | 'partial' | 'empty' | 'rest' | 'future' | 'out-of-range'
 
@@ -346,12 +351,13 @@ export function dayCompletionStatus(
   if (scheduled.length === 0) return 'rest'
   if (day > today) return 'future'
 
+  const scheduledIds = new Set(scheduled.map(g => g.id))
   const completedIds = new Set(
     checkIns
-      .filter(c => c.date === day && c.completed)
+      .filter(c => c.date === day && c.completed && scheduledIds.has(c.goal_id))
       .map(c => c.goal_id)
   )
-  const completedCount = scheduled.filter(g => completedIds.has(g.id)).length
+  const completedCount = completedIds.size
 
   if (completedCount === 0) return 'empty'
   if (completedCount === scheduled.length) return 'full'
