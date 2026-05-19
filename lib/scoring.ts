@@ -310,3 +310,50 @@ export function getCatchUpState(
 
   return { caughtUpToday, netPending: pendingMisses }
 }
+
+/**
+ * Per-day completion classifier for the Week-tab strip dots. Uses the SAME
+ * primitives as scoreChallenge so the strip can never visually contradict
+ * the score tiles.
+ *
+ * - "out-of-range" — day is before challenge start or after challenge end
+ * - "future"       — day is after today AND has scheduled goals
+ * - "rest"         — day has zero scheduled goals (intentional rest)
+ * - "empty"        — has scheduled goals, today/past, none completed
+ * - "partial"      — has scheduled goals, some completed, not all
+ * - "full"         — has scheduled goals, all completed
+ *
+ * Only daily + frequency-with-this-day-scheduled goals count as "scheduled."
+ * Cumulative and milestone goals are not day-specific and don't factor in.
+ */
+export type DayStatus = 'full' | 'partial' | 'empty' | 'rest' | 'future' | 'out-of-range'
+
+export function dayCompletionStatus(
+  goals: Goal[],
+  day: string,
+  checkIns: CheckIn[],
+  today: string,
+  challengeStart: string,
+  challengeEnd: string,
+): DayStatus {
+  if (day < challengeStart || day > challengeEnd) return 'out-of-range'
+
+  const scheduled = goals.filter(g =>
+    g.type === 'daily' ||
+    (g.type === 'frequency' && g.schedule_dates?.includes(day))
+  )
+
+  if (scheduled.length === 0) return 'rest'
+  if (day > today) return 'future'
+
+  const completedIds = new Set(
+    checkIns
+      .filter(c => c.date === day && c.completed)
+      .map(c => c.goal_id)
+  )
+  const completedCount = scheduled.filter(g => completedIds.has(g.id)).length
+
+  if (completedCount === 0) return 'empty'
+  if (completedCount === scheduled.length) return 'full'
+  return 'partial'
+}

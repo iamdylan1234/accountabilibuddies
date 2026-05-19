@@ -1,7 +1,7 @@
 import {
   scoreGoal, scoreChallenge, getWeekStart,
   isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
-  getBestStreak, getMissedDays,
+  getBestStreak, getMissedDays, dayCompletionStatus,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 import type { GoalStreakContext } from '../scoring'
@@ -388,5 +388,74 @@ describe('getMissedDays', () => {
     // With endOffset=2, only May 5 counts → 1.
     const goal = freq(['2026-05-05', '2026-05-06'])
     expect(getMissedDays(goal, [], '2026-05-07', '2026-05-01', 7, 2)).toBe(1)
+  })
+})
+
+describe('dayCompletionStatus', () => {
+  const dailyGoal: Goal = {
+    id: 'g1', challenge_id: 'c1', user_id: 'u1', title: 'Wake up',
+    type: 'daily', target_count: null, target_unit: null,
+    created_at: '', schedule_dates: null, catch_up: false,
+  }
+  const freqGoal: Goal = {
+    id: 'g2', challenge_id: 'c1', user_id: 'u1', title: 'Gym',
+    type: 'frequency', target_count: 3, target_unit: null,
+    created_at: '', schedule_dates: ['2026-05-12', '2026-05-14', '2026-05-16'], catch_up: false,
+  }
+  const goals = [dailyGoal, freqGoal]
+  const start = '2026-05-12'
+  const end = '2026-06-10'
+  const today = '2026-05-15'
+
+  it('returns "out-of-range" for days before challenge start', () => {
+    expect(dayCompletionStatus(goals, '2026-05-10', [], today, start, end)).toBe('out-of-range')
+  })
+
+  it('returns "out-of-range" for days after challenge end', () => {
+    expect(dayCompletionStatus(goals, '2026-06-15', [], today, start, end)).toBe('out-of-range')
+  })
+
+  it('returns "future" for days after today with scheduled goals', () => {
+    expect(dayCompletionStatus(goals, '2026-05-16', [], today, start, end)).toBe('future')
+  })
+
+  it('returns "rest" for days with no scheduled goals (past)', () => {
+    // 2026-05-13 (Wed): no frequency scheduled, but daily is always scheduled
+    // → daily counts, not a rest day. Use a goal set with ONLY frequency.
+    expect(dayCompletionStatus([freqGoal], '2026-05-13', [], today, start, end)).toBe('rest')
+  })
+
+  it('returns "rest" for future days with no scheduled goals', () => {
+    expect(dayCompletionStatus([freqGoal], '2026-05-17', [], today, start, end)).toBe('rest')
+  })
+
+  it('returns "empty" when scheduled goals exist but none completed', () => {
+    expect(dayCompletionStatus(goals, '2026-05-14', [], today, start, end)).toBe('empty')
+  })
+
+  it('returns "partial" when some but not all scheduled goals completed', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g1', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },
+    ]
+    // Daily checked, frequency (g2) scheduled-not-completed → partial
+    expect(dayCompletionStatus(goals, '2026-05-14', checkIns, today, start, end)).toBe('partial')
+  })
+
+  it('returns "full" when all scheduled goals completed', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g1', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },
+      { id: 'c2', goal_id: 'g2', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },
+    ]
+    expect(dayCompletionStatus(goals, '2026-05-14', checkIns, today, start, end)).toBe('full')
+  })
+
+  it('ignores cumulative and milestone goals when computing status', () => {
+    const milestoneGoal: Goal = { ...dailyGoal, id: 'g3', type: 'milestone' }
+    const cumGoal: Goal = { ...dailyGoal, id: 'g4', type: 'cumulative', target_count: 10 }
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g1', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },
+    ]
+    // Only the daily counts. Daily completed → full.
+    expect(dayCompletionStatus([dailyGoal, milestoneGoal, cumGoal], '2026-05-14', checkIns, today, start, end)).toBe('full')
   })
 })
