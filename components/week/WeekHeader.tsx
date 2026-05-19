@@ -24,7 +24,7 @@ export default function WeekHeader({ weekStart, weekEnd, canGoPrev, canGoNext, o
         aria-label="Previous week"
         className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition active:scale-95"
       >
-        ‹
+        <span aria-hidden="true">‹</span>
       </button>
       <p className="text-xs font-bold text-gray-600 tracking-wider uppercase">
         {shortDate(weekStart)} – {shortDate(weekEnd)}
@@ -36,7 +36,7 @@ export default function WeekHeader({ weekStart, weekEnd, canGoPrev, canGoNext, o
         aria-label="Next week"
         className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition active:scale-95"
       >
-        ›
+        <span aria-hidden="true">›</span>
       </button>
     </div>
   )
