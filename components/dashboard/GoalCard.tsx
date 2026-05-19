@@ -17,9 +17,10 @@ interface Props {
   weeklyStat?: string
 }
 
-// Unified status-pill styling. All status indicators (Failed, LATE, streak, remaining)
-// render as small pills in the bottom-right of a tile's footer row. Pill colour
-// adapts to the tile's background state so contrast stays readable.
+// Unified status-pill styling. All status indicators (Failed, LATE, Weekly,
+// Remaining, Streak) render as small pills in the bottom-right of a tile's
+// footer row. Pill colour adapts to the tile's background state so contrast
+// stays readable.
 type PillVariant = 'fail' | 'late' | 'streak' | 'remaining' | 'weekly'
 type TileState = 'done' | 'catchUp' | 'default'
 
@@ -63,10 +64,15 @@ export default function GoalCard({ goal, checkIn, reaction, isMyGoal, onToggle, 
   const showRemaining = goal.type === 'frequency' && remaining !== undefined && remaining > 0
 
   // Cap visible pills at 2 in priority order Failed > LATE > Weekly > Remaining > Streak.
-  // The only realistic 3-pill case is {LATE, Remaining, Streak}, where the
-  // streak pill is least meaningful — if you're behind, the streak is broken
-  // anyway and bragging about it adds noise. Dropping it keeps the row narrow
-  // enough to never wrap onto a second line on a tight mobile column.
+  // Two realistic 3-pill cases:
+  //   • {LATE, Remaining, Streak} — streak pill drops; if you're behind, the
+  //     streak is broken anyway and bragging about it adds noise.
+  //   • {Failed, Weekly, Remaining} — Weekly drops; a failed goal's weekly
+  //     stat is less actionable than the Failed signal itself.
+  // Cap keeps the row narrow enough to never wrap onto a second line on a
+  // tight mobile column.
+  // Hide on done tiles — the gradient already signals success; the blue pill
+  // would render white-on-translucent and convey nothing useful.
   const showWeekly = !!weeklyStat && !done
   const visiblePills = [
     showFailed && <span key="fail" className={pillClass('fail', tileState)}>Failed</span>,
