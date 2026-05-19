@@ -105,6 +105,8 @@ Dot size: 18×18px (or equivalent footprint for the rest-day dash).
 
 **Per-day "completion" calculation:**
 
+This calculation MUST use the same primitives as the existing `lib/scoring.ts` utilities. If extracting a new helper (e.g. `dayCompletionStatus(goal, day, checkIns)`) makes sense, build it as a sibling of `getMissedDays` / `scoreChallenge` so the strip and the score tiles agree by construction. Do NOT invent a parallel scoring scheme — a Wednesday dot reading "empty" while the score tiles say 60% would be a confusing visual contradiction.
+
 For a given day, compute `scheduled = daily goals + frequency goals with schedule_dates.includes(thatDay)`. Cumulative and milestone goals are NOT factored into the per-day dot (they're not day-specific).
 
 - **`scheduled.length === 0`** → state = `rest` (or `future` if the day is after today AND there are also no future scheduled goals on it).
@@ -154,6 +156,21 @@ Empty sections (no goals in that category for that day) show *"Rest day"* placeh
 ### 4.5 Goal tiles in day-detail
 
 Tiles look the same as the Today tab equivalents (same `GoalCard` component, same styling). The only difference is the *behavior on tap*, which depends on edit state.
+
+**Weekly-stat chip on each tile.**
+
+Each tile carries a small pill in its footer row showing the goal's weekly progress. This preserves the per-goal weekly summary that's currently visible in `WeekSummaryCard` — without that chip, switching the Week tab to per-day tiles would silently delete a real feature.
+
+| Goal type | Chip content | Example | Notes |
+|---|---|---|---|
+| Frequency | `X/Y wk` | `3/5 wk` | done this week / scheduled this week |
+| Cumulative | `+Z wk` | `+42 km` | sum of this-week values, includes unit when present |
+| Milestone | (no chip) | — | done/not-done already visible from tile state |
+| Daily | (no chip) | — | would always be `X/elapsed`, uninteresting |
+
+Position: bottom-right of the tile, same pill row used for streak/remaining/etc. on the Today tab. Visual style: matches other status pills (small caps, low contrast).
+
+The chip reflects the **viewed week**, not the current week. When viewing a past week, the chip shows that week's totals. When viewing the current week, the chip is live with optimistic updates.
 
 ## 5. Edit behavior
 
@@ -236,6 +253,22 @@ For a 30-day challenge starting mid-week, the first week's strip will include 1-
 - These cells are non-tappable — no selection, no day-detail trigger.
 - The week header still shows the calendar week range; out-of-range days just appear as muted dashes within that range.
 
+### 7.7 Cross-week scoring window
+
+When the user navigates to a past week, the score tiles must show that week's totals as of the *end of that week*, NOT the all-time-cumulative total.
+
+- Implementation: when computing scores for a navigated week, pass that week's last day (`min(weekEnd, challenge.end_date)`) as the upper bound to `scoreChallenge`.
+- The lower bound is the week's start day (`max(weekStart, challenge.start_date)`).
+- Without this, navigating to "Week 2" might display "Week-to-date through Week 4" which would be wrong.
+
+### 7.8 Reversible toggle (no undo toast)
+
+The new tap-to-toggle-direct behavior on the day-detail tiles deliberately ships *without* an undo toast or confirmation dialog. The toggle itself is the safety mechanism: a mistaken tap can be undone by a second tap.
+
+- Pattern is consistent with the Today tab — users are already trained on it.
+- `active:scale-95` press animation makes the tap feel deliberate (not accidental).
+- An undo toast can be added later if user complaints emerge. Not in scope for v1.
+
 ## 8. What's being removed
 
 - The teal brand-coloured banner at the top of the Week tab with prev/next *day* arrows. Replaced by the week header.
@@ -252,6 +285,7 @@ The `GoalCalendarSheet` component itself is NOT removed — it's still invoked f
 - The 24-hour grace window rule from the recent catch-up redesign.
 - The realtime data refresh indicator (if currently present on this tab).
 - The white-on-gray section card visual rhythm from the recent grayscale update.
+- **Per-goal weekly stats** — preserved via per-tile chips (§4.5), not lost in the redesign. This was identified during pre-mortem as a feature that the strip + day-detail alone would silently delete.
 
 ## 10. Implementation notes
 
