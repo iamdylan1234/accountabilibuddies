@@ -380,6 +380,10 @@ export function getWeeklyStatChip(
   const inWindow = (d: string) => d >= weekStart && d <= weekEnd
   const own = checkIns.filter(c => c.goal_id === goal.id && inWindow(c.date))
 
+  // The denominator is the count scheduled THIS week, not `goal.target_count`. Showing
+  // "2/3 wk" tells the user how many of this week's scheduled days they've hit. Using
+  // `goal.target_count` would conflate weekly progress with overall target — see
+  // `scoreGoal` for the same distinction.
   if (goal.type === 'frequency') {
     const scheduledThisWeek = (goal.schedule_dates ?? []).filter(inWindow)
     if (scheduledThisWeek.length === 0) return null
@@ -393,7 +397,8 @@ export function getWeeklyStatChip(
     .filter(c => c.value != null)
     .reduce((sum, c) => sum + (c.value ?? 0), 0)
   if (total <= 0) return null
+  const cleanTotal = parseFloat(total.toFixed(2))
   return goal.target_unit
-    ? `+${total} ${goal.target_unit} wk`
-    : `+${total} wk`
+    ? `+${cleanTotal} ${goal.target_unit} wk`
+    : `+${cleanTotal} wk`
 }

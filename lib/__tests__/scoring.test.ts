@@ -512,12 +512,21 @@ describe('getWeeklyStatChip', () => {
   })
 
   it('frequency: only counts check-ins on SCHEDULED days', () => {
-    // Tue (5/13) and Sun (5/18) not scheduled — these should not count
+    // Wed (5/13) and Sun (5/18) not scheduled — these should not count
     const checkIns: CheckIn[] = [
       { id: 'c1', goal_id: 'g2', user_id: 'u1', date: '2026-05-13', completed: true, value: null, created_at: '' },
       { id: 'c2', goal_id: 'g2', user_id: 'u1', date: '2026-05-18', completed: true, value: null, created_at: '' },
     ]
     expect(getWeeklyStatChip(freqGoal, weekStart, weekEnd, checkIns)).toBe('0/3 wk')
+  })
+
+  it('frequency: returns null when schedule_dates is null', () => {
+    const noScheduleFreq: Goal = {
+      ...freqGoal,
+      id: 'g99',
+      schedule_dates: null,
+    }
+    expect(getWeeklyStatChip(noScheduleFreq, weekStart, weekEnd, [])).toBeNull()
   })
 
   it('cumulative with unit: "+42 km wk"', () => {
@@ -541,6 +550,14 @@ describe('getWeeklyStatChip', () => {
       { id: 'c2', goal_id: 'g3', user_id: 'u1', date: '2026-05-12', completed: false, value: 5, created_at: '' },
     ]
     expect(getWeeklyStatChip(cumGoalKm, weekStart, weekEnd, checkIns)).toBe('+5 km wk')
+  })
+
+  it('cumulative: rounds floating-point noise to 2-decimal precision', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g3', user_id: 'u1', date: '2026-05-12', completed: false, value: 0.1, created_at: '' },
+      { id: 'c2', goal_id: 'g3', user_id: 'u1', date: '2026-05-14', completed: false, value: 0.2, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(cumGoalKm, weekStart, weekEnd, checkIns)).toBe('+0.3 km wk')
   })
 
   it('cumulative: returns null when total is 0', () => {
