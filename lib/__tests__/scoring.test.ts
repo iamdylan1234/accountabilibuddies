@@ -2,6 +2,7 @@ import {
   scoreGoal, scoreChallenge, getWeekStart,
   isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
   getBestStreak, getMissedDays, dayCompletionStatus,
+  getWeeklyStatChip,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 import type { GoalStreakContext } from '../scoring'
@@ -461,5 +462,88 @@ describe('dayCompletionStatus', () => {
     ]
     // Only the daily counts. Daily completed → full.
     expect(dayCompletionStatus([dailyGoal, milestoneGoal, cumGoal], '2026-05-14', checkIns, today, start, end)).toBe('full')
+  })
+})
+
+describe('getWeeklyStatChip', () => {
+  const dailyGoal: Goal = {
+    id: 'g1', challenge_id: 'c1', user_id: 'u1', title: 'Wake up',
+    type: 'daily', target_count: null, target_unit: null,
+    created_at: '', schedule_dates: null, catch_up: false,
+  }
+  const freqGoal: Goal = {
+    id: 'g2', challenge_id: 'c1', user_id: 'u1', title: 'Gym',
+    type: 'frequency', target_count: 3, target_unit: null,
+    created_at: '', schedule_dates: ['2026-05-12', '2026-05-14', '2026-05-16'], catch_up: false,
+  }
+  const cumGoalKm: Goal = {
+    id: 'g3', challenge_id: 'c1', user_id: 'u1', title: 'Run',
+    type: 'cumulative', target_count: 100, target_unit: 'km',
+    created_at: '', schedule_dates: null, catch_up: false,
+  }
+  const cumGoalNoUnit: Goal = { ...cumGoalKm, id: 'g4', target_unit: null }
+  const milestoneGoal: Goal = {
+    id: 'g5', challenge_id: 'c1', user_id: 'u1', title: 'Race',
+    type: 'milestone', target_count: null, target_unit: null,
+    created_at: '', schedule_dates: null, catch_up: false,
+  }
+
+  const weekStart = '2026-05-12'  // Monday
+  const weekEnd = '2026-05-18'    // Sunday
+
+  it('returns null for daily goals (always 7/elapsed, uninteresting)', () => {
+    expect(getWeeklyStatChip(dailyGoal, weekStart, weekEnd, [])).toBeNull()
+  })
+
+  it('returns null for milestone goals (binary state visible in tile)', () => {
+    expect(getWeeklyStatChip(milestoneGoal, weekStart, weekEnd, [])).toBeNull()
+  })
+
+  it('frequency: "0/3 wk" when no completions', () => {
+    expect(getWeeklyStatChip(freqGoal, weekStart, weekEnd, [])).toBe('0/3 wk')
+  })
+
+  it('frequency: counts completed scheduled days in week', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g2', user_id: 'u1', date: '2026-05-12', completed: true, value: null, created_at: '' },
+      { id: 'c2', goal_id: 'g2', user_id: 'u1', date: '2026-05-14', completed: true, value: null, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(freqGoal, weekStart, weekEnd, checkIns)).toBe('2/3 wk')
+  })
+
+  it('frequency: only counts check-ins on SCHEDULED days', () => {
+    // Tue (5/13) and Sun (5/18) not scheduled — these should not count
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g2', user_id: 'u1', date: '2026-05-13', completed: true, value: null, created_at: '' },
+      { id: 'c2', goal_id: 'g2', user_id: 'u1', date: '2026-05-18', completed: true, value: null, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(freqGoal, weekStart, weekEnd, checkIns)).toBe('0/3 wk')
+  })
+
+  it('cumulative with unit: "+42 km wk"', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g3', user_id: 'u1', date: '2026-05-12', completed: false, value: 12, created_at: '' },
+      { id: 'c2', goal_id: 'g3', user_id: 'u1', date: '2026-05-14', completed: false, value: 30, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(cumGoalKm, weekStart, weekEnd, checkIns)).toBe('+42 km wk')
+  })
+
+  it('cumulative with no unit: "+42 wk"', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g4', user_id: 'u1', date: '2026-05-12', completed: false, value: 42, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(cumGoalNoUnit, weekStart, weekEnd, checkIns)).toBe('+42 wk')
+  })
+
+  it('cumulative: ignores values outside the week window', () => {
+    const checkIns: CheckIn[] = [
+      { id: 'c1', goal_id: 'g3', user_id: 'u1', date: '2026-05-10', completed: false, value: 100, created_at: '' },
+      { id: 'c2', goal_id: 'g3', user_id: 'u1', date: '2026-05-12', completed: false, value: 5, created_at: '' },
+    ]
+    expect(getWeeklyStatChip(cumGoalKm, weekStart, weekEnd, checkIns)).toBe('+5 km wk')
+  })
+
+  it('cumulative: returns null when total is 0', () => {
+    expect(getWeeklyStatChip(cumGoalKm, weekStart, weekEnd, [])).toBeNull()
   })
 })

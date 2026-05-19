@@ -363,3 +363,37 @@ export function dayCompletionStatus(
   if (completedCount === scheduled.length) return 'full'
   return 'partial'
 }
+
+/**
+ * Per-goal chip text for the Week tab tiles, preserving the per-goal weekly
+ * summary that the old WeekSummaryCard surfaced. Returns null when the chip
+ * would be uninformative (daily goals, milestones, cumulative with 0 total).
+ */
+export function getWeeklyStatChip(
+  goal: Goal,
+  weekStart: string,
+  weekEnd: string,
+  checkIns: CheckIn[],
+): string | null {
+  if (goal.type === 'daily' || goal.type === 'milestone') return null
+
+  const inWindow = (d: string) => d >= weekStart && d <= weekEnd
+  const own = checkIns.filter(c => c.goal_id === goal.id && inWindow(c.date))
+
+  if (goal.type === 'frequency') {
+    const scheduledThisWeek = (goal.schedule_dates ?? []).filter(inWindow)
+    if (scheduledThisWeek.length === 0) return null
+    const scheduledSet = new Set(scheduledThisWeek)
+    const done = own.filter(c => c.completed && scheduledSet.has(c.date)).length
+    return `${done}/${scheduledThisWeek.length} wk`
+  }
+
+  // cumulative
+  const total = own
+    .filter(c => c.value != null)
+    .reduce((sum, c) => sum + (c.value ?? 0), 0)
+  if (total <= 0) return null
+  return goal.target_unit
+    ? `+${total} ${goal.target_unit} wk`
+    : `+${total} wk`
+}
