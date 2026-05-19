@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { scoreChallenge, getWeekStart } from '@/lib/scoring'
-import { formatDate } from '@/lib/dateUtils'
+import { formatDate, addDays } from '@/lib/dateUtils'
 import { useCheckInToggle } from '@/components/dashboard/useCheckInToggle'
 import WeekHeader from './WeekHeader'
 import WeekStrip from './WeekStrip'
@@ -17,18 +17,14 @@ interface Props {
   buddyCheckIns: CheckIn[]
   myProfile: Profile
   buddyProfile: Profile | null
-  challengeName: string
   startDate: string
   endDate: string
+  myId: string
+  // Below: kept for caller compatibility with `app/week/page.tsx`. Not used
+  // internally by this component (the redesign moved the work elsewhere).
+  challengeName: string
   totalDays: number
   challengeId: string
-  myId: string
-}
-
-function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const dt = new Date(y, m - 1, d + n)
-  return formatDate(dt)
 }
 
 function clampToRange(date: string, start: string, end: string): string {
@@ -62,10 +58,6 @@ export default function WeekView({
   // Toggle handler — wired via useCheckInToggle so optimistic + persistence
   // logic stays consistent with the Today tab.
   const { optimisticCheckIns, handleToggle } = useCheckInToggle(myCheckIns, myId, todayStr)
-
-  function handleToggleDay(goalId: string, date: string) {
-    handleToggle(goalId, date)
-  }
 
   function handlePrevWeek() {
     const prev = addDays(viewedWeekStart, -7)
@@ -164,7 +156,7 @@ export default function WeekView({
           myCheckIns={optimisticCheckIns}
           buddyCheckIns={buddyCheckIns}
           editable={editable}
-          onToggle={handleToggleDay}
+          onToggle={handleToggle}
         />
       </div>
     </div>

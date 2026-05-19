@@ -2,7 +2,7 @@
 
 import { dayCompletionStatus, type DayStatus } from '@/lib/scoring'
 import type { Goal, CheckIn } from '@/types/database'
-import { formatDate } from '@/lib/dateUtils'
+import { formatDate, addDays } from '@/lib/dateUtils'
 
 interface Props {
   weekStart: string         // Monday of the displayed week, "YYYY-MM-DD"
@@ -21,12 +21,6 @@ interface Props {
 
 const DAY_LABELS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 const DAY_NAMES_LONG = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const dt = new Date(y, m - 1, d + n)
-  return formatDate(dt)
-}
 
 function dotClasses(state: DayStatus, isSelected: boolean): string {
   const base = 'w-[18px] h-[18px] rounded-full mx-auto box-border'
