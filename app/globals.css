@@ -27,3 +27,18 @@ body {
 #nprogress .bar {
   top: 92px !important;
 }
+
+/*
+ * One-shot pulse used by WeekStrip dots when their state changes.
+ * Triggered by remounting the Dot component via a state-derived `key` —
+ * see WeekStrip.tsx. Runs on initial mount too, which is a small "hello"
+ * intro animation for the strip on first paint.
+ */
+@keyframes dotPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+.animate-dot-pulse {
+  animation: dotPulse 0.5s ease-out;
+}

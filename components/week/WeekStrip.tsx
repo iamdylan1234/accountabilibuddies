@@ -44,9 +44,10 @@ function dotClasses(state: DayStatus, isSelected: boolean): string {
 }
 
 function Dot({ state, isSelected }: { state: DayStatus; isSelected: boolean }) {
+  const classes = `${dotClasses(state, isSelected)} animate-dot-pulse`
   if (state === 'rest' || state === 'out-of-range') {
     return (
-      <div className={dotClasses(state, isSelected)}>
+      <div className={classes}>
         <div className="w-[8px] h-[2px] bg-gray-300 rounded-full" />
       </div>
     )
@@ -54,17 +55,17 @@ function Dot({ state, isSelected }: { state: DayStatus; isSelected: boolean }) {
   if (state === 'partial') {
     return (
       <div
-        className={dotClasses(state, isSelected)}
+        className={classes}
         style={{ background: 'conic-gradient(#14b8a6 0% 50%, transparent 50% 100%)' }}
       />
     )
   }
-  return <div className={dotClasses(state, isSelected)} />
+  return <div className={classes} />
 }
 
 function Row({
   name, goals, checkIns, weekStart, today, challengeStart, challengeEnd,
-  selectedDate, onSelectDay, isSelectable,
+  selectedDate, onSelectDay, isSelectable, todayIndex,
 }: {
   name: string
   goals: Goal[]
@@ -76,6 +77,7 @@ function Row({
   selectedDate: string
   onSelectDay: (d: string) => void
   isSelectable: boolean
+  todayIndex: number
 }) {
   return (
     <div className="flex items-center gap-2 py-1">
@@ -86,6 +88,7 @@ function Row({
           const state = dayCompletionStatus(goals, date, checkIns, today, challengeStart, challengeEnd)
           const isSelected = date === selectedDate
           const tappable = isSelectable && state !== 'out-of-range'
+          const isTodayCol = i === todayIndex
           const dayName = DAY_NAMES_LONG[i]
           const [y, m, d] = date.split('-').map(Number)
           const monthName = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long' })
@@ -97,15 +100,15 @@ function Row({
                 type="button"
                 aria-label={aria}
                 onClick={() => onSelectDay(date)}
-                className="flex-1 text-center transition active:scale-95"
+                className={`flex-1 text-center transition active:scale-95${isTodayCol ? ' bg-teal-50 rounded-md' : ''}`}
               >
-                <Dot state={state} isSelected={isSelected} />
+                <Dot key={state} state={state} isSelected={isSelected} />
               </button>
             )
           }
           return (
-            <div key={date} className="flex-1 text-center">
-              <Dot state={state} isSelected={false} />
+            <div key={date} className={`flex-1 text-center${isTodayCol ? ' bg-teal-50 rounded-md' : ''}`}>
+              <Dot key={state} state={state} isSelected={false} />
             </div>
           )
         })}
@@ -115,15 +118,27 @@ function Row({
 }
 
 export default function WeekStrip(props: Props) {
+  const todayIndex = (() => {
+    for (let i = 0; i < 7; i++) {
+      if (addDays(props.weekStart, i) === props.today) return i
+    }
+    return -1
+  })()
+
   return (
     <div className="bg-gray-100 rounded-2xl p-3 mb-4">
       {/* Day labels — rendered once at top */}
       <div className="flex items-center gap-2 mb-1">
         <span className="w-[56px]" />
         <div className="flex gap-1 flex-1">
-          {DAY_LABELS.map(label => (
-            <span key={label} className="flex-1 text-center text-[9px] font-bold text-gray-400 tracking-wider">
-              {label}
+          {DAY_LABELS.map((label, i) => (
+            <span
+              key={label}
+              className={`flex-1 text-center text-[9px] font-bold tracking-wider${
+                i === todayIndex ? ' text-teal-600' : ' text-gray-400'
+              }`}
+            >
+              {i === todayIndex ? 'TODAY' : label}
             </span>
           ))}
         </div>
@@ -139,6 +154,7 @@ export default function WeekStrip(props: Props) {
         selectedDate={props.selectedDate}
         onSelectDay={props.onSelectDay}
         isSelectable={true}
+        todayIndex={todayIndex}
       />
       <div className="border-t border-gray-200 my-1" />
       <Row
@@ -152,7 +168,30 @@ export default function WeekStrip(props: Props) {
         selectedDate={props.selectedDate}
         onSelectDay={props.onSelectDay}
         isSelectable={false}
+        todayIndex={todayIndex}
       />
+      {/* Legend — decodes the dot symbols so the strip is self-explanatory */}
+      <div className="flex items-center justify-center gap-3 text-[9px] text-gray-400 mt-2 pt-2 border-t border-gray-200">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2 h-2 rounded-full bg-teal-500" />
+          full
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="inline-block w-2 h-2 rounded-full border border-teal-500"
+            style={{ background: 'conic-gradient(#14b8a6 0% 50%, transparent 50% 100%)' }}
+          />
+          partial
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2 h-2 rounded-full border border-gray-300" />
+          none
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2 h-[2px] bg-gray-300 rounded-full" />
+          rest
+        </span>
+      </div>
     </div>
   )
 }
