@@ -31,7 +31,14 @@ function pillClass(variant: PillVariant, state: TileState): string {
   if (state === 'done') return `${PILL_BASE} bg-white/25 text-white`
   if (variant === 'fail' || variant === 'late') return `${PILL_BASE} bg-red-100 text-red-700`
   if (variant === 'streak') return `${PILL_BASE} bg-orange-100 text-orange-700`
-  if (variant === 'weekly') return `${PILL_BASE} bg-blue-100 text-blue-700`
+  if (variant === 'weekly') {
+    // Match the `remaining` pill — both communicate count-based info, not
+    // status. Keeping them in the same gray slot maintains a tight palette
+    // (orange = streak, red = problem, gray = info-and-counts, teal = done).
+    return state === 'catchUp'
+      ? `${PILL_BASE} bg-red-100 text-red-600`
+      : `${PILL_BASE} bg-gray-200 text-gray-600`
+  }
   // remaining
   return state === 'catchUp'
     ? `${PILL_BASE} bg-red-100 text-red-600`
