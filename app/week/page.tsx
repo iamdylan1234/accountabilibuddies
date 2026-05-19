@@ -3,6 +3,11 @@ import { redirect } from 'next/navigation'
 import WeekView from '@/components/week/WeekView'
 import type { ChallengeWithProfiles, Profile } from '@/types/database'
 
+// Force dynamic rendering — this page depends on the authenticated user's
+// data and must not be cached at the route level. Mirrors the dashboard's
+// fix from commit 983b748 (PWA cache staleness on iOS Safari).
+export const dynamic = 'force-dynamic'
+
 export default async function WeekPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
