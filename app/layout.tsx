@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import NextTopLoader from 'nextjs-toploader'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
+import InstallBanner from '@/components/layout/InstallBanner'
 import { createClient } from '@/lib/supabase/server'
 import { getAvatarUrl } from '@/lib/avatar'
 
@@ -62,6 +63,7 @@ export default async function RootLayout({
         />
         {user && <Navbar avatarUrl={avatarUrl} />}
         <main className="min-h-screen">{children}</main>
+        {user && <InstallBanner />}
       </body>
     </html>
   )

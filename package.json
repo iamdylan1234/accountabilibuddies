@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "jest",
@@ -21,6 +21,7 @@
     "resend": "^6.12.2"
   },
   "devDependencies": {
+    "@serwist/next": "^9.5.11",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -32,6 +33,7 @@
     "eslint-config-next": "16.2.4",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
+    "serwist": "^9.5.11",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
