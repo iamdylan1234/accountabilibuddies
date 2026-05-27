@@ -2,7 +2,7 @@
 
 import { dayCompletionStatus, type DayStatus } from '@/lib/scoring'
 import type { Goal, CheckIn } from '@/types/database'
-import { formatDate, addDays } from '@/lib/dateUtils'
+import { addDays } from '@/lib/dateUtils'
 
 interface Props {
   weekStart: string         // Monday of the displayed week, "YYYY-MM-DD"
@@ -63,60 +63,6 @@ function Dot({ state, isSelected }: { state: DayStatus; isSelected: boolean }) {
   return <div className={classes} />
 }
 
-function Row({
-  name, goals, checkIns, weekStart, today, challengeStart, challengeEnd,
-  selectedDate, onSelectDay, isSelectable, todayIndex,
-}: {
-  name: string
-  goals: Goal[]
-  checkIns: CheckIn[]
-  weekStart: string
-  today: string
-  challengeStart: string
-  challengeEnd: string
-  selectedDate: string
-  onSelectDay: (d: string) => void
-  isSelectable: boolean
-  todayIndex: number
-}) {
-  return (
-    <div className="flex items-center gap-2 py-1">
-      <span className="text-[10px] font-bold text-gray-600 w-[56px] truncate">{name}</span>
-      <div className="flex gap-1 flex-1">
-        {DAY_LABELS.map((_, i) => {
-          const date = addDays(weekStart, i)
-          const state = dayCompletionStatus(goals, date, checkIns, today, challengeStart, challengeEnd)
-          const isSelected = date === selectedDate
-          const tappable = isSelectable && state !== 'out-of-range'
-          const isTodayCol = i === todayIndex
-          const dayName = DAY_NAMES_LONG[i]
-          const [y, m, d] = date.split('-').map(Number)
-          const monthName = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long' })
-          const aria = `${dayName}, ${monthName} ${d}`
-          if (tappable) {
-            return (
-              <button
-                key={date}
-                type="button"
-                aria-label={aria}
-                onClick={() => onSelectDay(date)}
-                className={`flex-1 text-center transition active:scale-95${isTodayCol ? ' bg-teal-50 rounded-md' : ''}`}
-              >
-                <Dot key={state} state={state} isSelected={isSelected} />
-              </button>
-            )
-          }
-          return (
-            <div key={date} className={`flex-1 text-center${isTodayCol ? ' bg-teal-50 rounded-md' : ''}`}>
-              <Dot key={state} state={state} isSelected={false} />
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 export default function WeekStrip(props: Props) {
   const todayIndex = (() => {
     for (let i = 0; i < 7; i++) {
@@ -125,51 +71,99 @@ export default function WeekStrip(props: Props) {
     return -1
   })()
 
+  // Column-major layout: each day is a single tappable column containing
+  // [day label → my dot → divider → buddy dot]. This makes the entire
+  // vertical strip of a day a tap target (Dylan's UX request) instead of
+  // just the "me" dot, and lets the buddy dot also drive selection.
+  // The names ("You" / buddy) live in a left-hand column outside the buttons.
+  //
+  // `select-none` + WebkitTapHighlightColor + touch-action stop mobile
+  // browsers from text-highlighting day labels when tapped or showing the
+  // grey tap flash / triggering double-tap zoom.
   return (
-    <div className="bg-gray-100 rounded-2xl p-3 mb-4">
-      {/* Day labels — rendered once at top */}
-      <div className="flex items-center gap-2 mb-1">
-        <span className="w-[56px]" />
-        <div className="flex gap-1 flex-1">
-          {DAY_LABELS.map((label, i) => (
-            <span
-              key={label}
-              className={`flex-1 text-center text-[9px] font-bold tracking-wider${
-                i === todayIndex ? ' text-teal-600' : ' text-gray-400'
-              }`}
-            >
-              {i === todayIndex ? 'TODAY' : label}
-            </span>
-          ))}
+    <div
+      className="bg-gray-100 rounded-2xl p-3 mb-4 select-none"
+      style={{ WebkitTapHighlightColor: 'transparent' }}
+    >
+      <div className="flex items-stretch gap-2">
+        {/* Name column — must mirror the per-button vertical layout so the
+            "You" / buddy labels line up with their respective dots. */}
+        <div className="w-[56px] flex flex-col py-1">
+          {/* Spacer matching the day label inside each button */}
+          <div className="text-[9px] font-bold tracking-wider mb-1 invisible">.</div>
+          <div className="h-[18px] flex items-center">
+            <span className="text-[10px] font-bold text-gray-600 truncate">{props.myName}</span>
+          </div>
+          <div className="border-t border-gray-200 my-1" />
+          <div className="h-[18px] flex items-center">
+            <span className="text-[10px] font-bold text-gray-600 truncate">{props.buddyName}</span>
+          </div>
+        </div>
+
+        {/* 7 day columns. Each is one button. */}
+        <div className="flex flex-1 gap-1">
+          {DAY_LABELS.map((_, i) => {
+            const date = addDays(props.weekStart, i)
+            const myState = dayCompletionStatus(
+              props.myGoals, date, props.myCheckIns,
+              props.today, props.challengeStart, props.challengeEnd,
+            )
+            const buddyState = dayCompletionStatus(
+              props.buddyGoals, date, props.buddyCheckIns,
+              props.today, props.challengeStart, props.challengeEnd,
+            )
+            const isSelected = date === props.selectedDate
+            const isTodayCol = i === todayIndex
+            const tappable = myState !== 'out-of-range'
+            const dayName = DAY_NAMES_LONG[i]
+            const [y, m, d] = date.split('-').map(Number)
+            const monthName = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long' })
+            const aria = `${dayName}, ${monthName} ${d}`
+            const labelText = isTodayCol ? 'TODAY' : DAY_LABELS[i]
+
+            const inner = (
+              <>
+                <div
+                  className={`text-[9px] font-bold tracking-wider text-center mb-1 ${
+                    isTodayCol ? 'text-teal-600' : 'text-gray-400'
+                  }`}
+                >
+                  {labelText}
+                </div>
+                <Dot key={`my-${myState}`} state={myState} isSelected={isSelected} />
+                <div className="border-t border-gray-200 my-1" />
+                <Dot key={`buddy-${buddyState}`} state={buddyState} isSelected={isSelected} />
+              </>
+            )
+
+            if (tappable) {
+              return (
+                <button
+                  key={date}
+                  type="button"
+                  aria-label={aria}
+                  onClick={() => props.onSelectDay(date)}
+                  className={`flex-1 flex flex-col py-1 rounded-md transition active:scale-95 ${
+                    isTodayCol ? 'bg-teal-50' : ''
+                  }`}
+                  style={{ touchAction: 'manipulation' }}
+                >
+                  {inner}
+                </button>
+              )
+            }
+            return (
+              <div
+                key={date}
+                className={`flex-1 flex flex-col py-1 rounded-md ${isTodayCol ? 'bg-teal-50' : ''}`}
+              >
+                {inner}
+              </div>
+            )
+          })}
         </div>
       </div>
-      <Row
-        name={props.myName}
-        goals={props.myGoals}
-        checkIns={props.myCheckIns}
-        weekStart={props.weekStart}
-        today={props.today}
-        challengeStart={props.challengeStart}
-        challengeEnd={props.challengeEnd}
-        selectedDate={props.selectedDate}
-        onSelectDay={props.onSelectDay}
-        isSelectable={true}
-        todayIndex={todayIndex}
-      />
-      <div className="border-t border-gray-200 my-1" />
-      <Row
-        name={props.buddyName}
-        goals={props.buddyGoals}
-        checkIns={props.buddyCheckIns}
-        weekStart={props.weekStart}
-        today={props.today}
-        challengeStart={props.challengeStart}
-        challengeEnd={props.challengeEnd}
-        selectedDate={props.selectedDate}
-        onSelectDay={props.onSelectDay}
-        isSelectable={false}
-        todayIndex={todayIndex}
-      />
+
       {/* Legend — decodes the dot symbols so the strip is self-explanatory */}
       <div className="flex items-center justify-center gap-3 text-[9px] text-gray-400 mt-2 pt-2 border-t border-gray-200">
         <span className="flex items-center gap-1">

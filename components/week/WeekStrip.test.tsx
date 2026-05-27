@@ -60,12 +60,23 @@ describe('WeekStrip', () => {
     expect(monButton).toBeNull()
   })
 
-  it('buddy row dots are not buttons (visual-only)', () => {
+  it('renders exactly one tappable column per in-range day', () => {
     render(<WeekStrip {...baseProps} />)
-    // Only the user's row renders interactive day cells. Seven buttons total
-    // (Mon–Sun), not 14. If this assertion fails, the buddy row has become
-    // interactive and the click-routing invariant is broken.
+    // Column-major layout: each day = one button wrapping label + my dot +
+    // buddy dot. Seven in-range days → seven buttons. Out-of-range days
+    // render as <div> (verified by the test above).
     const buttons = screen.getAllByRole('button')
     expect(buttons.length).toBe(7)
+  })
+
+  it('tapping anywhere in a day column selects that day', () => {
+    // The column button covers day label + my dot + buddy dot. Whether the
+    // user taps the "TUE" label, the My dot, or the buddy dot, the same
+    // selection callback fires.
+    const onSelectDay = jest.fn()
+    render(<WeekStrip {...baseProps} onSelectDay={onSelectDay} />)
+    const tuesdayCol = screen.getByRole('button', { name: /tuesday.*may 13/i })
+    fireEvent.click(tuesdayCol)
+    expect(onSelectDay).toHaveBeenCalledWith('2026-05-13')
   })
 })
