@@ -7,4 +7,7 @@ module.exports = createJestConfig({
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
 })
