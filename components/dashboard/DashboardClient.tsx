@@ -5,6 +5,7 @@ import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
 import MissedGoalCard from './MissedGoalCard'
 import BuddyMessageRow from './BuddyMessageRow'
+import BuzzPermissionBanner from './BuzzPermissionBanner'
 import MessageEditSheet from './MessageEditSheet'
 import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
@@ -169,6 +170,7 @@ export default function DashboardClient({
         bothPerfect={bothPerfect}
       />
 
+      <BuzzPermissionBanner buddy={buddy} />
       {buddy && myProfile && (
         <BuddyMessageRow
           myProfile={myProfile}
