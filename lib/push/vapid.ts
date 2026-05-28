@@ -8,7 +8,7 @@
  * missing padding. We normalise to standard base64 first, then atob, then
  * convert the resulting binary string to a Uint8Array.
  */
-export function urlBase64ToUint8Array(base64UrlString: string): Uint8Array {
+export function urlBase64ToUint8Array(base64UrlString: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64UrlString.length % 4)) % 4)
   const base64 = (base64UrlString + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = atob(base64)
