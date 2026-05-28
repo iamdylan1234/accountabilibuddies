@@ -10,6 +10,7 @@ import AvatarPicker from './AvatarPicker'
 import StatTile from './StatTile'
 import StreakDetailSheet from './StreakDetailSheet'
 import ChallengeHistoryCard from './ChallengeHistoryCard'
+import BuzzToggle from './BuzzToggle'
 import type { ProfileStats } from '@/app/profile/page'
 
 interface Props {
@@ -176,6 +177,8 @@ export default function ProfileClient({
           <ChallengeHistoryCard key={row.challengeId} {...row} />
         ))
       )}
+
+      <BuzzToggle buddy={activeChallenge ? (activeChallenge.creator_id === userId ? activeChallenge.buddy : activeChallenge.creator) : null} />
 
       {/* Sign out */}
       <div className="mt-12 flex justify-center">

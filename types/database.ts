@@ -10,6 +10,7 @@ export interface Profile {
   created_at: string
   daily_message: string | null
   message_date: string | null
+  last_buzz_date: string | null   // YYYY-MM-DD; null = never sent
 }
 
 export interface ChallengeMonth {
@@ -78,5 +79,14 @@ export interface GoalChangeRequest {
   proposed_schedule_dates: string[] | null
   proposed_catch_up: boolean
   status: ChangeRequestStatus
+  created_at: string
+}
+
+export interface PushSubscription {
+  id: string
+  user_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
   created_at: string
 }
