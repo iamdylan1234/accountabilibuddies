@@ -22,8 +22,9 @@ function isStandalone(): boolean {
 
 function supportsPush(): boolean {
   return typeof window !== 'undefined'
-    && !!(window as any).Notification
-    && !!navigator.serviceWorker
+    && 'Notification' in window
+    && 'serviceWorker' in navigator
+    && 'PushManager' in window
 }
 
 async function postJSON(url: string, body: any): Promise<Response> {
@@ -86,32 +87,16 @@ export function useBuzzPermission(): BuzzPermissionState {
 
   const doSubscribe = useCallback(async () => {
     setState({ kind: 'pending' })
-    // requestPermission may not exist in test environments (JSDOM); treat its
-    // absence as an implicit grant so subscribe can proceed (the real call will
-    // reject if the browser truly denies it).
-    let permission: NotificationPermission
-    if (typeof Notification.requestPermission === 'function') {
-      permission = await Notification.requestPermission()
-    } else {
-      permission = 'granted'
-    }
+    const permission = await Notification.requestPermission()
     if (permission !== 'granted') {
       await refresh()
       return
     }
     const reg = await navigator.serviceWorker.ready
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-    // JSDOM's atob is stricter than real browsers; fall back to the raw string
-    // so tests with synthetic VAPID keys don't throw before reaching subscribe.
-    let appKey: Uint8Array | string
-    try {
-      appKey = urlBase64ToUint8Array(vapidKey)
-    } catch {
-      appKey = vapidKey
-    }
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: appKey,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
     })
     const { p256dh, auth } = extractKeys(sub)
     await postJSON('/api/push/subscribe', { endpoint: sub.endpoint, p256dh, auth })
