@@ -112,5 +112,38 @@ export async function updateDailyMessage(message: string, today: string): Promis
 
   if (error) return { error: error.message }
 
+  // Trigger a buzz, server-side rate-limited to 1 per sender per day.
+  // Skipped when: message is empty (clearing), no buddy, or already buzzed today.
+  if (trimmed) {
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('last_buzz_date')
+      .eq('id', user.id)
+      .single()
+
+    if (senderProfile?.last_buzz_date !== today) {
+      // Find the user's current buddy via the active challenge_months row
+      const { data: challenge } = await supabase
+        .from('challenge_months')
+        .select('creator_id, buddy_id')
+        .eq('status', 'active')
+        .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+        .maybeSingle()
+
+      const buddyId = challenge
+        ? (challenge.creator_id === user.id ? challenge.buddy_id : challenge.creator_id)
+        : null
+
+      if (buddyId) {
+        const { sendBuzz } = await import('@/lib/push/send')
+        await sendBuzz(user.id, buddyId)
+        await supabase
+          .from('profiles')
+          .update({ last_buzz_date: today })
+          .eq('id', user.id)
+      }
+    }
+  }
+
   revalidatePath('/dashboard')
 }
