@@ -30,6 +30,20 @@ describe('zonedMidnightUtc', () => {
   it('Asia/Tokyo midnight is previous-day 15:00 UTC (UTC+9)', () => {
     expect(zonedMidnightUtc('2026-06-01', 'Asia/Tokyo').toISOString()).toBe('2026-05-31T15:00:00.000Z')
   })
+  it('rounds a non-existent midnight (spring-forward at 00:00) FORWARD, never to the previous day', () => {
+    // America/Sao_Paulo historically sprang forward AT midnight (00:00→01:00) on 2018-11-04,
+    // so 00:00 that day does not exist. The result must land on 2018-11-04 (the gap end),
+    // never on 11-03 — otherwise the westmost buddy's final day would be cut short.
+    const result = zonedMidnightUtc('2018-11-04', 'America/Sao_Paulo')
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
+    }).formatToParts(result)
+    const p: Record<string, string> = {}
+    for (const x of parts) p[x.type] = x.value
+    expect(p.day).toBe('04')   // never 03 (the previous day)
+    expect(p.hour).toBe('01')  // first valid instant after the non-existent 00:00
+  })
 })
 
 describe('challengeCompletionInstant', () => {

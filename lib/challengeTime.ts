@@ -37,9 +37,13 @@ export function zonedMidnightUtc(dateStr: string, timeZone: string | null): Date
   if (!timeZone) return new Date(naiveUtc)
   const o1 = tzOffsetMs(timeZone, new Date(naiveUtc))
   let result = naiveUtc - o1
-  // Re-evaluate at the corrected instant in case the offset changed across a DST edge.
   const o2 = tzOffsetMs(timeZone, new Date(result))
-  if (o2 !== o1) result = naiveUtc - o2
+  // When the offset differs across the boundary (a DST edge at/near this midnight),
+  // pick the offset that yields the LATER instant (Math.min — most-negative offset →
+  // largest `naiveUtc - offset`). This rounds a non-existent midnight (spring-forward
+  // AT 00:00) FORWARD to the first valid instant, so a buddy's final day is never
+  // cut short. For ordinary days o1 === o2 and this is a no-op.
+  if (o2 !== o1) result = naiveUtc - Math.min(o1, o2)
   return new Date(result)
 }
 
