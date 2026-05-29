@@ -5,6 +5,7 @@ import { ensureProfile } from '@/lib/supabase/ensureProfile'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { GoalType } from '@/types/database'
+import { hasChallengeStarted } from '@/lib/challengeTime'
 
 interface GoalDraft {
   title: string
@@ -28,7 +29,7 @@ export async function saveGoals(
   await ensureProfile(supabase, user)
 
   const { data: challenge, error: challengeError } = await supabase
-    .from('challenge_months').select('id, status')
+    .from('challenge_months').select('id, status, start_date')
     .eq('id', challengeId)
     .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
     .maybeSingle()
@@ -40,8 +41,14 @@ export async function saveGoals(
   if (!challenge) {
     return { error: 'Challenge not found — it may have been cancelled. Refresh and try again.' }
   }
+  // Active but not yet started (a scheduled future start): goals stay editable.
+  // Only lock once the challenge has actually begun in this user's timezone.
   if (challenge.status === 'active') {
-    return { error: 'Goals are locked once the challenge is active.' }
+    const { data: profile } = await supabase
+      .from('profiles').select('timezone').eq('id', user.id).maybeSingle()
+    if (hasChallengeStarted(new Date(), challenge.start_date, profile?.timezone ?? null)) {
+      return { error: 'Goals are locked once the challenge starts.' }
+    }
   }
 
   const { error: deleteError } = await supabase.from('goals').delete()
