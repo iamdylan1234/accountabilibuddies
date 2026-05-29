@@ -33,3 +33,17 @@ export function addDays(dateStr: string, n: number): string {
   const dt = new Date(y, m - 1, d + n)
   return formatDate(dt)
 }
+
+/**
+ * Whole calendar days from `fromStr` to `toStr` (both "YYYY-MM-DD"), local time.
+ * Positive when `toStr` is later, negative when earlier, 0 for the same day.
+ * Built from local midnights and rounded, so a 23/25-hour DST day never drifts
+ * the result. daysBetween('2026-05-29','2026-06-01') === 3.
+ */
+export function daysBetween(fromStr: string, toStr: string): number {
+  const [fy, fm, fd] = fromStr.split('-').map(Number)
+  const [ty, tm, td] = toStr.split('-').map(Number)
+  const from = new Date(fy, fm - 1, fd).getTime()
+  const to = new Date(ty, tm - 1, td).getTime()
+  return Math.round((to - from) / 86400000)
+}
