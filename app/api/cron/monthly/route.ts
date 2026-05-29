@@ -18,13 +18,22 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // UTC "today". A challenge completes once the calendar has rolled PAST its
+  // end_date — i.e. its final day is fully over. Using `< today` (not the old
+  // `= today`) fixes two things:
+  //   1. Timing: the challenge stays active through ALL of its end_date and
+  //      flips at the next UTC midnight (this route is scheduled at 00:00 UTC),
+  //      instead of being cut off at 9am on the final day mid-challenge.
+  //   2. Self-healing: if a daily run is ever missed (deploy, outage, cron
+  //      throttling), the next run still catches any active challenge whose
+  //      end_date has passed — an exact `= today` match would skip it forever.
   const today = new Date().toISOString().split('T')[0]
 
   const { data: challenges, error: challengesError } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .eq('status', 'active')
-    .eq('end_date', today)
+    .lt('end_date', today)
 
   if (challengesError) {
     console.error('Failed to fetch challenges:', challengesError)
