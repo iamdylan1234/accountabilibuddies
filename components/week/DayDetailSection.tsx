@@ -4,7 +4,7 @@ import type { Goal, CheckIn } from '@/types/database'
 import GoalCard from '@/components/dashboard/GoalCard'
 import CumulativeCard from '@/components/dashboard/CumulativeCard'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
-import { getWeeklyStatChip } from '@/lib/scoring'
+import { getWeeklyStatChip, getMilestoneCheckIn } from '@/lib/scoring'
 
 interface Props {
   selectedDate: string      // "YYYY-MM-DD"
@@ -80,11 +80,17 @@ export default function DayDetailSection(props: Props) {
       )
     }
 
-    const completedOnDay = checkIns.find(c => c.goal_id === goal.id && c.date === selectedDate && c.completed)
-    const checkIn = completedOnDay ?? null
+    // Milestones are date-agnostic: done once any completed check-in exists, so
+    // they render checked on EVERY day once complete (matching the summary +
+    // scoreGoal). Other types remain day-specific. Toggling a milestone acts on
+    // its own check-in's date so un-completing removes the real row, not today's.
+    const checkIn = goal.type === 'milestone'
+      ? getMilestoneCheckIn(goal.id, checkIns)
+      : (checkIns.find(c => c.goal_id === goal.id && c.date === selectedDate && c.completed) ?? null)
     const weeklyStat = getWeeklyStatChip(goal, weekStart, weekEnd, checkIns) ?? undefined
     const isMine = ownership === 'mine'
     const tappable = isMine && editable
+    const toggleDate = goal.type === 'milestone' ? (checkIn?.date ?? selectedDate) : selectedDate
 
     return (
       <GoalCard
@@ -94,7 +100,7 @@ export default function DayDetailSection(props: Props) {
         reaction={null}
         isMyGoal={tappable}
         today={today}
-        onToggle={tappable ? (id) => onToggle(id, selectedDate) : () => {}}
+        onToggle={tappable ? (id) => onToggle(id, toggleDate) : () => {}}
         weeklyStat={weeklyStat}
       />
     )

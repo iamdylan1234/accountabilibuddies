@@ -62,6 +62,25 @@ export function getCurrentStreak(goal: Goal, checkIns: CheckIn[], today: string)
   return streak
 }
 
+/**
+ * The single completion check-in for a milestone goal, or null if not done.
+ *
+ * A milestone is a one-time achievement: it is "done" the moment ANY completed
+ * check-in exists, regardless of which date that check-in is stamped with. This
+ * mirrors scoreGoal's milestone branch (`relevant.length > 0`), which is also
+ * date-agnostic.
+ *
+ * Per-day views (Today, Week day-detail) MUST resolve a milestone's checked
+ * state through this helper rather than a `date === today/selectedDate` lookup,
+ * otherwise the milestone only renders checked on its exact completion date —
+ * the cause of the "done on summary, unchecked on Today/Week" bug. Callers also
+ * use the returned check-in's `date` to toggle the correct row (a done
+ * milestone completed last week must be un-completed on its own date, not today).
+ */
+export function getMilestoneCheckIn(goalId: string, checkIns: CheckIn[]): CheckIn | null {
+  return checkIns.find(c => c.goal_id === goalId && c.completed) ?? null
+}
+
 export function scoreGoal(
   goal: Goal, checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,

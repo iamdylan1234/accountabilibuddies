@@ -13,7 +13,7 @@ import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import { useDashboardRealtime } from './useDashboardRealtime'
 import { useCheckInToggle } from './useCheckInToggle'
 import type { Goal, CheckIn, Reaction, ChallengeWithProfiles, Profile } from '@/types/database'
-import { isGoalCatchUp, getCurrentStreak, getMissedDays, getCatchUpState } from '@/lib/scoring'
+import { isGoalCatchUp, getCurrentStreak, getMissedDays, getCatchUpState, getMilestoneCheckIn } from '@/lib/scoring'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
 import { formatDate } from '@/lib/dateUtils'
 
@@ -323,14 +323,21 @@ export default function DashboardClient({
             </h2>
             <div className="rounded-2xl bg-gray-100 p-3">
             <GoalPairGrid
-              myColumn={myMilestoneGoals.map(goal => (
-                <GoalCard key={goal.id} goal={goal}
-                  checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
-                  isMyGoal={true} today={today} onToggle={handleToggle}
-                  hasFailed={failedGoals.has(goal.id)} />
-              ))}
+              myColumn={myMilestoneGoals.map(goal => {
+                // Milestone done-state is date-agnostic (any completed check-in).
+                // Toggle on that check-in's own date so un-completing a milestone
+                // finished on a past date removes the real row, not a new one today.
+                const checkIn = getMilestoneCheckIn(goal.id, optimisticCheckIns)
+                return (
+                  <GoalCard key={goal.id} goal={goal}
+                    checkIn={checkIn} reaction={null}
+                    isMyGoal={true} today={today}
+                    onToggle={(id) => handleToggle(id, checkIn?.date ?? today)}
+                    hasFailed={failedGoals.has(goal.id)} />
+                )
+              })}
               buddyColumn={buddyMilestoneGoals.map(goal => {
-                const checkIn = getCheckIn(goal.id, buddyCheckIns)
+                const checkIn = getMilestoneCheckIn(goal.id, buddyCheckIns)
                 return <GoalCard key={goal.id} goal={goal} checkIn={checkIn}
                   reaction={getReaction(checkIn?.id)} isMyGoal={false} today={today}
                   onToggle={handleToggle} />
