@@ -11,6 +11,7 @@ export interface Profile {
   daily_message: string | null
   message_date: string | null
   last_buzz_date: string | null   // YYYY-MM-DD; null = never sent
+  timezone: string | null         // IANA tz, e.g. "Europe/Amsterdam"; null → UTC
 }
 
 export interface ChallengeMonth {

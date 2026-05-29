@@ -5,10 +5,46 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import CompletionCard from '@/components/dashboard/CompletionCard'
-import type { ChallengeWithProfiles, Profile } from '@/types/database'
+import type { ChallengeWithProfiles, Profile, Goal, CheckIn } from '@/types/database'
 import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
 import { firstNameOf } from '@/lib/profile'
+import { isChallengeOver } from '@/lib/challengeTime'
+
+function buildCompletionCard(
+  challenge: ChallengeWithProfiles,
+  goals: Goal[],
+  myCheckIns: CheckIn[],
+  buddyCheckIns: CheckIn[],
+  userId: string,
+  today: string,
+) {
+  const buddyId = challenge.creator_id === userId ? challenge.buddy_id : challenge.creator_id
+  if (!buddyId) return null
+  const totalDays = Math.floor(
+    (new Date(challenge.end_date).getTime() - new Date(challenge.start_date).getTime()) / 86400000
+  ) + 1
+  const myScore = scoreChallenge(
+    goals.filter(g => g.user_id === userId), myCheckIns, totalDays, challenge.start_date, today, true,
+  )
+  const buddyScore = scoreChallenge(
+    goals.filter(g => g.user_id === buddyId), buddyCheckIns, totalDays, challenge.start_date, today, true,
+  )
+  const meProfile = (challenge.creator_id === userId ? challenge.creator : challenge.buddy) as Profile | null
+  const buddyProfile = (challenge.creator_id === userId ? challenge.buddy : challenge.creator) as Profile | null
+  const result: 'won' | 'tied' | 'lost' =
+    myScore > buddyScore ? 'won' : myScore === buddyScore ? 'tied' : 'lost'
+  return (
+    <CompletionCard
+      challengeName={challenge.month_name}
+      myName={firstNameOf(meProfile)}
+      buddyName={firstNameOf(buddyProfile)}
+      myScore={myScore}
+      buddyScore={buddyScore}
+      result={result}
+    />
+  )
+}
 
 // Force dynamic rendering — this page depends on the authenticated user's data
 // and must not be cached at the route level. Without this, mobile browsers
@@ -72,45 +108,19 @@ export default async function DashboardPage() {
       .maybeSingle()
 
     const completed = completedRaw as unknown as ChallengeWithProfiles | null
-    const completedBuddyId = completed
-      ? (completed.creator_id === user.id ? completed.buddy_id : completed.creator_id)
-      : null
-
     let completionCard = null
-    if (completed && completedBuddyId) {
-      const totalDays = Math.floor(
-        (new Date(completed.end_date).getTime() - new Date(completed.start_date).getTime()) / 86400000
-      ) + 1
-      const [cGoalsRes, cMineRes, cBuddyRes] = await Promise.all([
-        supabase.from('goals').select('*').eq('challenge_id', completed.id),
-        supabase.from('check_ins').select('*').eq('user_id', user.id)
-          .gte('date', completed.start_date).lte('date', completed.end_date),
-        supabase.from('check_ins').select('*').eq('user_id', completedBuddyId)
-          .gte('date', completed.start_date).lte('date', completed.end_date),
-      ])
-      const cGoals = cGoalsRes.data ?? []
-      const myScore = scoreChallenge(
-        cGoals.filter(g => g.user_id === user.id), cMineRes.data ?? [], totalDays,
-        completed.start_date, today, true,
-      )
-      const buddyScore = scoreChallenge(
-        cGoals.filter(g => g.user_id === completedBuddyId), cBuddyRes.data ?? [], totalDays,
-        completed.start_date, today, true,
-      )
-      const meProfile = (completed.creator_id === user.id ? completed.creator : completed.buddy) as Profile | null
-      const buddyProfile = (completed.creator_id === user.id ? completed.buddy : completed.creator) as Profile | null
-      const result: 'won' | 'tied' | 'lost' =
-        myScore > buddyScore ? 'won' : myScore === buddyScore ? 'tied' : 'lost'
-      completionCard = (
-        <CompletionCard
-          challengeName={completed.month_name}
-          myName={firstNameOf(meProfile)}
-          buddyName={firstNameOf(buddyProfile)}
-          myScore={myScore}
-          buddyScore={buddyScore}
-          result={result}
-        />
-      )
+    if (completed) {
+      const buddyId = completed.creator_id === user.id ? completed.buddy_id : completed.creator_id
+      if (buddyId) {
+        const [g, mine, buddy] = await Promise.all([
+          supabase.from('goals').select('*').eq('challenge_id', completed.id),
+          supabase.from('check_ins').select('*').eq('user_id', user.id)
+            .gte('date', completed.start_date).lte('date', completed.end_date),
+          supabase.from('check_ins').select('*').eq('user_id', buddyId)
+            .gte('date', completed.start_date).lte('date', completed.end_date),
+        ])
+        completionCard = buildCompletionCard(completed, g.data ?? [], mine.data ?? [], buddy.data ?? [], user.id, today)
+      }
     }
 
     return (
@@ -186,6 +196,26 @@ export default async function DashboardPage() {
   const allGoals = goalsRes.data ?? []
   const myGoals = allGoals.filter(g => g.user_id === user.id)
   const buddyGoals = allGoals.filter(g => g.user_id === buddyId)
+
+  // Ended-on-read: if this active challenge is already past the per-user-midnight
+  // completion instant (the daily cron may not have flipped it yet on Hobby),
+  // show the completion card now instead of a stale, checkable "active" challenge.
+  if (isChallengeOver(new Date(), typedChallenge.end_date, typedChallenge.creator?.timezone ?? null, typedChallenge.buddy?.timezone ?? null)) {
+    const today = new Date().toISOString().split('T')[0]
+    const completionCard = buildCompletionCard(
+      typedChallenge, allGoals, myCheckInsRes.data ?? [], buddyCheckInsRes.data ?? [], user.id, today,
+    )
+    return (
+      <div className="max-w-md mx-auto mt-12 px-6 space-y-8">
+        {completionCard}
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Ready for the next one?</h1>
+          <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
+          <CreateChallengeForm defaultDate={today} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <DashboardClient

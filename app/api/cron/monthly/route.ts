@@ -3,6 +3,7 @@ import { sendMonthlyWrapUp } from '@/lib/email'
 import { scoreChallenge } from '@/lib/scoring'
 import { NextResponse } from 'next/server'
 import type { ChallengeWithProfiles } from '@/types/database'
+import { isChallengeOver } from '@/lib/challengeTime'
 
 export async function GET(request: Request) {
   if (!process.env.CRON_SECRET) {
@@ -18,29 +19,31 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // UTC "today". A challenge completes once the calendar has rolled PAST its
-  // end_date — i.e. its final day is fully over. Using `< today` (not the old
-  // `= today`) fixes two things:
-  //   1. Timing: the challenge stays active through ALL of its end_date and
-  //      flips at the next UTC midnight (this route is scheduled at 00:00 UTC),
-  //      instead of being cut off at 9am on the final day mid-challenge.
-  //   2. Self-healing: if a daily run is ever missed (deploy, outage, cron
-  //      throttling), the next run still catches any active challenge whose
-  //      end_date has passed — an exact `= today` match would skip it forever.
   const today = new Date().toISOString().split('T')[0]
+  const now = new Date()
 
-  const { data: challenges, error: challengesError } = await supabase
+  // Prefilter to active challenges whose end_date has reached today or passed — a
+  // challenge ending in the future can't be over for anyone. The precise rule
+  // (past the LATER of both buddies' local midnights) needs both timezones and is
+  // applied in JS below, since it isn't expressible as a single SQL predicate.
+  const { data: activeChallenges, error: challengesError } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
     .eq('status', 'active')
-    .lt('end_date', today)
+    .lte('end_date', today)
 
   if (challengesError) {
     console.error('Failed to fetch challenges:', challengesError)
     return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 })
   }
 
-  if (!challenges) return NextResponse.json({ sent: 0, failed: 0 })
+  if (!activeChallenges) return NextResponse.json({ sent: 0, failed: 0 })
+
+  // Keep only challenges past the later of the two buddies' local midnights.
+  const challenges = activeChallenges.filter((c) => {
+    const ch = c as unknown as ChallengeWithProfiles
+    return isChallengeOver(now, ch.end_date, ch.creator?.timezone ?? null, ch.buddy?.timezone ?? null)
+  })
 
   let sent = 0
   let failed = 0
