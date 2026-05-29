@@ -1,6 +1,7 @@
 'use client'
 
-import { useBuzzPermission } from '@/lib/push/useBuzzPermission'
+import { useState } from 'react'
+import { useBuzzPermission, type EnableResult } from '@/lib/push/useBuzzPermission'
 import { firstNameOf } from '@/lib/profile'
 import type { Profile } from '@/types/database'
 
@@ -15,8 +16,17 @@ interface Props {
  */
 export default function BuzzToggle({ buddy }: Props) {
   const state = useBuzzPermission()
+  const [error, setError] = useState<string | null>(null)
 
   if (state.kind === 'unsupported' || state.kind === 'ios-needs-install') return null
+
+  // Wrap an enable() call so a failure surfaces its reason instead of silently
+  // doing nothing.
+  const runEnable = (enable: () => Promise<EnableResult>) => async () => {
+    setError(null)
+    const res = await enable()
+    if (res && !res.ok) setError(res.reason)
+  }
 
   let caption: string
   let toggleOn = false
@@ -34,7 +44,7 @@ export default function BuzzToggle({ buddy }: Props) {
       break
     case 'default':
       caption = 'Off — tap to enable'
-      onClick = () => { void state.enable() }
+      onClick = runEnable(state.enable)
       break
     case 'granted':
       if (state.subscribed) {
@@ -44,7 +54,7 @@ export default function BuzzToggle({ buddy }: Props) {
         onClick = () => { void state.disable() }
       } else {
         caption = 'Off — tap to enable'
-        onClick = () => { void state.enable() }
+        onClick = runEnable(state.enable)
       }
       break
   }
@@ -60,7 +70,7 @@ export default function BuzzToggle({ buddy }: Props) {
       >
         <div className="flex-1 text-left min-w-0">
           <p className="font-bold text-sm text-gray-900">Buddy buzzes</p>
-          <p className="text-xs text-gray-500">{caption}</p>
+          <p className={`text-xs ${error ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>{error ?? caption}</p>
         </div>
         <span
           className={`relative w-11 h-6 rounded-full transition flex-shrink-0 ${toggleOn ? 'bg-teal-500' : 'bg-gray-300'}`}

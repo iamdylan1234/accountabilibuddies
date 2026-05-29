@@ -127,4 +127,33 @@ describe('useBuzzPermission', () => {
       expect.objectContaining({ method: 'POST' }),
     )
   })
+
+  it('enable() resolves { ok: true } on success', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true }) as any
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'B' + 'a'.repeat(86)
+    mockPushSupport({ permission: 'default' })
+    const { result } = renderHook(() => useBuzzPermission())
+    await waitFor(() => expect(result.current.kind).toBe('default'))
+
+    let outcome: any
+    await act(async () => {
+      if (result.current.kind === 'default') outcome = await result.current.enable()
+    })
+    expect(outcome).toEqual({ ok: true })
+  })
+
+  it('enable() resolves { ok: false } with a "blocked" reason when permission is denied', async () => {
+    mockPushSupport({ permission: 'default' })
+    // User denies the OS prompt.
+    ;(global as any).Notification.requestPermission = jest.fn().mockResolvedValue('denied')
+    const { result } = renderHook(() => useBuzzPermission())
+    await waitFor(() => expect(result.current.kind).toBe('default'))
+
+    let outcome: any
+    await act(async () => {
+      if (result.current.kind === 'default') outcome = await result.current.enable()
+    })
+    expect(outcome.ok).toBe(false)
+    expect(outcome.reason).toMatch(/blocked/i)
+  })
 })

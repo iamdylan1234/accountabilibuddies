@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import BuzzPermissionBanner from './BuzzPermissionBanner'
 
@@ -55,5 +55,16 @@ describe('BuzzPermissionBanner', () => {
     ;(useBuzzPermission as jest.Mock).mockReturnValue({ kind: 'default', enable: jest.fn() })
     const { container } = render(<BuzzPermissionBanner buddy={{ id: 'b', name: 'Sam' } as any} />)
     expect(container.firstChild).toBeNull()
+  })
+
+  it('shows the failure reason when enabling fails (no more silent failure)', async () => {
+    const enable = jest.fn().mockResolvedValue({
+      ok: false,
+      reason: 'Notifications are blocked. Turn them on in your browser settings.',
+    })
+    ;(useBuzzPermission as jest.Mock).mockReturnValue({ kind: 'default', enable })
+    render(<BuzzPermissionBanner buddy={{ id: 'b', name: 'Sam' } as any} />)
+    fireEvent.click(screen.getByRole('button', { name: /enable/i }))
+    expect(await screen.findByText(/blocked/i)).toBeInTheDocument()
   })
 })

@@ -62,4 +62,12 @@ describe('BuzzToggle', () => {
     fireEvent.click(screen.getByRole('button', { name: /buddy buzzes/i }))
     expect(disable).toHaveBeenCalled()
   })
+
+  it('shows the failure reason when enabling fails (no more silent failure)', async () => {
+    const enable = jest.fn().mockResolvedValue({ ok: false, reason: 'Notifications are blocked.' })
+    ;(useBuzzPermission as jest.Mock).mockReturnValue({ kind: 'default', enable })
+    render(<BuzzToggle buddy={{ name: 'Sam' } as any} />)
+    fireEvent.click(screen.getByRole('button', { name: /buddy buzzes/i }))
+    expect(await screen.findByText(/blocked/i)).toBeInTheDocument()
+  })
 })

@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { urlBase64ToUint8Array } from './vapid'
 
+/**
+ * Outcome of an enable() attempt. On failure it carries a human-readable
+ * reason so the banner / toggle can tell the user WHY enabling didn't work
+ * (blocked, dismissed, or a technical error) instead of failing silently.
+ */
+export type EnableResult = { ok: true } | { ok: false; reason: string }
+
 export type BuzzPermissionState =
   | { kind: 'unsupported' }
   | { kind: 'ios-needs-install' }
-  | { kind: 'default'; enable: () => Promise<void> }
-  | { kind: 'granted'; subscribed: boolean; enable: () => Promise<void>; disable: () => Promise<void> }
+  | { kind: 'default'; enable: () => Promise<EnableResult> }
+  | { kind: 'granted'; subscribed: boolean; enable: () => Promise<EnableResult>; disable: () => Promise<void> }
   | { kind: 'denied' }
   | { kind: 'pending' }
 
@@ -85,22 +92,37 @@ export function useBuzzPermission(): BuzzPermissionState {
     }
   }, [])
 
-  const doSubscribe = useCallback(async () => {
+  const doSubscribe = useCallback(async (): Promise<EnableResult> => {
     setState({ kind: 'pending' })
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') {
       await refresh()
-      return
+      return {
+        ok: false,
+        reason: permission === 'denied'
+          ? 'Notifications are blocked. Turn them on in your browser settings for this site, then try again.'
+          : 'Notifications weren’t enabled. Tap Enable to try again.',
+      }
     }
-    const reg = await navigator.serviceWorker.ready
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey),
-    })
-    const { p256dh, auth } = extractKeys(sub)
-    await postJSON('/api/push/subscribe', { endpoint: sub.endpoint, p256dh, auth })
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      })
+      const { p256dh, auth } = extractKeys(sub)
+      const res = await postJSON('/api/push/subscribe', { endpoint: sub.endpoint, p256dh, auth })
+      if (!res.ok) {
+        await refresh()
+        return { ok: false, reason: 'Couldn’t save your subscription. Please try again.' }
+      }
+    } catch {
+      await refresh()
+      return { ok: false, reason: 'Couldn’t enable notifications. Please try again.' }
+    }
     await refresh()
+    return { ok: true }
   }, [refresh])
 
   const doUnsubscribe = useCallback(async () => {

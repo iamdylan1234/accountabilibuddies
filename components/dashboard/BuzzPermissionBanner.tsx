@@ -25,6 +25,8 @@ export default function BuzzPermissionBanner({ buddy }: Props) {
   const state = useBuzzPermission()
   const [dismissedHydrated, setDismissedHydrated] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     const raw = localStorage.getItem(DISMISS_KEY)
@@ -35,7 +37,10 @@ export default function BuzzPermissionBanner({ buddy }: Props) {
   if (!buddy) return null
   if (!dismissedHydrated) return null
   if (dismissed) return null
-  if (state.kind !== 'default') return null
+  // Normally only show on 'default'. But if an enable attempt just failed, keep
+  // the banner up so the user can read WHY (permission may have flipped to
+  // 'denied', which would otherwise hide the banner and lose the message).
+  if (!error && state.kind !== 'default') return null
 
   const firstName = firstNameOf(buddy)
 
@@ -45,7 +50,12 @@ export default function BuzzPermissionBanner({ buddy }: Props) {
   }
 
   async function handleEnable() {
-    if (state.kind === 'default') await state.enable()
+    if (state.kind !== 'default') return
+    setBusy(true)
+    setError(null)
+    const res = await state.enable()
+    setBusy(false)
+    if (res && !res.ok) setError(res.reason)
   }
 
   return (
@@ -60,6 +70,7 @@ export default function BuzzPermissionBanner({ buddy }: Props) {
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-gray-900">Get a buzz from {firstName}</p>
           <p className="text-xs text-gray-500">A notification when {firstName} sends a message. Tap to read.</p>
+          {error && <p className="text-xs text-red-600 font-semibold mt-1">{error}</p>}
         </div>
         <button
           type="button"
@@ -81,10 +92,11 @@ export default function BuzzPermissionBanner({ buddy }: Props) {
         <button
           type="button"
           onClick={handleEnable}
+          disabled={busy || state.kind !== 'default'}
           style={{ background: BRAND_GRADIENT }}
-          className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition active:scale-95"
+          className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition active:scale-95 disabled:opacity-60"
         >
-          Enable
+          {busy ? 'Enabling…' : 'Enable'}
         </button>
       </div>
     </div>
