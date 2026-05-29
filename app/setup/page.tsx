@@ -68,7 +68,7 @@ export default async function SetupPage({ searchParams }: Props) {
           {challenge.month_name}
         </p>
         <h1 className="text-2xl font-black">Set your goals</h1>
-        <p className="text-white/70 text-sm mt-1">Add 5–8 goals. You can&apos;t change these once your buddy joins.</p>
+        <p className="text-white/70 text-sm mt-1">Add 5–8 goals. You can change these any time before the challenge starts.</p>
       </div>
       <GoalSetupForm
         challengeId={challengeId}

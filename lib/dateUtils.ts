@@ -33,3 +33,30 @@ export function addDays(dateStr: string, n: number): string {
   const dt = new Date(y, m - 1, d + n)
   return formatDate(dt)
 }
+
+/**
+ * Whole calendar days from `fromStr` to `toStr` (both "YYYY-MM-DD"), local time.
+ * Positive when `toStr` is later, negative when earlier, 0 for the same day.
+ * Built from local midnights and rounded, so a 23/25-hour DST day never drifts
+ * the result. daysBetween('2026-05-29','2026-06-01') === 3.
+ */
+export function daysBetween(fromStr: string, toStr: string): number {
+  const [fy, fm, fd] = fromStr.split('-').map(Number)
+  const [ty, tm, td] = toStr.split('-').map(Number)
+  const from = new Date(fy, fm - 1, fd).getTime()
+  const to = new Date(ty, tm - 1, td).getTime()
+  return Math.round((to - from) / 86400000)
+}
+
+/**
+ * The soonest Monday on or after `fromStr` ("YYYY-MM-DD"). If `fromStr` is
+ * already a Monday it's returned unchanged (earliest clean start); otherwise
+ * the upcoming Monday. Returns "YYYY-MM-DD". Used to default a new challenge's
+ * start to a fresh-week kickoff rather than "today".
+ */
+export function nextMonday(fromStr: string): string {
+  const [y, m, d] = fromStr.split('-').map(Number)
+  const dow = new Date(y, m - 1, d).getDay()  // 0=Sun … 6=Sat
+  const delta = (1 - dow + 7) % 7             // 0 when already Monday
+  return addDays(fromStr, delta)
+}

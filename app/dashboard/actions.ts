@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ensureProfile } from '@/lib/supabase/ensureProfile'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { addDays } from '@/lib/dateUtils'
 
 // Server action result shape — used by useActionState in the form component
 // so errors surface to the user rather than throwing silently. State type
@@ -58,6 +59,13 @@ export async function createChallenge(
   const start = new Date(startDate)
   if (isNaN(start.getTime())) {
     return { error: `That start date doesn't look right. Try selecting it again.` }
+  }
+
+  // Reject a start more than a day in the past. The one-day slack absorbs
+  // client/UTC timezone skew so a legitimately-"today" start is never rejected.
+  const todayUtc = new Date().toISOString().split('T')[0]
+  if (startDate < addDays(todayUtc, -1)) {
+    return { error: "Start date can't be in the past." }
   }
 
   const end = new Date(start)

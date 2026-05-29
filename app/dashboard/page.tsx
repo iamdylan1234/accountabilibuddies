@@ -5,11 +5,13 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import CompletionCard from '@/components/dashboard/CompletionCard'
+import NotStartedCard from '@/components/dashboard/NotStartedCard'
 import type { ChallengeWithProfiles, Profile, Goal, CheckIn } from '@/types/database'
 import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
 import { firstNameOf } from '@/lib/profile'
-import { isChallengeOver } from '@/lib/challengeTime'
+import { isChallengeOver, hasChallengeStarted } from '@/lib/challengeTime'
+import { nextMonday } from '@/lib/dateUtils'
 import RematchProposalCard from '@/components/dashboard/RematchProposalCard'
 
 function buildCompletionCard(
@@ -149,7 +151,7 @@ export default async function DashboardPage() {
             {completionCard ? 'Ready for the next one?' : 'Start a challenge'}
           </h1>
           <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
-          <CreateChallengeForm defaultDate={today} />
+          <CreateChallengeForm defaultDate={nextMonday(today)} minDate={today} />
         </div>
       </div>
     )
@@ -174,6 +176,8 @@ export default async function DashboardPage() {
     }
     // Normal link-invite pending (unchanged from current behaviour).
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${typedChallenge.invite_token}`
+    const [py, pm, pd] = typedChallenge.start_date.split('-').map(Number)
+    const startLabel = new Date(py, pm - 1, pd).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
     return (
       <div className="max-w-md mx-auto mt-20 px-6">
         <h1 className="text-3xl font-black text-gray-900 mb-2">{typedChallenge.month_name}</h1>
@@ -182,7 +186,7 @@ export default async function DashboardPage() {
           <span className="text-sm text-gray-700 break-all flex-1">{inviteUrl}</span>
           <CopyButton text={inviteUrl} />
         </div>
-        <p className="text-sm text-gray-400 mt-4">Once your buddy joins and sets their goals, the challenge begins.</p>
+        <p className="text-sm text-gray-400 mt-4">Once your buddy joins and sets their goals, your challenge is locked in for {startLabel}.</p>
         <PendingChallengeActions challengeId={typedChallenge.id} />
       </div>
     )
@@ -227,6 +231,26 @@ export default async function DashboardPage() {
   const myGoals = allGoals.filter(g => g.user_id === user.id)
   const buddyGoals = allGoals.filter(g => g.user_id === buddyId)
 
+  // Not-started-on-read: an active challenge whose start_date hasn't arrived yet
+  // (in THIS user's timezone) shows a countdown instead of a checkable board, so
+  // no check-ins land before day 1. Mirrors ended-on-read — no status flip. Goals
+  // stay editable until start (enforced in saveGoals).
+  const meProfile = (typedChallenge.creator_id === user.id ? typedChallenge.creator : typedChallenge.buddy) as Profile | null
+  const buddyProfile = (typedChallenge.creator_id === user.id ? typedChallenge.buddy : typedChallenge.creator) as Profile | null
+  if (!hasChallengeStarted(new Date(), typedChallenge.start_date, meProfile?.timezone ?? null)) {
+    return (
+      <div className="max-w-md mx-auto mt-12 px-6">
+        <NotStartedCard
+          challengeId={typedChallenge.id}
+          challengeName={typedChallenge.month_name}
+          startDate={typedChallenge.start_date}
+          myName={firstNameOf(meProfile)}
+          buddyName={firstNameOf(buddyProfile)}
+        />
+      </div>
+    )
+  }
+
   // Ended-on-read: if this active challenge is already past the per-user-midnight
   // completion instant (the daily cron may not have flipped it yet on Hobby),
   // show the completion card now instead of a stale, checkable "active" challenge.
@@ -241,7 +265,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">Ready for the next one?</h1>
           <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
-          <CreateChallengeForm defaultDate={today} />
+          <CreateChallengeForm defaultDate={nextMonday(today)} minDate={today} />
         </div>
       </div>
     )
