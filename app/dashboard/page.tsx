@@ -11,6 +11,7 @@ import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
 import { firstNameOf } from '@/lib/profile'
 import { isChallengeOver, hasChallengeStarted } from '@/lib/challengeTime'
+import { nextMonday } from '@/lib/dateUtils'
 import RematchProposalCard from '@/components/dashboard/RematchProposalCard'
 
 function buildCompletionCard(
@@ -150,7 +151,7 @@ export default async function DashboardPage() {
             {completionCard ? 'Ready for the next one?' : 'Start a challenge'}
           </h1>
           <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
-          <CreateChallengeForm defaultDate={today} />
+          <CreateChallengeForm defaultDate={nextMonday(today)} minDate={today} />
         </div>
       </div>
     )
@@ -175,6 +176,8 @@ export default async function DashboardPage() {
     }
     // Normal link-invite pending (unchanged from current behaviour).
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${typedChallenge.invite_token}`
+    const [py, pm, pd] = typedChallenge.start_date.split('-').map(Number)
+    const startLabel = new Date(py, pm - 1, pd).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
     return (
       <div className="max-w-md mx-auto mt-20 px-6">
         <h1 className="text-3xl font-black text-gray-900 mb-2">{typedChallenge.month_name}</h1>
@@ -183,7 +186,7 @@ export default async function DashboardPage() {
           <span className="text-sm text-gray-700 break-all flex-1">{inviteUrl}</span>
           <CopyButton text={inviteUrl} />
         </div>
-        <p className="text-sm text-gray-400 mt-4">Once your buddy joins and sets their goals, the challenge begins.</p>
+        <p className="text-sm text-gray-400 mt-4">Once your buddy joins and sets their goals, your challenge is locked in for {startLabel}.</p>
         <PendingChallengeActions challengeId={typedChallenge.id} />
       </div>
     )
@@ -262,7 +265,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">Ready for the next one?</h1>
           <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
-          <CreateChallengeForm defaultDate={today} />
+          <CreateChallengeForm defaultDate={nextMonday(today)} minDate={today} />
         </div>
       </div>
     )

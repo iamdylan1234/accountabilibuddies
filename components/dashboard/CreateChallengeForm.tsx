@@ -1,13 +1,15 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
 import { useFormStatus } from 'react-dom'
 import { createChallenge, type CreateChallengeState } from '@/app/dashboard/actions'
 import Spinner from '@/components/shared/Spinner'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { daysBetween, formatDate } from '@/lib/dateUtils'
 
 interface Props {
-  defaultDate: string  // "YYYY-MM-DD"
+  defaultDate: string  // "YYYY-MM-DD" — suggested start (next Monday)
+  minDate: string      // "YYYY-MM-DD" — earliest selectable (today)
 }
 
 /** Format YYYY-MM-DD as "May 17" — short, friendly, no year. */
@@ -37,13 +39,20 @@ function suggestName(startStr: string): string {
   return `${monthName} Challenge`
 }
 
+/** "Monday, June 1" — weekday + month + day, no year. */
+function longDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  if (!y || !m || !d) return ''
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 /**
  * Client wrapper around the createChallenge server action. Provides:
  *   1. Live preview of the 30-day window (end date computed from start date).
  *   2. Dynamic default name that tracks the start date's month.
  *   3. Loading state via useFormStatus + inline errors via useActionState.
  */
-export default function CreateChallengeForm({ defaultDate }: Props) {
+export default function CreateChallengeForm({ defaultDate, minDate }: Props) {
   const [state, formAction] = useActionState<CreateChallengeState, FormData>(
     createChallenge,
     undefined,
@@ -54,7 +63,19 @@ export default function CreateChallengeForm({ defaultDate }: Props) {
   // auto-updating it as start date changes — respect their input.
   const [nameTouched, setNameTouched] = useState(false)
 
+  // Resolve "today" after mount so the countdown uses the browser's local date
+  // without an SSR/hydration mismatch (the server has no client clock). Until
+  // mounted, the callout shows the start day without the "in N days" suffix.
+  const [today, setToday] = useState<string | null>(null)
+  useEffect(() => { setToday(formatDate(new Date())) }, [])
+
   const endDate = computeEndDate(startDate)
+  const daysToStart = today ? daysBetween(today, startDate) : null
+  const startsIn =
+    daysToStart === null ? null
+    : daysToStart <= 0 ? 'today'
+    : daysToStart === 1 ? 'tomorrow'
+    : `in ${daysToStart} days`
 
   function handleStartChange(newStart: string) {
     setStartDate(newStart)
@@ -80,17 +101,33 @@ export default function CreateChallengeForm({ defaultDate }: Props) {
           name="start_date"
           type="date"
           required
-          min={defaultDate}
+          min={minDate}
           value={startDate}
           onChange={e => handleStartChange(e.target.value)}
           className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
         />
-        {/* Live end-date preview so the user knows what they're signing up for
-            BEFORE they tap Create. Updates as start date changes. */}
-        {endDate && (
-          <p className="text-xs text-gray-500 mt-2">
-            Your 30-day challenge: <span className="font-semibold text-gray-700">{shortDate(startDate)} → {shortDate(endDate)}</span>
-          </p>
+        {/* Prominent start-date callout so it's unmistakable the challenge is
+            scheduled for a future day (defaults to the next Monday), not "today".
+            Updates live as the start date changes. */}
+        {startDate && (
+          <div className="mt-3 rounded-xl bg-teal-50 border border-teal-100 px-4 py-3">
+            <p className="text-sm font-bold text-teal-800">
+              🗓️ Starts {longDate(startDate)}{startsIn ? ` · ${startsIn}` : ''}
+            </p>
+            {daysToStart !== null && daysToStart > 0 && (
+              <p className="text-xs text-teal-700/90 mt-1">
+                Your challenge won&apos;t begin until then — pick an earlier date above to start sooner.
+              </p>
+            )}
+            {daysToStart === 0 && (
+              <p className="text-xs text-teal-700/90 mt-1">
+                It begins as soon as your buddy joins and sets their goals.
+              </p>
+            )}
+            {endDate && (
+              <p className="text-xs text-gray-500 mt-1">30-day challenge · {shortDate(startDate)} → {shortDate(endDate)}</p>
+            )}
+          </div>
         )}
       </div>
 

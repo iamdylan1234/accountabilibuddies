@@ -47,3 +47,16 @@ export function daysBetween(fromStr: string, toStr: string): number {
   const to = new Date(ty, tm - 1, td).getTime()
   return Math.round((to - from) / 86400000)
 }
+
+/**
+ * The soonest Monday on or after `fromStr` ("YYYY-MM-DD"). If `fromStr` is
+ * already a Monday it's returned unchanged (earliest clean start); otherwise
+ * the upcoming Monday. Returns "YYYY-MM-DD". Used to default a new challenge's
+ * start to a fresh-week kickoff rather than "today".
+ */
+export function nextMonday(fromStr: string): string {
+  const [y, m, d] = fromStr.split('-').map(Number)
+  const dow = new Date(y, m - 1, d).getDay()  // 0=Sun … 6=Sat
+  const delta = (1 - dow + 7) % 7             // 0 when already Monday
+  return addDays(fromStr, delta)
+}
