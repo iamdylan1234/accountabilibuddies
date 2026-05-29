@@ -4,8 +4,11 @@ import CopyButton from '@/components/layout/CopyButton'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
-import type { ChallengeWithProfiles } from '@/types/database'
+import CompletionCard from '@/components/dashboard/CompletionCard'
+import type { ChallengeWithProfiles, Profile } from '@/types/database'
 import { FEATURES } from '@/lib/featureFlags'
+import { scoreChallenge } from '@/lib/scoring'
+import { firstNameOf } from '@/lib/profile'
 
 // Force dynamic rendering — this page depends on the authenticated user's data
 // and must not be cached at the route level. Without this, mobile browsers
@@ -53,11 +56,73 @@ export default async function DashboardPage() {
   // useActionState).
   if (!challenge) {
     const today = new Date().toISOString().split('T')[0]
+
+    // Just finished a challenge (no active/pending)? Show the result up top
+    // instead of a bare create form — the most rewarding moment of the month
+    // shouldn't land on a blank slate. Headline only; the full breakdown lives
+    // on the Summary tab. scoreChallenge(..., true) matches what Summary shows
+    // and is independent of `today`, so the number is stable post-completion.
+    const { data: completedRaw } = await supabase
+      .from('challenge_months')
+      .select('*, creator:profiles!creator_id(*), buddy:profiles!buddy_id(*)')
+      .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+      .eq('status', 'completed')
+      .order('end_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const completed = completedRaw as unknown as ChallengeWithProfiles | null
+    const completedBuddyId = completed
+      ? (completed.creator_id === user.id ? completed.buddy_id : completed.creator_id)
+      : null
+
+    let completionCard = null
+    if (completed && completedBuddyId) {
+      const totalDays = Math.floor(
+        (new Date(completed.end_date).getTime() - new Date(completed.start_date).getTime()) / 86400000
+      ) + 1
+      const [cGoalsRes, cMineRes, cBuddyRes] = await Promise.all([
+        supabase.from('goals').select('*').eq('challenge_id', completed.id),
+        supabase.from('check_ins').select('*').eq('user_id', user.id)
+          .gte('date', completed.start_date).lte('date', completed.end_date),
+        supabase.from('check_ins').select('*').eq('user_id', completedBuddyId)
+          .gte('date', completed.start_date).lte('date', completed.end_date),
+      ])
+      const cGoals = cGoalsRes.data ?? []
+      const myScore = scoreChallenge(
+        cGoals.filter(g => g.user_id === user.id), cMineRes.data ?? [], totalDays,
+        completed.start_date, today, true,
+      )
+      const buddyScore = scoreChallenge(
+        cGoals.filter(g => g.user_id === completedBuddyId), cBuddyRes.data ?? [], totalDays,
+        completed.start_date, today, true,
+      )
+      const meProfile = (completed.creator_id === user.id ? completed.creator : completed.buddy) as Profile | null
+      const buddyProfile = (completed.creator_id === user.id ? completed.buddy : completed.creator) as Profile | null
+      const result: 'won' | 'tied' | 'lost' =
+        myScore > buddyScore ? 'won' : myScore === buddyScore ? 'tied' : 'lost'
+      completionCard = (
+        <CompletionCard
+          challengeName={completed.month_name}
+          myName={firstNameOf(meProfile)}
+          buddyName={firstNameOf(buddyProfile)}
+          myScore={myScore}
+          buddyScore={buddyScore}
+          result={result}
+        />
+      )
+    }
+
     return (
-      <div className="max-w-md mx-auto mt-20 px-6">
-        <h1 className="text-3xl font-black text-gray-900 mb-2">Start a challenge</h1>
-        <p className="text-gray-500 mb-8">Set up a 30-day challenge and invite your buddy.</p>
-        <CreateChallengeForm defaultDate={today} />
+      <div className="max-w-md mx-auto mt-12 px-6 space-y-8">
+        {completionCard}
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">
+            {completionCard ? 'Ready for the next one?' : 'Start a challenge'}
+          </h1>
+          <p className="text-gray-500 mb-6">Set up a 30-day challenge and invite your buddy.</p>
+          <CreateChallengeForm defaultDate={today} />
+        </div>
       </div>
     )
   }
