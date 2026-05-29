@@ -31,6 +31,25 @@ export default async function SetupPage({ searchParams }: Props) {
     .eq('challenge_id', challengeId)
     .eq('user_id', user.id)
 
+  // Most recent prior challenge of this user (excluding the one being set up).
+  const { data: priorChallenges } = await supabase
+    .from('challenge_months')
+    .select('id')
+    .or(`creator_id.eq.${user.id},buddy_id.eq.${user.id}`)
+    .neq('id', challengeId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  let previousGoals: { title: string; type: string; target_count: number | null; target_unit: string | null; schedule_dates: string[] | null; catch_up: boolean }[] = []
+  if (priorChallenges && priorChallenges.length > 0) {
+    const { data: pg } = await supabase
+      .from('goals')
+      .select('title, type, target_count, target_unit, schedule_dates, catch_up')
+      .eq('challenge_id', priorChallenges[0].id)
+      .eq('user_id', user.id)
+    previousGoals = pg ?? []
+  }
+
   async function handleSave(goals: {
     title: string; type: string; target_count: string
     target_unit: string; schedule_dates: string[]; catch_up: boolean
@@ -56,6 +75,7 @@ export default async function SetupPage({ searchParams }: Props) {
         challengeStartDate={challenge.start_date}
         challengeEndDate={challenge.end_date}
         existingGoals={existingGoals ?? []}
+        previousGoals={previousGoals}
         onSubmit={handleSave}
       />
     </div>

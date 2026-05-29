@@ -31,11 +31,12 @@ interface Props {
   challengeStartDate: string   // "YYYY-MM-DD"
   challengeEndDate: string     // "YYYY-MM-DD"
   existingGoals: Goal[]
+  previousGoals?: { title: string; type: string; target_count: number | null; target_unit: string | null; schedule_dates: string[] | null; catch_up: boolean }[]
   onSubmit: (goals: GoalDraft[]) => Promise<{ error: string } | undefined>
 }
 
 export default function GoalSetupForm({
-  challengeId, challengeStartDate, challengeEndDate, existingGoals, onSubmit,
+  challengeId, challengeStartDate, challengeEndDate, existingGoals, previousGoals, onSubmit,
 }: Props) {
   const challengeMonth = challengeStartDate.slice(0, 7) // "YYYY-MM"
 
@@ -111,6 +112,23 @@ export default function GoalSetupForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {previousGoals && previousGoals.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setGoals(previousGoals.map(g => ({
+            id: crypto.randomUUID(),
+            title: g.title,
+            type: g.type as GoalType,
+            target_count: g.target_count != null ? String(g.target_count) : '',
+            target_unit: g.target_unit ?? '',
+            schedule_dates: g.schedule_dates ?? [],
+            catch_up: g.catch_up,
+          })))}
+          className="w-full mb-4 py-2.5 rounded-xl bg-gray-100 text-sm font-bold text-gray-700 active:scale-95 transition"
+        >
+          Copy my goals from last challenge
+        </button>
+      )}
       {goals.map((goal, i) => (
         <div key={goal.id} className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
           {/* Title row */}
