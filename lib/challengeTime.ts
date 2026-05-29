@@ -66,3 +66,14 @@ export function isChallengeOver(
 ): boolean {
   return now.getTime() >= challengeCompletionInstant(endDate, tzCreator, tzBuddy).getTime()
 }
+
+/**
+ * True once `now` is at/past 00:00 on `startDate` ("YYYY-MM-DD") in `timeZone`
+ * — the user's local challenge start. `null` timezone → UTC. Symmetric with
+ * `isChallengeOver`; reuses the DST-correct `zonedMidnightUtc`.
+ */
+export function hasChallengeStarted(
+  now: Date, startDate: string, timeZone: string | null,
+): boolean {
+  return now.getTime() >= zonedMidnightUtc(startDate, timeZone).getTime()
+}

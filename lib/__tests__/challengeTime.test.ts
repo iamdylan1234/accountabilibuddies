@@ -1,5 +1,5 @@
 import {
-  isValidTimeZone, zonedMidnightUtc, challengeCompletionInstant, isChallengeOver,
+  isValidTimeZone, zonedMidnightUtc, challengeCompletionInstant, isChallengeOver, hasChallengeStarted,
 } from '../challengeTime'
 
 describe('isValidTimeZone', () => {
@@ -74,5 +74,29 @@ describe('isChallengeOver', () => {
   it('UTC pair: over exactly at 00:00 the day after end_date', () => {
     expect(isChallengeOver(new Date('2026-06-01T00:00:00.000Z'), end, null, null)).toBe(true)
     expect(isChallengeOver(new Date('2026-05-31T23:59:59.000Z'), end, null, null)).toBe(false)
+  })
+})
+
+describe('hasChallengeStarted', () => {
+  it('false the minute before the local start midnight (UTC)', () => {
+    expect(hasChallengeStarted(new Date('2026-05-31T23:59:00Z'), '2026-06-01', 'UTC')).toBe(false)
+  })
+  it('true at exactly the local start midnight (UTC)', () => {
+    expect(hasChallengeStarted(new Date('2026-06-01T00:00:00Z'), '2026-06-01', 'UTC')).toBe(true)
+  })
+  it('true after the local start midnight (UTC)', () => {
+    expect(hasChallengeStarted(new Date('2026-06-02T12:00:00Z'), '2026-06-01', 'UTC')).toBe(true)
+  })
+  it('null tz behaves as UTC', () => {
+    expect(hasChallengeStarted(new Date('2026-05-31T23:59:00Z'), '2026-06-01', null)).toBe(false)
+    expect(hasChallengeStarted(new Date('2026-06-01T00:00:00Z'), '2026-06-01', null)).toBe(true)
+  })
+  it('Asia/Tokyo (UTC+9): starts 15:00 UTC the previous day', () => {
+    expect(hasChallengeStarted(new Date('2026-05-31T14:59:00Z'), '2026-06-01', 'Asia/Tokyo')).toBe(false)
+    expect(hasChallengeStarted(new Date('2026-05-31T15:00:00Z'), '2026-06-01', 'Asia/Tokyo')).toBe(true)
+  })
+  it('America/New_York (EDT, UTC-4): starts 04:00 UTC', () => {
+    expect(hasChallengeStarted(new Date('2026-06-01T03:59:00Z'), '2026-06-01', 'America/New_York')).toBe(false)
+    expect(hasChallengeStarted(new Date('2026-06-01T04:00:00Z'), '2026-06-01', 'America/New_York')).toBe(true)
   })
 })
