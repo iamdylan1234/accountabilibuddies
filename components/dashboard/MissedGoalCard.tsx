@@ -65,11 +65,13 @@ export default function MissedGoalCard({ goal, missedDays, isMyGoal, onOpen, isL
               <span className={PILL}>{stillToCatchUpLabel}</span>
             </>
           )
+        ) : isLocked ? (
+          // Today is also a scheduled day — no make-up possible yet. Show ONLY
+          // the actionable hint; pairing it with the "N to catch up" pill made
+          // two long no-wrap pills overflow the narrow tile.
+          <span className={PILL}>log today first</span>
         ) : (
-          <>
-            <span className={PILL}>{remainingLabel}</span>
-            {isLocked && <span className={PILL}>log today first</span>}
-          </>
+          <span className={PILL}>{remainingLabel}</span>
         )}
       </div>
     </>
