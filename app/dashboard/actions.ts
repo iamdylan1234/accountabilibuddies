@@ -25,6 +25,14 @@ export async function createChallenge(
   // fails the creator_id FK silently. Was a real bug for Diego.
   await ensureProfile(supabase, user)
 
+  // Starting a fresh challenge voids any pending rematch you're part of.
+  await supabase
+    .from('challenge_months')
+    .delete()
+    .or(`creator_id.eq.${user.id},proposed_to.eq.${user.id}`)
+    .not('proposed_to', 'is', null)
+    .eq('status', 'pending')
+
   // Idempotency: if user already has a pending challenge they created,
   // don't make a duplicate — send them to its setup page instead.
   const { data: existingPending } = await supabase

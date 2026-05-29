@@ -18,6 +18,14 @@ export async function acceptInvite(token: string) {
   if (!challenge) throw new Error('Invite not found or already used.')
   if (challenge.creator_id === user.id) throw new Error('You cannot join your own challenge.')
 
+  // Joining a link-invite challenge voids any pending rematch you're part of.
+  await supabase
+    .from('challenge_months')
+    .delete()
+    .or(`creator_id.eq.${user.id},proposed_to.eq.${user.id}`)
+    .not('proposed_to', 'is', null)
+    .eq('status', 'pending')
+
   const { error } = await supabase
     .from('challenge_months')
     .update({ buddy_id: user.id })

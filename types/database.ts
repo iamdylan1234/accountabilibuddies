@@ -24,6 +24,8 @@ export interface ChallengeMonth {
   end_date: string
   status: ChallengeStatus
   created_at: string
+  rematch_of: string | null    // the completed challenge this one continues, if any
+  proposed_to: string | null   // intended buddy on a forming rematch, before they accept
 }
 
 export interface Goal {

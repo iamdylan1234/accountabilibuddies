@@ -19,6 +19,15 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Expire stale forming rematch proposals (un-accepted after 14 days).
+  const rematchCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+  await supabase
+    .from('challenge_months')
+    .delete()
+    .not('proposed_to', 'is', null)   // still forming (buddy hasn't accepted)
+    .eq('status', 'pending')
+    .lt('created_at', rematchCutoff)
+
   const today = new Date().toISOString().split('T')[0]
   const now = new Date()
 
