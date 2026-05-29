@@ -4,6 +4,7 @@ import NextTopLoader from 'nextjs-toploader'
 import './globals.css'
 import Navbar from '@/components/layout/Navbar'
 import InstallBanner from '@/components/layout/InstallBanner'
+import TimezoneSync from '@/components/TimezoneSync'
 import { createClient } from '@/lib/supabase/server'
 import { getAvatarUrl } from '@/lib/avatar'
 
@@ -38,13 +39,15 @@ export default async function RootLayout({
   const { data: { user } } = await supabase.auth.getUser()
 
   let avatarUrl: string | null = null
+  let timezone: string | null = null
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('avatar_style')
+      .select('avatar_style, timezone')
       .eq('id', user.id)
       .single()
     avatarUrl = getAvatarUrl(user.id, profile?.avatar_style ?? 'avataaars')
+    timezone = profile?.timezone ?? null
   }
 
   return (
@@ -64,6 +67,7 @@ export default async function RootLayout({
         {user && <Navbar avatarUrl={avatarUrl} />}
         <main className="min-h-screen">{children}</main>
         {user && <InstallBanner />}
+        {user && <TimezoneSync currentTz={timezone} />}
       </body>
     </html>
   )
