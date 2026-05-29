@@ -10,6 +10,7 @@ import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
 import { firstNameOf } from '@/lib/profile'
 import { isChallengeOver } from '@/lib/challengeTime'
+import RematchProposalCard from '@/components/dashboard/RematchProposalCard'
 
 function buildCompletionCard(
   challenge: ChallengeWithProfiles,
@@ -95,6 +96,20 @@ export default async function DashboardPage() {
   if (!challenge) {
     const today = new Date().toISOString().split('T')[0]
 
+    // Incoming rematch proposal (someone proposed to me).
+    const { data: incomingRaw } = await supabase
+      .from('challenge_months')
+      .select('*, creator:profiles!creator_id(*)')
+      .eq('proposed_to', user.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const incoming = incomingRaw as unknown as (ChallengeWithProfiles | null)
+    const proposalCard = incoming
+      ? <RematchProposalCard challengeId={incoming.id} proposerName={firstNameOf(incoming.creator)} />
+      : null
+
     // Just finished a challenge (no active/pending)? Show the result up top
     // instead of a bare create form — the most rewarding moment of the month
     // shouldn't land on a blank slate. Headline only; the full breakdown lives
@@ -127,6 +142,7 @@ export default async function DashboardPage() {
 
     return (
       <div className="max-w-md mx-auto mt-12 px-6 space-y-8">
+        {proposalCard}
         {completionCard}
         <div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">
@@ -143,6 +159,20 @@ export default async function DashboardPage() {
 
   // Challenge exists but no buddy yet
   if (typedChallenge.status === 'pending') {
+    // Rematch I proposed, not yet accepted → waiting state (no invite link).
+    if (typedChallenge.proposed_to && !typedChallenge.buddy_id && typedChallenge.creator_id === user.id) {
+      return (
+        <div className="max-w-md mx-auto mt-20 px-6">
+          <h1 className="text-2xl font-black text-gray-900 mb-2">Waiting on your buddy</h1>
+          <p className="text-gray-500 mb-6">Your rematch invite was sent. It expires in 14 days if not accepted.</p>
+          <a href={`/setup?challenge=${typedChallenge.id}`} className="block text-center py-2.5 rounded-xl text-sm font-bold text-teal-700 bg-teal-50 mb-3">
+            Set your goals
+          </a>
+          <PendingChallengeActions challengeId={typedChallenge.id} />
+        </div>
+      )
+    }
+    // Normal link-invite pending (unchanged from current behaviour).
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${typedChallenge.invite_token}`
     return (
       <div className="max-w-md mx-auto mt-20 px-6">
@@ -152,9 +182,7 @@ export default async function DashboardPage() {
           <span className="text-sm text-gray-700 break-all flex-1">{inviteUrl}</span>
           <CopyButton text={inviteUrl} />
         </div>
-        <p className="text-sm text-gray-400 mt-4">
-          Once your buddy joins and sets their goals, the challenge begins.
-        </p>
+        <p className="text-sm text-gray-400 mt-4">Once your buddy joins and sets their goals, the challenge begins.</p>
         <PendingChallengeActions challengeId={typedChallenge.id} />
       </div>
     )
