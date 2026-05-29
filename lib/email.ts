@@ -15,7 +15,7 @@ interface WeeklyEmailData {
 
 export async function sendWeeklyWrapUp(data: WeeklyEmailData) {
   const { toEmail, toName, buddyName, myScore, buddyScore, weekStart, weekEnd, challengeName } = data
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.app'
 
   await resend.emails.send({
     from: 'Accountabilibuddies <onboarding@resend.dev>',
@@ -63,7 +63,7 @@ interface MonthlyEmailData {
 
 export async function sendMonthlyWrapUp(data: MonthlyEmailData) {
   const { toEmail, toName, buddyName, myScore, buddyScore, challengeName, won, tied } = data
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.app'
 
   await resend.emails.send({
     from: 'Accountabilibuddies <onboarding@resend.dev>',

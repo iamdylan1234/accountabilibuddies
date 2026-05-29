@@ -10,7 +10,13 @@ import { getAvatarUrl } from '@/lib/avatar'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Canonical app origin — drives metadataBase (resolves relative OG/canonical
+// image URLs) and the OpenGraph url, so social cards track whatever domain is
+// live. Falls back to the production custom domain when the env var is unset.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.app'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: 'Accountabilibuddies — 2 mates. No excuses.',
   description: 'Pair up with one buddy. Set monthly goals. Check in daily. Real accountability between two people.',
   manifest: '/manifest.json',
@@ -24,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Accountabilibuddies',
     description: '2 mates. No excuses.',
-    url: 'https://accountabilibuddies.vercel.app',
+    url: APP_URL,
     siteName: 'Accountabilibuddies',
     type: 'website',
   },
