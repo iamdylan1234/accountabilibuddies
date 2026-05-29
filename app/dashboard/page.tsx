@@ -5,11 +5,12 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import CompletionCard from '@/components/dashboard/CompletionCard'
+import NotStartedCard from '@/components/dashboard/NotStartedCard'
 import type { ChallengeWithProfiles, Profile, Goal, CheckIn } from '@/types/database'
 import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
 import { firstNameOf } from '@/lib/profile'
-import { isChallengeOver } from '@/lib/challengeTime'
+import { isChallengeOver, hasChallengeStarted } from '@/lib/challengeTime'
 import RematchProposalCard from '@/components/dashboard/RematchProposalCard'
 
 function buildCompletionCard(
@@ -226,6 +227,26 @@ export default async function DashboardPage() {
   const allGoals = goalsRes.data ?? []
   const myGoals = allGoals.filter(g => g.user_id === user.id)
   const buddyGoals = allGoals.filter(g => g.user_id === buddyId)
+
+  // Not-started-on-read: an active challenge whose start_date hasn't arrived yet
+  // (in THIS user's timezone) shows a countdown instead of a checkable board, so
+  // no check-ins land before day 1. Mirrors ended-on-read — no status flip. Goals
+  // stay editable until start (enforced in saveGoals).
+  const meProfile = (typedChallenge.creator_id === user.id ? typedChallenge.creator : typedChallenge.buddy) as Profile | null
+  const buddyProfile = (typedChallenge.creator_id === user.id ? typedChallenge.buddy : typedChallenge.creator) as Profile | null
+  if (!hasChallengeStarted(new Date(), typedChallenge.start_date, meProfile?.timezone ?? null)) {
+    return (
+      <div className="max-w-md mx-auto mt-12 px-6">
+        <NotStartedCard
+          challengeId={typedChallenge.id}
+          challengeName={typedChallenge.month_name}
+          startDate={typedChallenge.start_date}
+          myName={firstNameOf(meProfile)}
+          buddyName={firstNameOf(buddyProfile)}
+        />
+      </div>
+    )
+  }
 
   // Ended-on-read: if this active challenge is already past the per-user-midnight
   // completion instant (the daily cron may not have flipped it yet on Hobby),
