@@ -18,6 +18,7 @@ function buildCompletionCard(
   buddyCheckIns: CheckIn[],
   userId: string,
   today: string,
+  opts?: { rematchOf?: string },
 ) {
   const buddyId = challenge.creator_id === userId ? challenge.buddy_id : challenge.creator_id
   if (!buddyId) return null
@@ -42,6 +43,7 @@ function buildCompletionCard(
       myScore={myScore}
       buddyScore={buddyScore}
       result={result}
+      rematchOf={opts?.rematchOf}
     />
   )
 }
@@ -119,7 +121,7 @@ export default async function DashboardPage() {
           supabase.from('check_ins').select('*').eq('user_id', buddyId)
             .gte('date', completed.start_date).lte('date', completed.end_date),
         ])
-        completionCard = buildCompletionCard(completed, g.data ?? [], mine.data ?? [], buddy.data ?? [], user.id, today)
+        completionCard = buildCompletionCard(completed, g.data ?? [], mine.data ?? [], buddy.data ?? [], user.id, today, { rematchOf: completed.id })
       }
     }
 

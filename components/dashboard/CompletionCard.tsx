@@ -1,4 +1,5 @@
 import { BRAND_GRADIENT } from '@/lib/brand'
+import RematchButton from './RematchButton'
 
 interface Props {
   challengeName: string
@@ -7,6 +8,7 @@ interface Props {
   myScore: number   // 0–100, must match the Summary tab (scoreChallenge with useTargetCount)
   buddyScore: number
   result: 'won' | 'lost' | 'tied'
+  rematchOf?: string
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * the end-of-challenge result isn't a blank slate. Shows the headline result;
  * the full breakdown lives on the Summary tab (the "See full results" link).
  */
-export default function CompletionCard({ challengeName, myName, buddyName, myScore, buddyScore, result }: Props) {
+export default function CompletionCard({ challengeName, myName, buddyName, myScore, buddyScore, result, rematchOf }: Props) {
   const headline =
     result === 'won' ? '🎉 You won!'
     : result === 'tied' ? '🤝 It’s a tie!'
@@ -45,6 +47,7 @@ export default function CompletionCard({ challengeName, myName, buddyName, mySco
       >
         See full results →
       </a>
+      {rematchOf && <RematchButton finishedChallengeId={rematchOf} buddyName={buddyName} />}
     </div>
   )
 }
