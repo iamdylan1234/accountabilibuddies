@@ -8,6 +8,7 @@ import SettingsSection from './SettingsSection'
 import SettingsRow from './SettingsRow'
 import NameEditSheet from './NameEditSheet'
 import DeleteAccountSheet from './DeleteAccountSheet'
+import BuzzToggle from '@/components/profile/BuzzToggle'
 import { triggerPasswordReset } from '@/app/settings/actions'
 
 interface Props {
@@ -19,7 +20,6 @@ interface Props {
 
 export default function SettingsClient({ email, profile, buddy, appVersion }: Props) {
   const router = useRouter()
-  void buddy  // suppress unused warning until Task 6 wires the toggle
   const [nameSheet, setNameSheet] = useState(false)
   const [displayedName, setDisplayedName] = useState(profile.name)
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -83,12 +83,14 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
         <p className="text-xs text-red-500 px-4 -mt-4 mb-6">{passwordError}</p>
       )}
 
-      <SettingsSection label="Notifications">
-        <SettingsRow
-          label="Buddy buzz"
-          variant="toggle"
-          rightSlot={<span className="text-xs text-gray-400">(coming)</span>}
-        />
+      <SettingsSection
+        label="Notifications"
+        hint="Get a buzz only when your buddy sends you a daily message — never automated."
+      >
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 text-sm font-semibold text-gray-800">Buddy buzz</span>
+          <BuzzToggle buddy={buddy} />
+        </div>
       </SettingsSection>
 
       <SettingsSection label="About">
