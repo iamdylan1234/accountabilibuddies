@@ -155,50 +155,60 @@ export default function ProfileClient({
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3 mb-8">
-        <StatTile value={String(stats.totalChallenges || '—')} label="completed" />
+      {/* Stats — pill label + gray container, matching the section pattern from DashboardClient */}
+      <section className="mb-6">
+        <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+          Stats
+        </h2>
+        <div className="rounded-2xl bg-gray-100 p-3">
+          <div className="grid grid-cols-4 gap-3">
+            <StatTile value={String(stats.totalChallenges || '—')} label="completed" />
 
-        <StatTile
-          value={winRateDisplay}
-          label="win rate"
-          onClick={() => setShowWinBreakdown(v => !v)}
-        >
-          {showWinBreakdown && total > 0 && (
-            <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
-              <div className="flex justify-around text-xs font-bold">
-                <span className="text-teal-500">{stats.wins}W</span>
-                <span className="text-red-400">{stats.losses}L</span>
-                <span className="text-gray-400">{stats.ties}T</span>
-              </div>
-            </div>
-          )}
-        </StatTile>
+            <StatTile
+              value={winRateDisplay}
+              label="win rate"
+              onClick={() => setShowWinBreakdown(v => !v)}
+            >
+              {showWinBreakdown && total > 0 && (
+                <div className="rounded-xl bg-gray-50 px-3 py-2 text-center">
+                  <div className="flex justify-around text-xs font-bold">
+                    <span className="text-teal-500">{stats.wins}W</span>
+                    <span className="text-red-400">{stats.losses}L</span>
+                    <span className="text-gray-400">{stats.ties}T</span>
+                  </div>
+                </div>
+              )}
+            </StatTile>
 
-        <StatTile
-          value={stats.bestStreak ? `🔥${stats.bestStreak.days}` : '—'}
-          label="best streak"
-          subtitle={streakSubtitle}
-          onClick={stats.bestStreak ? () => setShowStreakSheet(true) : undefined}
-        />
+            <StatTile
+              value={stats.bestStreak ? `🔥${stats.bestStreak.days}` : '—'}
+              label="best streak"
+              subtitle={streakSubtitle}
+              onClick={stats.bestStreak ? () => setShowStreakSheet(true) : undefined}
+            />
 
-        <StatTile value={String(stats.totalCheckIns || '—')} label="check-ins" />
-      </div>
-
-      {/* Challenge History */}
-      <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-3">
-        Challenge History
-      </p>
-
-      {historyRows.length === 0 ? (
-        <div className="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400">
-          No challenges yet
+            <StatTile value={String(stats.totalCheckIns || '—')} label="check-ins" />
+          </div>
         </div>
-      ) : (
-        historyRows.map(row => (
-          <ChallengeHistoryCard key={row.challengeId} {...row} />
-        ))
-      )}
+      </section>
+
+      {/* Challenge History — same pill + container pattern as Stats */}
+      <section>
+        <h2 className="w-full text-center bg-white text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+          Challenge History
+        </h2>
+        <div className="rounded-2xl bg-gray-100 p-3">
+          {historyRows.length === 0 ? (
+            <div className="text-center text-sm text-gray-400 py-6">
+              No challenges yet
+            </div>
+          ) : (
+            historyRows.map(row => (
+              <ChallengeHistoryCard key={row.challengeId} {...row} />
+            ))
+          )}
+        </div>
+      </section>
 
       {/* Sheets */}
       {showPicker && (
