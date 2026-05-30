@@ -9,7 +9,7 @@ import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
-import ChallengeHeatMap from './ChallengeHeatMap'
+import WeeklyScorecard from './WeeklyScorecard'
 import HeroScore from './HeroScore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ export default function ScoreSummary({
         />
       )}
 
-      <ChallengeHeatMap
+      <WeeklyScorecard
         myGoals={myGoals}
         buddyGoals={buddyGoals}
         myCheckIns={myCheckIns}
