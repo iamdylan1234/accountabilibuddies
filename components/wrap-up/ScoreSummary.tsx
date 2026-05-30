@@ -220,9 +220,6 @@ export default function ScoreSummary({
   const today = isHistorical ? serverToday : formatDate(new Date())
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today, true)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today, true)
-  const iWon = myScore > buddyScore
-  const tied = myScore === buddyScore
-  const bothPerfect = myScore === 100 && buddyScore === 100
 
   const bucketCtx: BucketContext = { totalDays, startDate, today }
 
