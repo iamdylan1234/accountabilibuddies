@@ -112,3 +112,68 @@ describe('weeklyResults — historical (today past end)', () => {
     }
   })
 })
+
+describe('weeklyResults — frequency goal scoring (not target_count)', () => {
+  it('scores against scheduled-in-window, NOT total target_count', () => {
+    // "Run 5km" has target_count=5 (whole challenge) with one scheduled day in
+    // the week. Hitting that one day should be 100% for the week — not 1/5=20%.
+    const runGoal = goal('run', 'frequency', { target_count: 5, schedule_dates: ['2026-05-06'] })
+    const r = weeklyResults(
+      [runGoal], [checkIn('run', '2026-05-06')],
+      [runGoal], [],
+      '2026-05-04', '2026-05-10', '2026-05-11',
+    )
+    expect(r[0].myScore).toBe(100)
+    expect(r[0].buddyScore).toBe(0)
+  })
+  it('skips a frequency goal with 0 scheduled days this week (does not drag avg to 0)', () => {
+    // Two goals: a daily Dylan hits perfectly, plus a frequency goal with no
+    // scheduled days this week. The skip means the week scores 100%, not 50%.
+    const dailyG = goal('d1', 'daily')
+    const freqG  = goal('f1', 'frequency', { target_count: 5, schedule_dates: ['2026-05-15'] })
+    const ci = ['04','05','06','07','08','09','10'].map(d => checkIn('d1', `2026-05-${d}`))
+    const r = weeklyResults([dailyG, freqG], ci, [dailyG, freqG], [], '2026-05-04', '2026-05-10', '2026-05-11')
+    expect(r[0].myScore).toBe(100)
+  })
+})
+
+describe('weeklyResults — milestone goals are excluded from weekly average', () => {
+  it('an undone milestone does NOT drag the weekly average to 0', () => {
+    // Daily perfect + undone milestone → 100%, NOT 50%.
+    const dailyG     = goal('d1', 'daily')
+    const milestoneG = goal('m1', 'milestone')
+    const ci = ['04','05','06','07','08','09','10'].map(d => checkIn('d1', `2026-05-${d}`))
+    const r = weeklyResults(
+      [dailyG, milestoneG], ci,
+      [dailyG, milestoneG], [],
+      '2026-05-04', '2026-05-10', '2026-05-11',
+    )
+    expect(r[0].myScore).toBe(100)
+  })
+  it('a completed milestone does NOT bump up the weekly average to 100', () => {
+    // Daily missed + milestone completed this week → 0%, NOT 50%.
+    const dailyG     = goal('d1', 'daily')
+    const milestoneG = goal('m1', 'milestone')
+    const ci = [checkIn('m1', '2026-05-05')]   // milestone done, no daily
+    const r = weeklyResults(
+      [dailyG, milestoneG], ci,
+      [dailyG, milestoneG], [],
+      '2026-05-04', '2026-05-10', '2026-05-11',
+    )
+    expect(r[0].myScore).toBe(0)
+  })
+})
+
+describe('weeklyResults — cumulative goals still excluded', () => {
+  it('a cumulative goal does not contribute to the weekly average', () => {
+    const dailyG      = goal('d1', 'daily')
+    const cumulativeG = goal('c1', 'cumulative', { target_count: 100 })
+    const ci = ['04','05','06','07','08','09','10'].map(d => checkIn('d1', `2026-05-${d}`))
+    const r = weeklyResults(
+      [dailyG, cumulativeG], ci,
+      [dailyG, cumulativeG], [],
+      '2026-05-04', '2026-05-10', '2026-05-11',
+    )
+    expect(r[0].myScore).toBe(100)
+  })
+})
