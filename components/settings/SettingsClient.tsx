@@ -7,6 +7,7 @@ import type { Profile } from '@/types/database'
 import SettingsSection from './SettingsSection'
 import SettingsRow from './SettingsRow'
 import NameEditSheet from './NameEditSheet'
+import DeleteAccountSheet from './DeleteAccountSheet'
 import { triggerPasswordReset } from '@/app/settings/actions'
 
 interface Props {
@@ -22,6 +23,7 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
   const [nameSheet, setNameSheet] = useState(false)
   const [displayedName, setDisplayedName] = useState(profile.name)
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [deleteSheet, setDeleteSheet] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
   async function handlePasswordChange() {
@@ -71,7 +73,11 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
           onClick={handlePasswordChange}
           disabled={passwordStatus === 'sending'}
         />
-        <SettingsRow label="Delete account" variant="destructive" />
+        <SettingsRow
+          label="Delete account"
+          variant="destructive"
+          onClick={() => setDeleteSheet(true)}
+        />
       </SettingsSection>
       {passwordError && (
         <p className="text-xs text-red-500 px-4 -mt-4 mb-6">{passwordError}</p>
@@ -99,6 +105,7 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
           onSaved={newName => setDisplayedName(newName)}
         />
       )}
+      {deleteSheet && <DeleteAccountSheet onClose={() => setDeleteSheet(false)} />}
     </div>
   )
 }
