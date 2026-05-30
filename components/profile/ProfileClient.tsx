@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import type { Profile, ChallengeWithProfiles, Goal, CheckIn } from '@/types/database'
 import { getAvatarUrl } from '@/lib/avatar'
 import { scoreChallenge } from '@/lib/scoring'
+import { BRAND_GRADIENT } from '@/lib/brand'
 import AvatarPicker from './AvatarPicker'
 import StatTile from './StatTile'
 import StreakDetailSheet from './StreakDetailSheet'
 import ChallengeHistoryCard from './ChallengeHistoryCard'
-import BuzzToggle from './BuzzToggle'
 import type { ProfileStats } from '@/app/profile/page'
 
 interface Props {
@@ -36,9 +35,6 @@ function formatDateRange(start: string, end: string): string {
 export default function ProfileClient({
   profile, activeChallenge, challenges, allGoals, allCheckIns, stats, userId,
 }: Props) {
-  const router = useRouter()
-  const supabase = createClient()
-
   const [avatarStyle, setAvatarStyle] = useState(profile.avatar_style)
   const [showPicker, setShowPicker] = useState(false)
   const [showStreakSheet, setShowStreakSheet] = useState(false)
@@ -47,13 +43,7 @@ export default function ProfileClient({
 
   const avatarUrl = getAvatarUrl(userId, avatarStyle)
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
-  }
-
-  const activeLine = activeChallenge
+  const activeCardData = activeChallenge
     ? (() => {
         const start = new Date(activeChallenge.start_date)
         const today = new Date()
@@ -64,9 +54,9 @@ export default function ProfileClient({
         const totalDays = Math.floor(
           (new Date(activeChallenge.end_date).getTime() - start.getTime()) / 86400000
         ) + 1
-        return `Day ${dayNumber} of ${totalDays} · ${activeChallenge.month_name}`
+        return { name: activeChallenge.month_name, dayNumber, totalDays }
       })()
-    : 'No active challenge'
+    : null
 
   const total = stats.wins + stats.losses + stats.ties
   const winRateDisplay = total === 0 ? '—' : `${Math.round((stats.wins / total) * 100)}%`
@@ -116,21 +106,53 @@ export default function ProfileClient({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Avatar + name */}
-      <div className="flex flex-col items-center gap-2 mb-8">
-        <button
-          type="button"
-          onClick={() => setShowPicker(true)}
-          className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm hover:opacity-80 transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
-          aria-label="Change avatar"
+      {/* Header with gear (links to /settings) */}
+      <div className="relative">
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="absolute top-0 right-0 p-2 -m-2 text-gray-400 hover:text-gray-600 transition active:scale-95"
         >
-          <img src={avatarUrl} alt="Your avatar" width={96} height={96} className="w-full h-full object-cover" />
-        </button>
-        <h1 className="text-xl font-black text-gray-800">{profile.name}</h1>
-        <p className="text-sm text-gray-400 font-semibold">{activeLine}</p>
-        {avatarError && (
-          <p className="text-xs text-red-500 font-semibold text-center mt-1">{avatarError}</p>
-        )}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </Link>
+
+        {/* Avatar + name */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          <button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm hover:opacity-80 transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+            aria-label="Change avatar"
+          >
+            <img src={avatarUrl} alt="Your avatar" width={96} height={96} className="w-full h-full object-cover" />
+          </button>
+          <h1 className="text-xl font-black text-gray-800">{profile.name}</h1>
+          {activeCardData ? (
+            <Link
+              href="/dashboard"
+              className="block w-full mt-3 rounded-xl px-4 py-3 text-white shadow-sm active:scale-95 transition"
+              style={{ background: BRAND_GRADIENT }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-left flex-1 min-w-0">
+                  <p className="font-black text-base truncate">{activeCardData.name}</p>
+                  <p className="text-xs text-white/75 font-semibold mt-0.5">
+                    Day {activeCardData.dayNumber} of {activeCardData.totalDays}
+                  </p>
+                </div>
+                <span className="text-white/80 text-lg font-bold flex-shrink-0">→</span>
+              </div>
+            </Link>
+          ) : (
+            <p className="text-sm text-gray-400 font-semibold">No active challenge</p>
+          )}
+          {avatarError && (
+            <p className="text-xs text-red-500 font-semibold text-center mt-1">{avatarError}</p>
+          )}
+        </div>
       </div>
 
       {/* Stats row */}
@@ -177,18 +199,6 @@ export default function ProfileClient({
           <ChallengeHistoryCard key={row.challengeId} {...row} />
         ))
       )}
-
-      <BuzzToggle buddy={activeChallenge ? (activeChallenge.creator_id === userId ? activeChallenge.buddy : activeChallenge.creator) : null} />
-
-      {/* Sign out */}
-      <div className="mt-12 flex justify-center">
-        <button
-          onClick={handleSignOut}
-          className="text-sm text-gray-400 font-semibold hover:text-gray-600 transition"
-        >
-          Sign out
-        </button>
-      </div>
 
       {/* Sheets */}
       {showPicker && (
