@@ -1,7 +1,7 @@
 'use client'
 
 import type { Goal, CheckIn } from '@/types/database'
-import { weeklyTrend } from '@/lib/heatmap'
+import { weeklyTrend } from '@/lib/weekly'
 
 interface Props {
   myName: string
