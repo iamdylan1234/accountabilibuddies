@@ -7,9 +7,10 @@ import { formatDate } from '@/lib/dateUtils'
 import Link from 'next/link'
 import PendingApprovalBanner from './PendingApprovalBanner'
 import GoalCalendarSheet from '@/components/shared/GoalCalendarSheet'
-import ScoreTileGrid from '@/components/shared/ScoreTileGrid'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import { BRAND_GRADIENT, BRAND_GRADIENT_H } from '@/lib/brand'
+import ChallengeHeatMap from './ChallengeHeatMap'
+import HeroScore from './HeroScore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type SheetTarget = { goal: Goal; checkIns: CheckIn[]; isOwn: boolean }
@@ -139,6 +140,53 @@ function SummaryGoalCard({
   )
 }
 
+type Bucket = 'risk' | 'catching' | 'on-track'
+
+interface BucketContext {
+  totalDays: number
+  startDate: string
+  today: string
+}
+
+/**
+ * Status bucket for a single goal at this point in the challenge.
+ *
+ * For daily/frequency/cumulative: bucket by `scoreGoal * 100`.
+ * For milestone: complete = on-track. Incomplete uses day-elapsed % vs the
+ * challenge length — late incomplete = needs attention, early incomplete =
+ * still on track ("don't scare the user on Day 2").
+ */
+function bucketGoal(
+  goal: Goal,
+  checkIns: CheckIn[],
+  ctx: BucketContext,
+): Bucket {
+  if (goal.type === 'milestone') {
+    const done = checkIns.some(c => c.goal_id === goal.id && c.completed)
+    if (done) return 'on-track'
+    const [sy, sm, sd] = ctx.startDate.split('-').map(Number)
+    const [ty, tm, td] = ctx.today.split('-').map(Number)
+    const elapsed = Math.max(0,
+      Math.floor((new Date(ty, tm - 1, td).getTime() - new Date(sy, sm - 1, sd).getTime()) / 86400000) + 1
+    )
+    const pct = elapsed / ctx.totalDays
+    if (pct > 0.8) return 'risk'
+    if (pct >= 0.5) return 'catching'
+    return 'on-track'
+  }
+
+  const pct = scoreGoal(goal, checkIns, ctx.totalDays, ctx.startDate, ctx.today, true)
+  if (pct < 0.5) return 'risk'
+  if (pct < 0.8) return 'catching'
+  return 'on-track'
+}
+
+const BUCKET_META: Record<Bucket, { label: string; emoji: string }> = {
+  'risk':     { label: 'Needs attention', emoji: '🔴' },
+  'catching': { label: 'Catching up',     emoji: '🟡' },
+  'on-track': { label: 'On track',        emoji: '🟢' },
+}
+
 interface Props {
   myGoals: Goal[]
   buddyGoals: Goal[]
@@ -172,17 +220,26 @@ export default function ScoreSummary({
   const today = isHistorical ? serverToday : formatDate(new Date())
   const myScore = scoreChallenge(myGoals, myCheckIns, totalDays, startDate, today, true)
   const buddyScore = scoreChallenge(buddyGoals, buddyCheckIns, totalDays, startDate, today, true)
-  const iWon = myScore > buddyScore
-  const tied = myScore === buddyScore
-  const bothPerfect = myScore === 100 && buddyScore === 100
 
-  // Section splits
-  const myDailyGoals = myGoals.filter(g => g.type === 'daily')
-  const buddyDailyGoals = buddyGoals.filter(g => g.type === 'daily')
-  const myTargetGoals = myGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
-  const buddyTargetGoals = buddyGoals.filter(g => g.type === 'frequency' || g.type === 'cumulative')
-  const myMilestoneGoals = myGoals.filter(g => g.type === 'milestone')
-  const buddyMilestoneGoals = buddyGoals.filter(g => g.type === 'milestone')
+  const bucketCtx: BucketContext = { totalDays, startDate, today }
+
+  function partitionByBucket(goals: Goal[], checkIns: CheckIn[]): Record<Bucket, Goal[]> {
+    const out: Record<Bucket, Goal[]> = { risk: [], catching: [], 'on-track': [] }
+    for (const g of goals) {
+      out[bucketGoal(g, checkIns, bucketCtx)].push(g)
+    }
+    // Sort within each bucket by score ascending (most-at-risk first).
+    for (const k of ['risk', 'catching', 'on-track'] as Bucket[]) {
+      out[k].sort((a, b) =>
+        scoreGoal(a, checkIns, totalDays, startDate, today, true) -
+        scoreGoal(b, checkIns, totalDays, startDate, today, true)
+      )
+    }
+    return out
+  }
+
+  const myBuckets    = partitionByBucket(myGoals,    myCheckIns)
+  const buddyBuckets = partitionByBucket(buddyGoals, buddyCheckIns)
 
   const [sheet, setSheet] = useState<SheetTarget | null>(null)
 
@@ -196,6 +253,7 @@ export default function ScoreSummary({
   ) + 1)
 
   return (
+    <div className="min-h-screen bg-stone-50">
     <div className="max-w-4xl mx-auto px-4 py-6">
       {backHref && (
         <Link
@@ -215,24 +273,7 @@ export default function ScoreSummary({
           Day {dayNumber} of {totalDays} · {isComplete ? 'Final Results' : 'Summary'}
         </p>
       </div>
-
-      {/* Score tiles */}
-      <ScoreTileGrid
-        left={{
-          name: myProfile?.name ?? 'Me',
-          mainValue: `${myScore}%`,
-          subLabel: `${myDaysActive}/${totalDays} days active`,
-          isWinner: !tied && iWon,
-        }}
-        right={{
-          name: buddyProfile?.name ?? 'Buddy',
-          mainValue: `${buddyScore}%`,
-          subLabel: `${buddyDaysActive}/${totalDays} days active`,
-          isWinner: !tied && !iWon,
-        }}
-        tied={tied}
-        bothPerfect={bothPerfect}
-      />
+      <div className="h-[2px] bg-amber-400/70 rounded-full mb-4 -mt-3" />
 
       {!isHistorical && (
         <PendingApprovalBanner
@@ -244,71 +285,82 @@ export default function ScoreSummary({
         />
       )}
 
+      <ChallengeHeatMap
+        myGoals={myGoals}
+        buddyGoals={buddyGoals}
+        myCheckIns={myCheckIns}
+        buddyCheckIns={buddyCheckIns}
+        myName={myProfile?.name ?? 'Me'}
+        buddyName={buddyProfile?.name ?? 'Buddy'}
+        startDate={startDate}
+        endDate={endDate}
+        today={today}
+      />
+
+      <HeroScore
+        myName={myProfile?.name ?? 'Me'}
+        buddyName={buddyProfile?.name ?? 'Buddy'}
+        myGoals={myGoals}
+        buddyGoals={buddyGoals}
+        myCheckIns={myCheckIns}
+        buddyCheckIns={buddyCheckIns}
+        myScore={myScore}
+        buddyScore={buddyScore}
+        myDaysActive={myDaysActive}
+        buddyDaysActive={buddyDaysActive}
+        totalDays={totalDays}
+        startDate={startDate}
+        today={today}
+      />
+
       <div className="space-y-6">
-        {/* Daily Goals */}
-        {(myDailyGoals.length > 0 || buddyDailyGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Daily Goals</p>
-            <GoalPairGrid
-              myColumn={myDailyGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, myCheckIns, today, startDate, 9999)}
-                  onOpen={setSheet} />
-              ))}
-              buddyColumn={buddyDailyGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate, 9999)}
-                  onOpen={setSheet} />
-              ))}
-            />
-          </div>
-        )}
-
-        {/* Ongoing */}
-        {(myTargetGoals.length > 0 || buddyTargetGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Ongoing</p>
-            <GoalPairGrid
-              myColumn={myTargetGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, myCheckIns, today, startDate, 9999)}
-                  onOpen={setSheet} />
-              ))}
-              buddyColumn={buddyTargetGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical}
-                  missedDays={getMissedDays(goal, buddyCheckIns, today, startDate, 9999)}
-                  onOpen={setSheet} />
-              ))}
-            />
-          </div>
-        )}
-
-        {/* Milestones */}
-        {(myMilestoneGoals.length > 0 || buddyMilestoneGoals.length > 0) && (
-          <div>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-wide mb-2">Milestones</p>
-            <GoalPairGrid
-              myColumn={myMilestoneGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={myCheckIns} isOwn={true}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-              ))}
-              buddyColumn={buddyMilestoneGoals.map(goal => (
-                <SummaryGoalCard key={goal.id} goal={goal} checkIns={buddyCheckIns} isOwn={false}
-                  totalDays={totalDays} startDate={startDate} today={today}
-                  pendingRequests={pendingRequests} isHistorical={isHistorical} onOpen={setSheet} />
-              ))}
-            />
-          </div>
-        )}
+        {(['risk', 'catching', 'on-track'] as const).map(bucket => {
+          const myInBucket    = myBuckets[bucket]
+          const buddyInBucket = buddyBuckets[bucket]
+          if (myInBucket.length === 0 && buddyInBucket.length === 0) return null
+          const meta = BUCKET_META[bucket]
+          return (
+            <section key={bucket}>
+              <h2 className="w-full text-center bg-stone-100 text-gray-600 text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-full mb-2 border border-gray-200">
+                {meta.emoji} {meta.label}
+              </h2>
+              <div className="rounded-2xl bg-gray-100 p-3">
+                <GoalPairGrid
+                  myColumn={myInBucket.map(g => (
+                    <SummaryGoalCard
+                      key={g.id}
+                      goal={g}
+                      checkIns={myCheckIns}
+                      isOwn={true}
+                      totalDays={totalDays}
+                      startDate={startDate}
+                      today={today}
+                      pendingRequests={pendingRequests}
+                      isHistorical={isHistorical}
+                      missedDays={getMissedDays(g, myCheckIns, today, startDate, 9999)}
+                      onOpen={setSheet}
+                    />
+                  ))}
+                  buddyColumn={buddyInBucket.map(g => (
+                    <SummaryGoalCard
+                      key={g.id}
+                      goal={g}
+                      checkIns={buddyCheckIns}
+                      isOwn={false}
+                      totalDays={totalDays}
+                      startDate={startDate}
+                      today={today}
+                      pendingRequests={pendingRequests}
+                      isHistorical={isHistorical}
+                      missedDays={getMissedDays(g, buddyCheckIns, today, startDate, 9999)}
+                      onOpen={setSheet}
+                    />
+                  ))}
+                />
+              </div>
+            </section>
+          )
+        })}
       </div>
 
       {isComplete && !isHistorical && (
@@ -336,6 +388,7 @@ export default function ScoreSummary({
           onClose={() => setSheet(null)}
         />
       )}
+    </div>
     </div>
   )
 }
