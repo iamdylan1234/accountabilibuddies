@@ -10,6 +10,7 @@ import NameEditSheet from './NameEditSheet'
 import DeleteAccountSheet from './DeleteAccountSheet'
 import BuzzToggle from '@/components/profile/BuzzToggle'
 import { triggerPasswordReset } from '@/app/settings/actions'
+import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 
 interface Props {
   email: string
@@ -20,11 +21,18 @@ interface Props {
 
 export default function SettingsClient({ email, profile, buddy, appVersion }: Props) {
   const router = useRouter()
+  const supabase = createSupabaseClient()
   const [nameSheet, setNameSheet] = useState(false)
   const [displayedName, setDisplayedName] = useState(profile.name)
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [deleteSheet, setDeleteSheet] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
+  }
 
   async function handlePasswordChange() {
     setPasswordStatus('sending')
@@ -94,11 +102,17 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
       </SettingsSection>
 
       <SettingsSection label="About">
-        <SettingsRow label="Privacy Policy" variant="nav" />
-        <SettingsRow label="Terms of Service" variant="nav" />
-        <SettingsRow label="Support" variant="value" value="help@accountabilibuddies.app" />
+        <Link href="/privacy" prefetch={false} className="block">
+          <SettingsRow label="Privacy Policy" variant="nav" />
+        </Link>
+        <Link href="/terms" prefetch={false} className="block">
+          <SettingsRow label="Terms of Service" variant="nav" />
+        </Link>
+        <a href="mailto:help@accountabilibuddies.app" className="block">
+          <SettingsRow label="Support" variant="nav" value="help@accountabilibuddies.app" />
+        </a>
         <SettingsRow label="Version" variant="value" value={appVersion} />
-        <SettingsRow label="Sign out" variant="action" onClick={() => router.push('/')} />
+        <SettingsRow label="Sign out" variant="action" onClick={handleSignOut} />
       </SettingsSection>
       {nameSheet && (
         <NameEditSheet
