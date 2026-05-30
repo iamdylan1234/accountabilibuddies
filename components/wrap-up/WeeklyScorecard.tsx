@@ -19,7 +19,7 @@ interface Props {
 function BarRow({ name, pct, isWinner }: { name: string; pct: number; isWinner: boolean }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] font-semibold text-gray-700 w-14 flex-shrink-0 truncate">
+      <span className="text-[11px] font-semibold text-gray-700 flex-shrink-0 whitespace-nowrap">
         {name}{isWinner && <span aria-label="winner" className="ml-0.5">🏆</span>}
       </span>
       <div className="flex-1 bg-white rounded-full h-3 border border-gray-200 overflow-hidden">

@@ -70,6 +70,51 @@ function dowMonStart(dateStr: string): number {
 }
 
 /**
+ * Per-week score (0..100) judged by what was DUE inside the window:
+ * - daily: completed days in window / days in window
+ * - frequency: scheduled-in-window hit / scheduled-in-window. Skipped entirely
+ *   if 0 scheduled in this window (the goal wasn't "due" this week).
+ * - milestone: excluded from weekly view (no week-level interpretation — they
+ *   are either done or not; they still appear in the goal sections beneath).
+ * - cumulative: excluded (progress reminders, not scored).
+ *
+ * This differs from `scoreChallenge(..., useTargetCount=true)` which judges
+ * frequency goals against `target_count` — fine for the whole challenge,
+ * crippling at week scale (a 5-run target makes any single week max out at
+ * 1/5 = 20% per scheduled hit).
+ */
+function scoreWeek(
+  goals: Goal[],
+  checkInsInWindow: CheckIn[],
+  windowStart: string,
+  windowEnd: string,
+): number {
+  const counted: number[] = []
+
+  for (const g of goals) {
+    if (g.type === 'cumulative' || g.type === 'milestone') continue
+
+    if (g.type === 'daily') {
+      const days = daysBetween(windowStart, windowEnd) + 1
+      const done = new Set(
+        checkInsInWindow.filter(c => c.goal_id === g.id && c.completed).map(c => c.date)
+      ).size
+      counted.push(Math.min(1, done / days))
+    } else if (g.type === 'frequency') {
+      const scheduledInWeek = (g.schedule_dates ?? []).filter(d => d >= windowStart && d <= windowEnd)
+      if (scheduledInWeek.length === 0) continue   // not due this week — skip
+      const hit = scheduledInWeek.filter(d =>
+        checkInsInWindow.some(c => c.goal_id === g.id && c.date === d && c.completed)
+      ).length
+      counted.push(hit / scheduledInWeek.length)
+    }
+  }
+
+  if (counted.length === 0) return 0
+  return Math.round((counted.reduce((a, b) => a + b, 0) / counted.length) * 100)
+}
+
+/**
  * Per-week comparison data for the WeeklyScorecard. Each entry covers one
  * calendar week (Mon–Sun) intersected with the challenge window. For
  * in-progress weeks (today is within the range), the score window is clamped
@@ -99,13 +144,12 @@ export function weeklyResults(
     const inProgress = today >= cursor && today <= weekEnd
     // For in-progress weeks, score only through `today` (don't zero-fill future days).
     const scoreEnd = inProgress ? today : weekEnd
-    const daysInScoreWindow = daysBetween(cursor, scoreEnd) + 1
 
     const myWindow    = myCheckIns.filter(c    => c.date >= cursor && c.date <= scoreEnd)
     const buddyWindow = buddyCheckIns.filter(c => c.date >= cursor && c.date <= scoreEnd)
 
-    const myScore    = Math.round(scoreChallenge(myGoals,    myWindow,    daysInScoreWindow, cursor, scoreEnd, true))
-    const buddyScore = Math.round(scoreChallenge(buddyGoals, buddyWindow, daysInScoreWindow, cursor, scoreEnd, true))
+    const myScore    = scoreWeek(myGoals,    myWindow,    cursor, scoreEnd)
+    const buddyScore = scoreWeek(buddyGoals, buddyWindow, cursor, scoreEnd)
 
     let winner: WeekResult['winner']
     if (inProgress) winner = 'pending'
