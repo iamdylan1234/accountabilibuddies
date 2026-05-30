@@ -6,6 +6,7 @@ import CreateChallengeForm from '@/components/dashboard/CreateChallengeForm'
 import PendingChallengeActions from '@/components/dashboard/PendingChallengeActions'
 import CompletionCard from '@/components/dashboard/CompletionCard'
 import NotStartedCard from '@/components/dashboard/NotStartedCard'
+import ShareInviteButton from '@/components/dashboard/ShareInviteButton'
 import type { ChallengeWithProfiles, Profile, Goal, CheckIn } from '@/types/database'
 import { FEATURES } from '@/lib/featureFlags'
 import { scoreChallenge } from '@/lib/scoring'
@@ -182,6 +183,11 @@ export default async function DashboardPage() {
       <div className="max-w-md mx-auto mt-20 px-6">
         <h1 className="text-3xl font-black text-gray-900 mb-2">{typedChallenge.month_name}</h1>
         <p className="text-gray-500 mb-8">Waiting for your buddy to join. Share this link:</p>
+        <ShareInviteButton
+          inviteUrl={inviteUrl}
+          creatorName={firstNameOf(typedChallenge.creator)}
+          challengeName={typedChallenge.month_name}
+        />
         <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-3">
           <span className="text-sm text-gray-700 break-all flex-1">{inviteUrl}</span>
           <CopyButton text={inviteUrl} />
