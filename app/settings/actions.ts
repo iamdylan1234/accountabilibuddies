@@ -25,3 +25,21 @@ export async function updateName(name: string): Promise<{ error: string } | unde
   revalidatePath('/profile')
   revalidatePath('/settings')
 }
+
+export async function triggerPasswordReset(): Promise<{ error: string } | { sent: true }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) return { error: 'Not signed in.' }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://accountabilibuddies.app'
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: `${appUrl}/auth/reset-password`,
+  })
+
+  if (error) {
+    console.error('[triggerPasswordReset] failed:', error)
+    return { error: `Couldn't send reset email: ${error.message}` }
+  }
+
+  return { sent: true }
+}

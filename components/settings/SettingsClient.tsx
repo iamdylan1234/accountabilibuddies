@@ -7,6 +7,7 @@ import type { Profile } from '@/types/database'
 import SettingsSection from './SettingsSection'
 import SettingsRow from './SettingsRow'
 import NameEditSheet from './NameEditSheet'
+import { triggerPasswordReset } from '@/app/settings/actions'
 
 interface Props {
   email: string
@@ -20,6 +21,22 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
   void buddy  // suppress unused warning until Task 6 wires the toggle
   const [nameSheet, setNameSheet] = useState(false)
   const [displayedName, setDisplayedName] = useState(profile.name)
+  const [passwordStatus, setPasswordStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+
+  async function handlePasswordChange() {
+    setPasswordStatus('sending')
+    setPasswordError(null)
+    const result = await triggerPasswordReset()
+    if ('error' in result) {
+      setPasswordStatus('error')
+      setPasswordError(result.error)
+      return
+    }
+    setPasswordStatus('sent')
+    // Auto-clear the "Sent" state after 4 seconds so the user can tap again if needed.
+    setTimeout(() => setPasswordStatus('idle'), 4000)
+  }
 
   return (
     <div className="max-w-md mx-auto px-4 py-4">
@@ -42,9 +59,23 @@ export default function SettingsClient({ email, profile, buddy, appVersion }: Pr
           onClick={() => setNameSheet(true)}
         />
         <SettingsRow label="Email" variant="value" value={email} />
-        <SettingsRow label="Password" variant="nav" value="Change" />
+        <SettingsRow
+          label="Password"
+          variant="nav"
+          value={
+            passwordStatus === 'sending' ? 'Sending…' :
+            passwordStatus === 'sent'    ? 'Check your email ✓' :
+            passwordStatus === 'error'   ? 'Try again' :
+            'Change'
+          }
+          onClick={handlePasswordChange}
+          disabled={passwordStatus === 'sending'}
+        />
         <SettingsRow label="Delete account" variant="destructive" />
       </SettingsSection>
+      {passwordError && (
+        <p className="text-xs text-red-500 px-4 -mt-4 mb-6">{passwordError}</p>
+      )}
 
       <SettingsSection label="Notifications">
         <SettingsRow
