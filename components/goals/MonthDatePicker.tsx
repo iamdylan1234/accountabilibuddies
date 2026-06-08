@@ -33,14 +33,11 @@ export default function MonthDatePicker({ month, startDate, endDate, selectedDat
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">{monthLabel}</p>
-        {maxDates !== undefined && (
-          <span className={`text-xs font-black ${selectedDates.length === maxDates ? 'text-teal-600' : 'text-gray-400'}`}>
-            {selectedDates.length}/{maxDates} selected
-          </span>
-        )}
-      </div>
+      {/* Month header only — selection counter lives once, above the whole
+          picker group (lifted out of here so a 2-month challenge doesn't
+          render two redundant "8/10 selected" counters that read like a
+          per-month requirement). */}
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{monthLabel}</p>
       <div className="grid grid-cols-7 gap-1 text-center">
         {['M','T','W','T','F','S','S'].map((d, i) => (
           <span key={i} className="text-xs font-bold text-gray-300 pb-1">{d}</span>

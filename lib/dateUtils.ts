@@ -81,3 +81,19 @@ export function monthsInRange(startStr: string, endStr: string): string[] {
   }
   return months
 }
+
+/**
+ * Drop dates outside [startStr, endStr] from a list of "YYYY-MM-DD" strings.
+ *
+ * The goal-setup picker renders one month grid per `monthsInRange` result;
+ * any selected date outside the window is invisible (no grid cell) but still
+ * sits in the array and passes the `length === target_count` check. That's a
+ * silent-corruption hazard for two flows: the "Copy my goals from last
+ * challenge" button (old-window dates carry over), and editing an existing
+ * goal whose challenge dates shifted. Filter on load to keep state honest.
+ *
+ * Lexicographic compare of "YYYY-MM-DD" is equivalent to chronological compare.
+ */
+export function filterDatesInRange(dates: string[], startStr: string, endStr: string): string[] {
+  return dates.filter(d => d >= startStr && d <= endStr)
+}
