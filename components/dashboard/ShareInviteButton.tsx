@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { BRAND_GRADIENT } from '@/lib/brand'
 
 interface Props {
@@ -10,42 +9,51 @@ interface Props {
 }
 
 /**
- * One-tap native invite share on the pending "Waiting for your buddy" screen.
+ * One-tap invite share on the "Waiting for your buddy" screen.
  *
- * On browsers that support the Web Share API (mobile Safari/Chrome on iOS &
- * Android), surfaces a primary share button that opens the OS share sheet —
- * collapsing the biggest first-time friction step (out-of-band relay through
- * WhatsApp/SMS/etc.) into a single tap. On unsupported browsers (most desktop),
- * renders nothing and the user falls through to the existing copy block below.
+ * Always renders — no copy/paste fall-off step. Behaviour branches at click time:
  *
- * `navigator.share` doesn't exist on the server, so support is resolved in a
- * post-mount effect. The initial render returns null (no SSR ghost button),
- * and the button appears on hydration only if supported — no layout shift on
- * desktop, additive on mobile.
+ *  - Web Share API supported (most mobile browsers, modern Safari/Chrome):
+ *    OS share sheet — user picks WhatsApp / iMessage / Telegram / etc.
+ *  - Not supported (Firefox desktop, older browsers) OR native share fails:
+ *    Falls back to opening WhatsApp Web/Desktop with the message prefilled
+ *    (the dominant chat app for the current user base; covers desktop without
+ *    forcing the user into copy/paste).
+ *
+ * Capability detection happens at click time (not mount) so SSR doesn't try
+ * to read `navigator` and there's no hydration mismatch.
  */
 export default function ShareInviteButton({ inviteUrl, creatorName, challengeName }: Props) {
-  const [supported, setSupported] = useState(false)
-
-  useEffect(() => {
-    setSupported(typeof navigator !== 'undefined' && typeof navigator.share === 'function')
-  }, [])
-
-  if (!supported) return null
+  // Single combined string for the WhatsApp fallback (wa.me joins title/body
+  // into one `text` query param). Native share gets title/text/url separately
+  // so the OS sheet can render the link as a rich attachment.
+  const shortMessage = `Join my ${challengeName} on Accountabilibuddies — 30 days, one buddy, no excuses.`
+  const fallbackText = `${shortMessage}\n${inviteUrl}`
 
   async function handleShare() {
-    try {
-      await navigator.share({
-        title: `${creatorName} wants you as their accountability buddy`,
-        text:  `Join my ${challengeName} on Accountabilibuddies — 30 days, one buddy, no excuses.`,
-        url:   inviteUrl,
-      })
-    } catch (err: unknown) {
-      // User cancelled the share sheet → AbortError; ignore it.
-      // Log anything else so a real failure isn't silently swallowed.
-      if (err instanceof Error && err.name !== 'AbortError') {
-        console.error('[ShareInviteButton] share failed:', err)
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${creatorName} wants you as their accountability buddy`,
+          text:  shortMessage,
+          url:   inviteUrl,
+        })
+        return
+      } catch (err: unknown) {
+        // User cancelled the share sheet → AbortError; we're done, don't open
+        // WhatsApp as well (would feel like spam). Other errors fall through
+        // so the user is never dead-ended.
+        if (err instanceof Error && err.name === 'AbortError') return
+        console.error('[ShareInviteButton] native share failed, falling back to WhatsApp:', err)
       }
     }
+    // Fallback: WhatsApp Web/Desktop with message + link prefilled. Works on
+    // any platform; if WhatsApp app is installed it opens that instead.
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(fallbackText)}`,
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
   return (
