@@ -60,3 +60,24 @@ export function nextMonday(fromStr: string): string {
   const delta = (1 - dow + 7) % 7             // 0 when already Monday
   return addDays(fromStr, delta)
 }
+
+/**
+ * All calendar months ("YYYY-MM") that the inclusive range [start, end] touches.
+ * Used by GoalSetupForm to render one MonthDatePicker per spanned month so a
+ * challenge crossing a month boundary doesn't hide its second month from the
+ * frequency-date picker.
+ *
+ * monthsInRange('2026-09-09', '2026-10-08') === ['2026-09', '2026-10']
+ * monthsInRange('2026-05-01', '2026-05-31') === ['2026-05']
+ */
+export function monthsInRange(startStr: string, endStr: string): string[] {
+  const [sy, sm] = startStr.split('-').map(Number)
+  const [ey, em] = endStr.split('-').map(Number)
+  const months: string[] = []
+  let y = sy, m = sm
+  while (y < ey || (y === ey && m <= em)) {
+    months.push(`${y}-${String(m).padStart(2, '0')}`)
+    if (++m > 12) { m = 1; y++ }
+  }
+  return months
+}
