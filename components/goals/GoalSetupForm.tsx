@@ -215,8 +215,13 @@ export default function GoalSetupForm({
                 <>
                   {/* Single counter above the picker group (instead of one
                       per month grid) so a multi-month challenge doesn't read
-                      as a per-month requirement. */}
-                  <div className="flex justify-end">
+                      as a per-month requirement. When at max, an inline hint
+                      tells the user how to swap — pre-fix, tapping an
+                      unselected cell silently did nothing and read as a bug. */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">
+                      {goal.schedule_dates.length === parseInt(goal.target_count) ? 'Tap a selected date to swap it' : ''}
+                    </span>
                     <span className={`text-xs font-black ${goal.schedule_dates.length === parseInt(goal.target_count) ? 'text-teal-600' : 'text-gray-400'}`}>
                       {goal.schedule_dates.length}/{goal.target_count} selected
                     </span>

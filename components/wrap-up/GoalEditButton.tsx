@@ -124,8 +124,13 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                     {/* Single counter above the picker group (lifted out of
                         each MonthDatePicker) — avoids per-month "8/10" reading
                         like a per-month requirement when the challenge spans
-                        two calendar months. */}
-                    <div className="flex justify-end">
+                        two calendar months. Inline swap hint shows when at
+                        max so the picker doesn't read as broken when taps on
+                        unselected cells are silently ignored. */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">
+                        {scheduleDates.length === parseInt(targetCount) ? 'Tap a selected date to swap it' : ''}
+                      </span>
                       <span className={`text-xs font-black ${scheduleDates.length === parseInt(targetCount) ? 'text-teal-600' : 'text-gray-400'}`}>
                         {scheduleDates.length}/{targetCount} selected
                       </span>
