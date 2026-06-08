@@ -47,7 +47,8 @@ export default function CeilingLogSheet({
 
   const fmt = (n: number) => parseFloat(n.toFixed(2))
   const remaining = target - totalUsed
-  const over = target > 0 && totalUsed >= target
+  // Strictly over (using the full budget is success, not "over").
+  const over = target > 0 && totalUsed > target
 
   return (
     <>

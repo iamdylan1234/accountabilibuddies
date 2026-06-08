@@ -58,19 +58,25 @@ describe('scoreGoal', () => {
     it('0 logged = full credit (1.0)', () => {
       expect(scoreGoal(baseGoal('ceiling', 40), [], 30)).toBe(1)
     })
-    it('linear decay below the cap', () => {
-      // 12 of 40 → 1 - 12/40 = 0.7
-      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 12)], 30)).toBeCloseTo(0.7)
+    it('under the cap = full credit (the budget is the budget)', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 12)], 30)).toBe(1)
     })
-    it('sums multiple logs', () => {
-      // 5 + 7 = 12 of 40 → 0.7
-      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 5), civ('2026-06-11', 7)], 30)).toBeCloseTo(0.7)
+    it('exactly at the cap = full credit', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 40)], 30)).toBe(1)
     })
-    it('at the cap = 0', () => {
-      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 40)], 30)).toBe(0)
+    it('sums multiple logs (still under cap → full credit)', () => {
+      // 5 + 7 = 12 of 40 → under cap → 1.0
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 5), civ('2026-06-11', 7)], 30)).toBe(1)
     })
-    it('over the cap clamps to 0 (never negative)', () => {
-      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 47)], 30)).toBe(0)
+    it('over the cap: penalty proportional to overage', () => {
+      // 50 of 40 → over by 10 → 1 - 10/40 = 0.75
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 50)], 30)).toBeCloseTo(0.75)
+      // 60 of 40 → over by 20 → 0.5
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-11', 60)], 30)).toBeCloseTo(0.5)
+    })
+    it('double the cap = 0, and further over clamps to 0', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 80)], 30)).toBe(0)
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-11', 100)], 30)).toBe(0)
     })
     it('no cap set = full credit (nothing to exceed)', () => {
       expect(scoreGoal(baseGoal('ceiling', null), [civ('2026-06-10', 5)], 30)).toBe(1)
@@ -93,9 +99,11 @@ describe('scoreChallenge', () => {
   })
 
   it('excludes cumulative but INCLUDES ceiling', () => {
-    // One done milestone (1.0) + one cumulative (would be 0.5) + one ceiling
-    // (12/40 → 0.7). Cumulative is excluded from the denominator; ceiling is not.
-    // Expected = average of [milestone 1.0, ceiling 0.7] = 0.85 → 85%.
+    // One done milestone (1.0) + one cumulative (would be 0.5) + one OVER-cap
+    // ceiling (60/40 → 0.5). Cumulative is excluded from the denominator;
+    // ceiling is not. Expected = average of [milestone 1.0, ceiling 0.5] = 0.75
+    // → 75%. (An under-cap ceiling would be 1.0 and couldn't distinguish
+    // "counted" from "excluded" — using an over-cap value makes the guard real.)
     const goals: Goal[] = [
       baseGoal('milestone'),
       { ...baseGoal('cumulative', 100), id: 'gc' },
@@ -104,9 +112,9 @@ describe('scoreChallenge', () => {
     const checkIns = [
       ci('2026-06-10', 'g1'),          // milestone done
       civ('2026-06-10', 50, 'gc'),     // cumulative 50/100 (ignored in challenge %)
-      civ('2026-06-10', 12, 'gk'),     // ceiling 12/40 → 0.7
+      civ('2026-06-10', 60, 'gk'),     // ceiling 60/40 → over by 20 → 0.5
     ]
-    expect(scoreChallenge(goals, checkIns, 30)).toBe(85)
+    expect(scoreChallenge(goals, checkIns, 30)).toBe(75)
   })
 })
 

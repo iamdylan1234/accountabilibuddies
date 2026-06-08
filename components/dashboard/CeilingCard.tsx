@@ -57,7 +57,10 @@ export default function CeilingCard({ goal, checkIns, today, isMyGoal, dayNumber
     .filter(c => c.goal_id === goal.id && c.date === today && c.value != null)
 
   const remaining = target - totalUsed
-  const over = target > 0 && totalUsed >= target
+  // Strictly over: using your whole budget (40/40) is success, not "over". Only
+  // exceeding the cap flips to the red over-budget state. At exactly the cap the
+  // card shows "0 left" with a full (amber) bar.
+  const over = target > 0 && totalUsed > target
   const usedPct = target > 0 ? Math.min(1, totalUsed / target) : 0
 
   // Pace: how much budget "should" be spent by now if consumed evenly. Only
