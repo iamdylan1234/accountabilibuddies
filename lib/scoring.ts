@@ -94,6 +94,18 @@ export function scoreGoal(
     return Math.min(1, total / goal.target_count)
   }
 
+  // Ceiling: linear decay from the cap. 0 logged = 1.0 (full credit), at-cap = 0,
+  // over-cap clamps to 0 (never negative). No cap set → nothing to exceed → 1.0.
+  // Unlike cumulative, ceiling IS counted in scoreChallenge (it's a commitment,
+  // not a progress reminder).
+  if (goal.type === 'ceiling') {
+    if (!goal.target_count) return 1
+    const total = checkIns
+      .filter(c => c.goal_id === goal.id && c.value != null)
+      .reduce((sum, c) => sum + (c.value ?? 0), 0)
+    return Math.max(0, 1 - total / goal.target_count)
+  }
+
   const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)
 
   if (goal.type === 'milestone') return relevant.length > 0 ? 1 : 0
@@ -113,7 +125,10 @@ export function scoreGoal(
   return denom === 0 ? 0 : Math.min(1, relevant.length / denom)
 }
 
-// Excludes cumulative goals from challenge % (they are progress reminders, not scored).
+// Excludes cumulative goals from challenge % (they are progress reminders, not
+// scored). NOTE: 'ceiling' is intentionally NOT excluded — staying under a cap
+// is a scored commitment. Don't "tidy" this filter into `!== 'cumulative' &&
+// !== 'ceiling'`; the ceiling-counts test below guards against exactly that.
 export function scoreChallenge(
   goals: Goal[], checkIns: CheckIn[], totalDays: number,
   startDate?: string, today?: string,
@@ -233,7 +248,7 @@ export function getMissedDays(
   lookbackDays: number = 7,
   endOffset: number = 1,
 ): number {
-  if (goal.type === 'cumulative' || goal.type === 'milestone') return 0
+  if (goal.type === 'cumulative' || goal.type === 'milestone' || goal.type === 'ceiling') return 0
 
   const [ty, tm, td] = today.split('-').map(Number)
   // endOffset = 1 (default) → end at yesterday; endOffset = 2 → end at day-before-yesterday
@@ -409,6 +424,19 @@ export function getWeeklyStatChip(
     const scheduledSet = new Set(scheduledThisWeek)
     const done = own.filter(c => c.completed && scheduledSet.has(c.date)).length
     return `${done}/${scheduledThisWeek.length} wk`
+  }
+
+  // ceiling: this week's consumption, framed as spend (no "+", which reads as
+  // a gain). 0 is meaningful for a cap ("stayed clean"), so unlike cumulative
+  // we still show it rather than returning null.
+  if (goal.type === 'ceiling') {
+    const used = own
+      .filter(c => c.value != null)
+      .reduce((sum, c) => sum + (c.value ?? 0), 0)
+    const cleanUsed = parseFloat(used.toFixed(2))
+    return goal.target_unit
+      ? `${cleanUsed} ${goal.target_unit} wk`
+      : `${cleanUsed} wk`
   }
 
   // cumulative

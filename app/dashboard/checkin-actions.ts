@@ -75,21 +75,55 @@ export async function addReaction(checkInId: string, emoji: string) {
   revalidatePath('/dashboard')
 }
 
-export async function logValue(goalId: string, date: string, value: number) {
+// Returns the new check-in's id so the caller can offer an Undo (delete by id).
+// Cumulative and ceiling goals both log values; multiple per day are allowed
+// (two runs; two drinks).
+export async function logValue(
+  goalId: string, date: string, value: number,
+): Promise<{ id: string } | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) return { error: 'Not authenticated' }
 
-  // Allow multiple log entries per day for cumulative goals (e.g. two runs)
-  const { error } = await supabase.from('check_ins').insert({
+  const { data, error } = await supabase.from('check_ins').insert({
     goal_id: goalId,
     user_id: user.id,
     date,
     completed: true,
     value,
-  })
-  if (error) console.error('[logValue] error:', error)
+  }).select('id').single()
+
+  if (error) {
+    console.error('[logValue] error:', error)
+    return { error: error.message }
+  }
   revalidatePath('/dashboard')
+  revalidatePath('/week')
+  revalidatePath('/wrap-up')
+  return { id: data.id }
+}
+
+// Delete a single logged check-in by id (own rows only). Powers the Undo snackbar
+// and the per-entry remove in the ceiling/cumulative log sheet. Scoped to the
+// caller's own user_id so a stray id can't delete someone else's data.
+export async function deleteCheckIn(checkInId: string): Promise<{ error: string } | undefined> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('check_ins')
+    .delete()
+    .eq('id', checkInId)
+    .eq('user_id', user.id)
+
+  if (error) {
+    console.error('[deleteCheckIn] error:', error)
+    return { error: error.message }
+  }
+  revalidatePath('/dashboard')
+  revalidatePath('/week')
+  revalidatePath('/wrap-up')
 }
 
 export async function updateDailyMessage(message: string, today: string): Promise<{ error: string } | undefined> {

@@ -104,6 +104,9 @@ export default function GoalSetupForm({
       if (g.type === 'cumulative') {
         if (!(parseInt(g.target_count) > 0)) { setError(`Set a target total for "${g.title}".`); return }
       }
+      if (g.type === 'ceiling') {
+        if (!(parseInt(g.target_count) > 0)) { setError(`Set a max for "${g.title}".`); return }
+      }
     }
     setSubmitting(true)
     try {
@@ -164,7 +167,7 @@ export default function GoalSetupForm({
 
           {/* Type row */}
           <div className="flex gap-2 ml-7 flex-wrap items-center">
-            {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
+            {(['daily', 'milestone', 'frequency', 'cumulative', 'ceiling'] as GoalType[]).map(t => (
               <button
                 key={t}
                 type="button"
@@ -193,6 +196,7 @@ export default function GoalSetupForm({
               <p><strong className="text-gray-900">Frequency</strong> — Specific days you choose (e.g. Mon/Wed/Fri). Misses can be caught up by doing it on a non-scheduled day.</p>
               <p><strong className="text-gray-900">Cumulative</strong> — Track a number toward a target. Log amounts as you go. Good for &quot;read 10 books&quot; or &quot;save $500&quot;.</p>
               <p><strong className="text-gray-900">Milestone</strong> — A single one-time achievement during the challenge — e.g. run a 5K, finish a course.</p>
+              <p><strong className="text-gray-900">Ceiling</strong>: a cap you stay under. Log each one as you go (e.g. max 40 drinks). Staying below the limit wins; every log spends your budget.</p>
             </div>
           )}
 
@@ -262,6 +266,28 @@ export default function GoalSetupForm({
                 placeholder="Unit (e.g. km, pages, hours)"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
               />
+            </div>
+          )}
+
+          {/* Ceiling: max cap + unit (same inputs as cumulative, framed as a limit) */}
+          {goal.type === 'ceiling' && (
+            <div className="ml-7 space-y-2">
+              <input
+                type="number"
+                value={goal.target_count}
+                onChange={e => update(i, 'target_count', e.target.value)}
+                placeholder="Max over the challenge (e.g. 40)"
+                min="1"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
+              <input
+                type="text"
+                value={goal.target_unit}
+                onChange={e => update(i, 'target_unit', e.target.value)}
+                placeholder="Unit (e.g. drinks, cigarettes)"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              />
+              <p className="text-xs text-gray-400">Staying under wins. Every log spends your budget.</p>
             </div>
           )}
         </div>

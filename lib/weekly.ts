@@ -74,6 +74,10 @@ function dowMonStart(dateStr: string): number {
  * - daily: completed days in window / days in window
  * - frequency: scheduled-in-window hit / scheduled-in-window. Skipped entirely
  *   if 0 scheduled in this window (the goal wasn't "due" this week).
+ * - ceiling: stayed under the cap PRO-RATED to this window's days. A 40-cap over
+ *   30 days is ~1.33/day; a 7-day window's allowance is ~9.3. Score = linear
+ *   decay vs that pro-rated cap, so a heavy week tanks that week and a clean
+ *   week scores high. Needs `totalChallengeDays` to pro-rate.
  * - milestone: excluded from weekly view (no week-level interpretation — they
  *   are either done or not; they still appear in the goal sections beneath).
  * - cumulative: excluded (progress reminders, not scored).
@@ -88,6 +92,7 @@ function scoreWeek(
   checkInsInWindow: CheckIn[],
   windowStart: string,
   windowEnd: string,
+  totalChallengeDays: number,
 ): number {
   const counted: number[] = []
 
@@ -107,6 +112,14 @@ function scoreWeek(
         checkInsInWindow.some(c => c.goal_id === g.id && c.date === d && c.completed)
       ).length
       counted.push(hit / scheduledInWeek.length)
+    } else if (g.type === 'ceiling') {
+      if (!g.target_count || totalChallengeDays <= 0) { counted.push(1); continue }
+      const daysInWindow = daysBetween(windowStart, windowEnd) + 1
+      const proRatedCap = g.target_count * (daysInWindow / totalChallengeDays)
+      const used = checkInsInWindow
+        .filter(c => c.goal_id === g.id && c.value != null)
+        .reduce((s, c) => s + (c.value ?? 0), 0)
+      counted.push(proRatedCap > 0 ? Math.max(0, 1 - used / proRatedCap) : 1)
     }
   }
 
@@ -134,6 +147,8 @@ export function weeklyResults(
   const results: WeekResult[] = []
   let cursor = startDate
   let weekNum = 1
+  // Total challenge length, for pro-rating ceiling caps to each week window.
+  const totalChallengeDays = daysBetween(startDate, endDate) + 1
 
   while (cursor <= endDate) {
     const dow = dowMonStart(cursor)
@@ -148,8 +163,8 @@ export function weeklyResults(
     const myWindow    = myCheckIns.filter(c    => c.date >= cursor && c.date <= scoreEnd)
     const buddyWindow = buddyCheckIns.filter(c => c.date >= cursor && c.date <= scoreEnd)
 
-    const myScore    = scoreWeek(myGoals,    myWindow,    cursor, scoreEnd)
-    const buddyScore = scoreWeek(buddyGoals, buddyWindow, cursor, scoreEnd)
+    const myScore    = scoreWeek(myGoals,    myWindow,    cursor, scoreEnd, totalChallengeDays)
+    const buddyScore = scoreWeek(buddyGoals, buddyWindow, cursor, scoreEnd, totalChallengeDays)
 
     let winner: WeekResult['winner']
     if (inProgress) winner = 'pending'

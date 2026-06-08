@@ -45,7 +45,7 @@ type DayState =
 
 const GOAL_TYPE_LABEL: Record<string, string> = {
   daily: 'Daily', frequency: 'Frequency',
-  milestone: 'Milestone', cumulative: 'Cumulative',
+  milestone: 'Milestone', cumulative: 'Cumulative', ceiling: 'Ceiling',
 }
 
 export default function GoalCalendarSheet({
@@ -152,7 +152,8 @@ export default function GoalCalendarSheet({
   function getDayState(dateStr: string): DayState {
     if (dateStr < startDate || dateStr > endDate) return 'blank'
 
-    if (goal.type === 'cumulative') {
+    if (goal.type === 'cumulative' || goal.type === 'ceiling') {
+      // Both log values per day; a day with any logged amount shows a value cell.
       const logged = checkIns.some(
         c => c.goal_id === goal.id && c.date === dateStr && c.value != null && c.value > 0
       )
@@ -407,7 +408,7 @@ export default function GoalCalendarSheet({
         </div>
 
         {/* Legend */}
-        {goal.type !== 'cumulative' && (
+        {goal.type !== 'cumulative' && goal.type !== 'ceiling' && (
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BRAND_GRADIENT }} />
@@ -437,7 +438,7 @@ export default function GoalCalendarSheet({
             )}
           </div>
         )}
-        {goal.type === 'cumulative' && (
+        {(goal.type === 'cumulative' || goal.type === 'ceiling') && (
           <div className="flex items-center gap-1.5 px-5 py-4 text-xs text-gray-400 border-t border-gray-100 mt-2">
             <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BRAND_GRADIENT }} />
             Circle shows value logged that day

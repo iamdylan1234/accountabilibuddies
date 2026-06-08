@@ -17,6 +17,11 @@ const ci = (date: string, goalId = 'g1'): CheckIn => ({
   id: date, goal_id: goalId, user_id: 'u1', date, completed: true, value: null, created_at: '',
 })
 
+// Check-in carrying a logged value (cumulative / ceiling goals).
+const civ = (date: string, value: number, goalId = 'g1'): CheckIn => ({
+  id: `${date}-${value}`, goal_id: goalId, user_id: 'u1', date, completed: true, value, created_at: '',
+})
+
 describe('scoreGoal', () => {
   it('daily: completions / totalDays', () => {
     expect(scoreGoal(baseGoal('daily'), [ci('2026-05-01'), ci('2026-05-02')], 10))
@@ -48,6 +53,33 @@ describe('scoreGoal', () => {
   it('caps at 1', () => {
     expect(scoreGoal(baseGoal('frequency', 3), [ci('2026-05-01'), ci('2026-05-02'), ci('2026-05-03'), ci('2026-05-04')], 30)).toBe(1)
   })
+
+  describe('ceiling', () => {
+    it('0 logged = full credit (1.0)', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [], 30)).toBe(1)
+    })
+    it('linear decay below the cap', () => {
+      // 12 of 40 → 1 - 12/40 = 0.7
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 12)], 30)).toBeCloseTo(0.7)
+    })
+    it('sums multiple logs', () => {
+      // 5 + 7 = 12 of 40 → 0.7
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 5), civ('2026-06-11', 7)], 30)).toBeCloseTo(0.7)
+    })
+    it('at the cap = 0', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 40)], 30)).toBe(0)
+    })
+    it('over the cap clamps to 0 (never negative)', () => {
+      expect(scoreGoal(baseGoal('ceiling', 40), [civ('2026-06-10', 47)], 30)).toBe(0)
+    })
+    it('no cap set = full credit (nothing to exceed)', () => {
+      expect(scoreGoal(baseGoal('ceiling', null), [civ('2026-06-10', 5)], 30)).toBe(1)
+    })
+    it('ignores value-less check-ins', () => {
+      // a bare completed check-in (value null) contributes 0 to the consumed total
+      expect(scoreGoal(baseGoal('ceiling', 40), [ci('2026-06-10')], 30)).toBe(1)
+    })
+  })
 })
 
 describe('scoreChallenge', () => {
@@ -58,6 +90,23 @@ describe('scoreChallenge', () => {
 
   it('returns 0 for empty goals', () => {
     expect(scoreChallenge([], [], 30)).toBe(0)
+  })
+
+  it('excludes cumulative but INCLUDES ceiling', () => {
+    // One done milestone (1.0) + one cumulative (would be 0.5) + one ceiling
+    // (12/40 → 0.7). Cumulative is excluded from the denominator; ceiling is not.
+    // Expected = average of [milestone 1.0, ceiling 0.7] = 0.85 → 85%.
+    const goals: Goal[] = [
+      baseGoal('milestone'),
+      { ...baseGoal('cumulative', 100), id: 'gc' },
+      { ...baseGoal('ceiling', 40), id: 'gk' },
+    ]
+    const checkIns = [
+      ci('2026-06-10', 'g1'),          // milestone done
+      civ('2026-06-10', 50, 'gc'),     // cumulative 50/100 (ignored in challenge %)
+      civ('2026-06-10', 12, 'gk'),     // ceiling 12/40 → 0.7
+    ]
+    expect(scoreChallenge(goals, checkIns, 30)).toBe(85)
   })
 })
 

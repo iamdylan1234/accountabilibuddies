@@ -45,8 +45,8 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
       const result = await submitGoalChangeRequest(goal.id, challengeId, {
         title,
         type,
-        target_count: (type === 'frequency' || type === 'cumulative') ? (parseInt(targetCount) || null) : null,
-        target_unit: (type === 'cumulative') ? (targetUnit.trim() || null) : null,
+        target_count: (type === 'frequency' || type === 'cumulative' || type === 'ceiling') ? (parseInt(targetCount) || null) : null,
+        target_unit: (type === 'cumulative' || type === 'ceiling') ? (targetUnit.trim() || null) : null,
         schedule_dates: (type === 'frequency' && scheduleDates.length > 0) ? scheduleDates : null,
         // Every frequency goal is catch-up-eligible (product decision 2026-06-08).
         // Other types ignore this at scoring time, so a literal `false` is safe.
@@ -97,13 +97,13 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">Type</label>
               <div className="flex gap-2 flex-wrap">
-                {(['daily', 'milestone', 'frequency', 'cumulative'] as GoalType[]).map(t => (
+                {(['daily', 'milestone', 'frequency', 'cumulative', 'ceiling'] as GoalType[]).map(t => (
                   <button key={t} type="button" onClick={() => {
                     setType(t)
                     // Reset type-specific state so old fields don't leak into the new type
                     setScheduleDates([])
-                    if (t !== 'frequency' && t !== 'cumulative') setTargetCount('')
-                    if (t !== 'cumulative') setTargetUnit('')
+                    if (t !== 'frequency' && t !== 'cumulative' && t !== 'ceiling') setTargetCount('')
+                    if (t !== 'cumulative' && t !== 'ceiling') setTargetUnit('')
                   }}
                     className={`px-3 py-1 rounded-full text-xs font-semibold transition ${type === t ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
                     style={type === t ? { background: BRAND_GRADIENT } : {}}>
@@ -161,6 +161,18 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                 <input type="text" value={targetUnit} onChange={e => setTargetUnit(e.target.value)}
                   placeholder="Unit (e.g. km, pages)"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
+              </div>
+            )}
+
+            {type === 'ceiling' && (
+              <div className="space-y-2">
+                <input type="number" value={targetCount} onChange={e => setTargetCount(e.target.value)}
+                  placeholder="Max over the challenge (e.g. 40)" min="1"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                <input type="text" value={targetUnit} onChange={e => setTargetUnit(e.target.value)}
+                  placeholder="Unit (e.g. drinks, cigarettes)"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
+                <p className="text-xs text-gray-400">Staying under wins. Every log spends your budget.</p>
               </div>
             )}
 
