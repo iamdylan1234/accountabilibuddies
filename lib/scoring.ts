@@ -94,16 +94,19 @@ export function scoreGoal(
     return Math.min(1, total / goal.target_count)
   }
 
-  // Ceiling: linear decay from the cap. 0 logged = 1.0 (full credit), at-cap = 0,
-  // over-cap clamps to 0 (never negative). No cap set → nothing to exceed → 1.0.
-  // Unlike cumulative, ceiling IS counted in scoreChallenge (it's a commitment,
-  // not a progress reminder).
+  // Ceiling: the cap is the SUCCESS boundary, not a zero point. Anything at or
+  // under the cap is full credit (the budget is the budget — "max 40" permits
+  // 40). Only going OVER costs you, proportional to the overage: cap+cap = 0.
+  //   0/40 → 1.0   40/40 → 1.0   50/40 → 0.75   60/40 → 0.5   80/40 → 0
+  // No cap set → nothing to exceed → 1.0. Unlike cumulative, ceiling IS counted
+  // in scoreChallenge (it's a commitment, not a progress reminder).
   if (goal.type === 'ceiling') {
     if (!goal.target_count) return 1
     const total = checkIns
       .filter(c => c.goal_id === goal.id && c.value != null)
       .reduce((sum, c) => sum + (c.value ?? 0), 0)
-    return Math.max(0, 1 - total / goal.target_count)
+    const over = Math.max(0, total - goal.target_count)
+    return Math.max(0, 1 - over / goal.target_count)
   }
 
   const relevant = checkIns.filter(c => c.goal_id === goal.id && c.completed)

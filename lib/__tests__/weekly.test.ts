@@ -192,17 +192,24 @@ describe('weeklyResults — ceiling goals pro-rate the cap by week', () => {
     expect(r[0].myScore).toBe(100)
   })
 
-  it('at the pro-rated cap = 0%', () => {
-    // 7 logged in a 7-day window whose pro-rated cap is 7 → 1 - 7/7 = 0.
+  it('at the pro-rated cap = 100% (within budget)', () => {
+    // 7 logged in a 7-day window whose pro-rated cap is 7 → at cap → full credit.
     const myCi = [checkInVal('k1', '2026-06-03', 7)]
+    const r = weeklyResults([ceilingG], myCi, [ceilingG], [], '2026-06-01', '2026-06-30', '2026-07-15')
+    expect(r[0].myScore).toBe(100)
+  })
+
+  it('over the pro-rated cap = penalty (down from 100%)', () => {
+    // 14 logged in a 7-day window (cap 7) → over by 7 → 1 - 7/7 = 0 → 0%.
+    const myCi = [checkInVal('k1', '2026-06-03', 14)]
     const r = weeklyResults([ceilingG], myCi, [ceilingG], [], '2026-06-01', '2026-06-30', '2026-07-15')
     expect(r[0].myScore).toBe(0)
   })
 
-  it('a heavy week scores below a clean week (buddy comparison)', () => {
-    // Me: 2 logged (1 - 2/7 ≈ 71%). Buddy: 6 logged (1 - 6/7 ≈ 14%). I win the week.
-    const myCi = [checkInVal('k1', '2026-06-02', 2)]
-    const buCi = [checkInVal('k1', '2026-06-02', 6)]
+  it('a within-budget week beats a blown week (buddy comparison)', () => {
+    // Me: 5 logged (under cap 7 → 100%). Buddy: 12 logged (over by 5 → 1 - 5/7 ≈ 29%).
+    const myCi = [checkInVal('k1', '2026-06-02', 5)]
+    const buCi = [checkInVal('k1', '2026-06-02', 12)]
     const r = weeklyResults([ceilingG], myCi, [ceilingG], buCi, '2026-06-01', '2026-06-30', '2026-07-15')
     expect(r[0].myScore).toBeGreaterThan(r[0].buddyScore)
     expect(r[0].winner).toBe('me')
