@@ -48,7 +48,13 @@ export default function MonthDatePicker({ month, startDate, endDate, selectedDat
           const date = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const selected = selectedDates.includes(date)
           const inRange = date >= startDate && date <= endDate
-          const disabled = !inRange || (!selected && atMax)
+          // Distinguish two "disabled" states so they don't look identical:
+          //   outOfWindow: date isn't part of this challenge (faintest)
+          //   lockedByCap: date is in-window but target already met (visibly
+          //     muted but still readable — hints "tap a selected date to swap")
+          const outOfWindow = !inRange
+          const lockedByCap = inRange && !selected && atMax
+          const disabled = outOfWindow || lockedByCap
           return (
             <button
               key={date}
@@ -57,7 +63,8 @@ export default function MonthDatePicker({ month, startDate, endDate, selectedDat
               disabled={disabled}
               className={`w-8 h-8 rounded-full text-xs font-bold mx-auto flex items-center justify-center transition ${
                 selected ? 'text-white' :
-                disabled ? 'text-gray-200 cursor-not-allowed' :
+                outOfWindow ? 'text-gray-200 cursor-not-allowed' :
+                lockedByCap ? 'text-gray-400 bg-gray-50 cursor-not-allowed' :
                 'text-gray-600 hover:bg-gray-100'
               }`}
               style={selected ? { background: BRAND_GRADIENT } : {}}
