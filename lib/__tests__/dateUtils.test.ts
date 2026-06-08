@@ -1,4 +1,4 @@
-import { daysBetween, nextMonday, monthsInRange } from '../dateUtils'
+import { daysBetween, nextMonday, monthsInRange, filterDatesInRange } from '../dateUtils'
 
 describe('daysBetween', () => {
   it('counts whole days forward', () => {
@@ -55,5 +55,32 @@ describe('monthsInRange', () => {
   })
   it('crosses multi-year boundary', () => {
     expect(monthsInRange('2026-11-01', '2027-02-28')).toEqual(['2026-11', '2026-12', '2027-01', '2027-02'])
+  })
+})
+
+describe('filterDatesInRange', () => {
+  it('keeps dates inside the window', () => {
+    expect(filterDatesInRange(['2026-06-15', '2026-06-20'], '2026-06-09', '2026-07-08'))
+      .toEqual(['2026-06-15', '2026-06-20'])
+  })
+  it('drops dates before the start', () => {
+    expect(filterDatesInRange(['2026-05-15', '2026-06-15'], '2026-06-09', '2026-07-08'))
+      .toEqual(['2026-06-15'])
+  })
+  it('drops dates after the end', () => {
+    expect(filterDatesInRange(['2026-06-15', '2026-07-20'], '2026-06-09', '2026-07-08'))
+      .toEqual(['2026-06-15'])
+  })
+  it('keeps the boundary dates (inclusive)', () => {
+    expect(filterDatesInRange(['2026-06-09', '2026-07-08'], '2026-06-09', '2026-07-08'))
+      .toEqual(['2026-06-09', '2026-07-08'])
+  })
+  it('returns empty when all dates are outside', () => {
+    expect(filterDatesInRange(['2026-05-01', '2026-08-01'], '2026-06-09', '2026-07-08'))
+      .toEqual([])
+  })
+  it('preserves the original order', () => {
+    expect(filterDatesInRange(['2026-07-01', '2026-06-15', '2026-06-20'], '2026-06-09', '2026-07-08'))
+      .toEqual(['2026-07-01', '2026-06-15', '2026-06-20'])
   })
 })

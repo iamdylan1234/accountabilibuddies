@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { Goal, GoalType } from '@/types/database'
 import MonthDatePicker from './MonthDatePicker'
 import { BRAND_GRADIENT } from '@/lib/brand'
-import { monthsInRange } from '@/lib/dateUtils'
+import { monthsInRange, filterDatesInRange } from '@/lib/dateUtils'
 import Spinner from '@/components/shared/Spinner'
 
 interface GoalDraft {
@@ -24,7 +24,10 @@ const emptyGoal = (): GoalDraft => ({
   target_count: '',
   target_unit: '',
   schedule_dates: [],
-  catch_up: false,
+  // Every frequency goal is catch-up-eligible (product decision 2026-06-08).
+  // Daily/milestone/cumulative ignore this field at scoring time, so true is
+  // safe across the board and keeps the type plumbing unchanged.
+  catch_up: true,
 })
 
 interface Props {
@@ -52,8 +55,12 @@ export default function GoalSetupForm({
           type: g.type,
           target_count: g.target_count?.toString() ?? '',
           target_unit: g.target_unit ?? '',
-          schedule_dates: g.schedule_dates ?? [],
-          catch_up: g.catch_up,
+          // Strip orphan dates outside the current challenge window. Happens
+          // when a row was inserted under a previous window (rematch flow,
+          // script-seeded goals, edited dates) — orphans would be invisible
+          // in the picker but still pass `length === target_count` validation.
+          schedule_dates: filterDatesInRange(g.schedule_dates ?? [], challengeStartDate, challengeEndDate),
+          catch_up: true,
         }))
       : [emptyGoal()]
   )
@@ -125,8 +132,13 @@ export default function GoalSetupForm({
             type: g.type as GoalType,
             target_count: g.target_count != null ? String(g.target_count) : '',
             target_unit: g.target_unit ?? '',
-            schedule_dates: g.schedule_dates ?? [],
-            catch_up: g.catch_up,
+            // Strip orphan dates: previous-challenge dates almost never fall
+            // inside the new window, so without this filter every copied
+            // frequency goal would land with 0 visible / N invisible dates
+            // and the user would have to re-pick them all anyway. Better to
+            // arrive with an empty schedule and a clean picker.
+            schedule_dates: filterDatesInRange(g.schedule_dates ?? [], challengeStartDate, challengeEndDate),
+            catch_up: true,
           })))}
           className="w-full mb-4 py-2.5 rounded-xl bg-gray-100 text-sm font-bold text-gray-700 active:scale-95 transition"
         >
@@ -201,6 +213,14 @@ export default function GoalSetupForm({
               />
               {parseInt(goal.target_count) > 0 && (
                 <>
+                  {/* Single counter above the picker group (instead of one
+                      per month grid) so a multi-month challenge doesn't read
+                      as a per-month requirement. */}
+                  <div className="flex justify-end">
+                    <span className={`text-xs font-black ${goal.schedule_dates.length === parseInt(goal.target_count) ? 'text-teal-600' : 'text-gray-400'}`}>
+                      {goal.schedule_dates.length}/{goal.target_count} selected
+                    </span>
+                  </div>
                   <div className="space-y-4">
                     {challengeMonths.map(month => (
                       <MonthDatePicker
@@ -214,17 +234,6 @@ export default function GoalSetupForm({
                       />
                     ))}
                   </div>
-                  {goal.schedule_dates.length > 0 && goal.schedule_dates.length < parseInt(goal.target_count) && (
-                    <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={goal.catch_up}
-                        onChange={e => update(i, 'catch_up', e.target.checked)}
-                        className="rounded"
-                      />
-                      Show as catch-up if I miss a date
-                    </label>
-                  )}
                 </>
               )}
             </div>

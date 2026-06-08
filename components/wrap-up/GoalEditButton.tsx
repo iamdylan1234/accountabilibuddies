@@ -5,6 +5,7 @@ import { submitGoalChangeRequest } from '@/app/wrap-up/actions'
 import type { Goal, GoalType } from '@/types/database'
 import MonthDatePicker from '@/components/goals/MonthDatePicker'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { monthsInRange, filterDatesInRange } from '@/lib/dateUtils'
 
 interface Props {
   goal: Goal
@@ -20,15 +21,22 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
   const [type, setType] = useState<GoalType>(goal.type)
   const [targetCount, setTargetCount] = useState(goal.target_count?.toString() ?? '')
   const [targetUnit, setTargetUnit] = useState(goal.target_unit ?? '')
-  const [scheduleDates, setScheduleDates] = useState<string[]>(goal.schedule_dates ?? [])
-  const [catchUp, setCatchUp] = useState(goal.catch_up)
+  // Filter on load: strip dates outside the challenge window. Goal rows seeded
+  // with extra candidates (e.g. scripted setup) or carried over from a prior
+  // window would otherwise be invisible-but-present in the picker.
+  const [scheduleDates, setScheduleDates] = useState<string[]>(
+    filterDatesInRange(goal.schedule_dates ?? [], challengeStartDate, challengeEndDate)
+  )
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [, startTransition] = useTransition()
 
   const isMyGoal = goal.user_id === myId
-  const challengeMonth = challengeStartDate.slice(0, 7)
+  // Every month the challenge touches — render one picker per month so a
+  // span-crossing challenge (e.g. June 9 → July 8) can still pick dates in
+  // both months. Pre-fix this was a single month based on start date.
+  const challengeMonths = monthsInRange(challengeStartDate, challengeEndDate)
 
   function handleSave() {
     setSaving(true)
@@ -40,7 +48,9 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
         target_count: (type === 'frequency' || type === 'cumulative') ? (parseInt(targetCount) || null) : null,
         target_unit: (type === 'cumulative') ? (targetUnit.trim() || null) : null,
         schedule_dates: (type === 'frequency' && scheduleDates.length > 0) ? scheduleDates : null,
-        catch_up: (type === 'frequency') ? catchUp : false,
+        // Every frequency goal is catch-up-eligible (product decision 2026-06-08).
+        // Other types ignore this at scoring time, so a literal `false` is safe.
+        catch_up: (type === 'frequency'),
       })
       setSaving(false)
       if (result?.error) {
@@ -92,7 +102,6 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                     setType(t)
                     // Reset type-specific state so old fields don't leak into the new type
                     setScheduleDates([])
-                    setCatchUp(false)
                     if (t !== 'frequency' && t !== 'cumulative') setTargetCount('')
                     if (t !== 'cumulative') setTargetUnit('')
                   }}
@@ -111,16 +120,30 @@ export default function GoalEditButton({ goal, challengeId, challengeStartDate, 
                   placeholder="How many times?" min="1" max="31"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
                 {parseInt(targetCount) > 0 && (
-                  <MonthDatePicker
-                    month={challengeMonth} startDate={challengeStartDate} endDate={challengeEndDate}
-                    selectedDates={scheduleDates} maxDates={parseInt(targetCount)}
-                    onChange={setScheduleDates} />
-                )}
-                {scheduleDates.length > 0 && scheduleDates.length < parseInt(targetCount) && (
-                  <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                    <input type="checkbox" checked={catchUp} onChange={e => setCatchUp(e.target.checked)} className="rounded" />
-                    Show as catch-up if I miss a date
-                  </label>
+                  <>
+                    {/* Single counter above the picker group (lifted out of
+                        each MonthDatePicker) — avoids per-month "8/10" reading
+                        like a per-month requirement when the challenge spans
+                        two calendar months. */}
+                    <div className="flex justify-end">
+                      <span className={`text-xs font-black ${scheduleDates.length === parseInt(targetCount) ? 'text-teal-600' : 'text-gray-400'}`}>
+                        {scheduleDates.length}/{targetCount} selected
+                      </span>
+                    </div>
+                    <div className="space-y-4">
+                      {challengeMonths.map(month => (
+                        <MonthDatePicker
+                          key={month}
+                          month={month}
+                          startDate={challengeStartDate}
+                          endDate={challengeEndDate}
+                          selectedDates={scheduleDates}
+                          maxDates={parseInt(targetCount)}
+                          onChange={setScheduleDates}
+                        />
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
