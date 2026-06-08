@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { acceptInvite } from './actions'
 import { BRAND_GRADIENT } from '@/lib/brand'
 import AcceptInviteButton from './AcceptInviteButton'
@@ -11,6 +12,17 @@ export default async function InvitePage({ params }: Props) {
   const { token } = await params
 
   const supabase = await createClient()
+
+  // Bounce unauthenticated visitors directly to login with `next` set, so
+  // there's no "tap accept → get redirected → sign in → forget where I was"
+  // double-tap. Once signed in they land back here authenticated and tap
+  // Accept once. Pre-fix: tapping the Accept button on the unauth preview
+  // triggered the server action's own redirect, which combined with the
+  // separate next-param-loss bug between login/signup links sent users to
+  // /dashboard with no memory of the invite.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect(`/auth/login?next=/invite/${token}`)
+
   const { data: challenge } = await supabase
     .from('challenge_months')
     .select('*, creator:profiles!creator_id(name)')
