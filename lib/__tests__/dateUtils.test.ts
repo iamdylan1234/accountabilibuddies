@@ -1,4 +1,4 @@
-import { daysBetween, nextMonday } from '../dateUtils'
+import { daysBetween, nextMonday, monthsInRange } from '../dateUtils'
 
 describe('daysBetween', () => {
   it('counts whole days forward', () => {
@@ -34,5 +34,26 @@ describe('nextMonday', () => {
   })
   it('Tuesday → Monday of the next week', () => {
     expect(nextMonday('2026-06-02')).toBe('2026-06-08') // Tue → +6
+  })
+})
+
+describe('monthsInRange', () => {
+  it('single-month range returns one month', () => {
+    expect(monthsInRange('2026-05-01', '2026-05-31')).toEqual(['2026-05'])
+  })
+  it('single day returns one month', () => {
+    expect(monthsInRange('2026-09-09', '2026-09-09')).toEqual(['2026-09'])
+  })
+  it('two-month span returns both', () => {
+    expect(monthsInRange('2026-09-09', '2026-10-08')).toEqual(['2026-09', '2026-10'])
+  })
+  it('three-month span returns all three', () => {
+    expect(monthsInRange('2026-04-15', '2026-06-10')).toEqual(['2026-04', '2026-05', '2026-06'])
+  })
+  it('crosses year boundary', () => {
+    expect(monthsInRange('2026-12-15', '2027-01-14')).toEqual(['2026-12', '2027-01'])
+  })
+  it('crosses multi-year boundary', () => {
+    expect(monthsInRange('2026-11-01', '2027-02-28')).toEqual(['2026-11', '2026-12', '2027-01', '2027-02'])
   })
 })

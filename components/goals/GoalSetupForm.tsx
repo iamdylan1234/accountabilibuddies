@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { Goal, GoalType } from '@/types/database'
 import MonthDatePicker from './MonthDatePicker'
 import { BRAND_GRADIENT } from '@/lib/brand'
+import { monthsInRange } from '@/lib/dateUtils'
 import Spinner from '@/components/shared/Spinner'
 
 interface GoalDraft {
@@ -38,7 +39,10 @@ interface Props {
 export default function GoalSetupForm({
   challengeId, challengeStartDate, challengeEndDate, existingGoals, previousGoals, onSubmit,
 }: Props) {
-  const challengeMonth = challengeStartDate.slice(0, 7) // "YYYY-MM"
+  // All calendar months the challenge touches — render one MonthDatePicker per
+  // month so a span-crossing challenge (e.g. Sept 9 → Oct 8) can still pick
+  // dates in both months. Pre-fix this was a single month based on start date.
+  const challengeMonths = monthsInRange(challengeStartDate, challengeEndDate)
 
   const [goals, setGoals] = useState<GoalDraft[]>(
     existingGoals.length > 0
@@ -197,14 +201,19 @@ export default function GoalSetupForm({
               />
               {parseInt(goal.target_count) > 0 && (
                 <>
-                  <MonthDatePicker
-                    month={challengeMonth}
-                    startDate={challengeStartDate}
-                    endDate={challengeEndDate}
-                    selectedDates={goal.schedule_dates}
-                    maxDates={parseInt(goal.target_count)}
-                    onChange={dates => update(i, 'schedule_dates', dates)}
-                  />
+                  <div className="space-y-4">
+                    {challengeMonths.map(month => (
+                      <MonthDatePicker
+                        key={month}
+                        month={month}
+                        startDate={challengeStartDate}
+                        endDate={challengeEndDate}
+                        selectedDates={goal.schedule_dates}
+                        maxDates={parseInt(goal.target_count)}
+                        onChange={dates => update(i, 'schedule_dates', dates)}
+                      />
+                    ))}
+                  </div>
                   {goal.schedule_dates.length > 0 && goal.schedule_dates.length < parseInt(goal.target_count) && (
                     <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
                       <input
