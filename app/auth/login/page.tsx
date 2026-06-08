@@ -37,6 +37,12 @@ export default function LoginPage() {
     router.refresh()
   }
 
+  // Forward the post-auth destination across the auth pages — see the mirror
+  // comment in signup/page.tsx. Without this, an invite-link user who lands
+  // on /auth/login?next=/invite/xyz and clicks "Sign up" loses the invite.
+  const nextParam = searchParams.get('next')
+  const signupHref = nextParam ? `/auth/signup?next=${encodeURIComponent(nextParam)}` : '/auth/signup'
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -102,7 +108,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           No account?{' '}
-          <Link href="/auth/signup" className="font-semibold text-teal-600">Sign up</Link>
+          <Link href={signupHref} className="font-semibold text-teal-600">Sign up</Link>
         </p>
       </div>
     </div>

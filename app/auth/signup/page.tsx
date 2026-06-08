@@ -46,6 +46,13 @@ export default function SignUpPage() {
     router.refresh()
   }
 
+  // Forward the post-auth destination across the auth pages. Without this a
+  // user mid-invite-flow ("/auth/signup?next=/invite/xyz") who clicks "Log in"
+  // to switch to the login page would drop the next param and land back at
+  // /dashboard after signing in — losing the invite. See PR fix/invite-auth-flow.
+  const nextParam = searchParams.get('next')
+  const loginHref = nextParam ? `/auth/login?next=${encodeURIComponent(nextParam)}` : '/auth/login'
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -104,7 +111,7 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Already have an account?{' '}
-          <Link href="/auth/login" className="font-semibold text-teal-600">Log in</Link>
+          <Link href={loginHref} className="font-semibold text-teal-600">Log in</Link>
         </p>
       </div>
     </div>
