@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import GoalCard from './GoalCard'
 import CumulativeCard from './CumulativeCard'
+import CeilingCard from './CeilingCard'
 import MissedGoalCard from './MissedGoalCard'
 import BuddyMessageRow from './BuddyMessageRow'
 import BuzzPermissionBanner from './BuzzPermissionBanner'
@@ -104,13 +105,14 @@ export default function DashboardClient({
     (g.type === 'frequency' && g.schedule_dates?.includes(today))
   )
 
-  // Section 2: Optional — frequency (not scheduled today) + cumulative; catch-up rendered red
+  // Section 2: Optional — frequency (not scheduled today) + cumulative + ceiling;
+  // catch-up rendered red. Cumulative/ceiling are always-present loggers.
   const myOptionalGoals = myGoals.filter(g =>
-    g.type === 'cumulative' ||
+    g.type === 'cumulative' || g.type === 'ceiling' ||
     (g.type === 'frequency' && !g.schedule_dates?.includes(today))
   )
   const buddyOptionalGoals = buddyGoals.filter(g =>
-    g.type === 'cumulative' ||
+    g.type === 'cumulative' || g.type === 'ceiling' ||
     (g.type === 'frequency' && !g.schedule_dates?.includes(today))
   )
 
@@ -288,8 +290,11 @@ export default function DashboardClient({
             </h2>
             <div className="rounded-2xl bg-gray-100 p-3">
             <GoalPairGrid
-              myColumn={myOptionalGoals.map(goal => goal.type === 'cumulative'
+              myColumn={myOptionalGoals.map(goal =>
+                goal.type === 'cumulative'
                 ? <CumulativeCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} />
+                : goal.type === 'ceiling'
+                ? <CeilingCard key={goal.id} goal={goal} checkIns={myCheckIns} today={today} isMyGoal={true} dayNumber={dayNumber} totalDays={totalDays} />
                 : <GoalCard key={goal.id} goal={goal}
                     checkIn={getCheckIn(goal.id, optimisticCheckIns)} reaction={null}
                     isMyGoal={true} today={today} onToggle={handleToggle}
@@ -302,6 +307,8 @@ export default function DashboardClient({
                 const checkIn = getCheckIn(goal.id, buddyCheckIns)
                 return goal.type === 'cumulative'
                   ? <CumulativeCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} />
+                  : goal.type === 'ceiling'
+                  ? <CeilingCard key={goal.id} goal={goal} checkIns={buddyCheckIns} today={today} isMyGoal={false} dayNumber={dayNumber} totalDays={totalDays} />
                   : <GoalCard key={goal.id} goal={goal}
                       checkIn={checkIn}
                       reaction={getReaction(checkIn?.id)}

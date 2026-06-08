@@ -7,6 +7,8 @@ const goal = (id: string, type: Goal['type'], extra: Partial<Goal> = {}): Goal =
   ({ id, type, ...extra } as Goal)
 const checkIn = (goal_id: string, date: string, completed = true): CheckIn =>
   ({ goal_id, date, completed, user_id: 'u', id: `${goal_id}-${date}`, created_at: '', value: null } as CheckIn)
+const checkInVal = (goal_id: string, date: string, value: number): CheckIn =>
+  ({ goal_id, date, completed: true, user_id: 'u', id: `${goal_id}-${date}-${value}`, created_at: '', value } as CheckIn)
 
 describe('weeklyTrend', () => {
   it('null when fewer than 14 days have elapsed', () => {
@@ -175,5 +177,34 @@ describe('weeklyResults — cumulative goals still excluded', () => {
       '2026-05-04', '2026-05-10', '2026-05-11',
     )
     expect(r[0].myScore).toBe(100)
+  })
+})
+
+describe('weeklyResults — ceiling goals pro-rate the cap by week', () => {
+  // 30-day challenge (Jun 1–30, Monday start = clean 7-day weeks), ceiling cap
+  // 30 → pro-rated 7 per full week. Today past end so all weeks are complete.
+  const ceilingG = goal('k1', 'ceiling', { target_count: 30 })
+
+  it('0 logged in the week = 100%', () => {
+    const r = weeklyResults([ceilingG], [], [ceilingG], [], '2026-06-01', '2026-06-30', '2026-07-15')
+    expect(r[0].from).toBe('2026-06-01')
+    expect(r[0].to).toBe('2026-06-07')
+    expect(r[0].myScore).toBe(100)
+  })
+
+  it('at the pro-rated cap = 0%', () => {
+    // 7 logged in a 7-day window whose pro-rated cap is 7 → 1 - 7/7 = 0.
+    const myCi = [checkInVal('k1', '2026-06-03', 7)]
+    const r = weeklyResults([ceilingG], myCi, [ceilingG], [], '2026-06-01', '2026-06-30', '2026-07-15')
+    expect(r[0].myScore).toBe(0)
+  })
+
+  it('a heavy week scores below a clean week (buddy comparison)', () => {
+    // Me: 2 logged (1 - 2/7 ≈ 71%). Buddy: 6 logged (1 - 6/7 ≈ 14%). I win the week.
+    const myCi = [checkInVal('k1', '2026-06-02', 2)]
+    const buCi = [checkInVal('k1', '2026-06-02', 6)]
+    const r = weeklyResults([ceilingG], myCi, [ceilingG], buCi, '2026-06-01', '2026-06-30', '2026-07-15')
+    expect(r[0].myScore).toBeGreaterThan(r[0].buddyScore)
+    expect(r[0].winner).toBe('me')
   })
 })

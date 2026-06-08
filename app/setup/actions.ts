@@ -64,7 +64,7 @@ export async function saveGoals(
     user_id: user.id,
     title: g.title.trim().slice(0, 200),
     type: g.type,
-    target_count: (g.type === 'frequency' || g.type === 'cumulative')
+    target_count: (g.type === 'frequency' || g.type === 'cumulative' || g.type === 'ceiling')
       ? (parseInt(g.target_count) || null)
       : null,
     target_unit: g.target_unit.trim() || null,

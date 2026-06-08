@@ -1,4 +1,6 @@
-export type GoalType = 'daily' | 'milestone' | 'frequency' | 'cumulative'
+// 'ceiling' = a capped goal: log increments through the challenge, staying
+// UNDER target_count wins (opposite of 'cumulative', which wins by reaching it).
+export type GoalType = 'daily' | 'milestone' | 'frequency' | 'cumulative' | 'ceiling'
 export type ChallengeStatus = 'pending' | 'active' | 'completed'
 
 export interface Profile {

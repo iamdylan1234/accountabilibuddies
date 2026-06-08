@@ -70,6 +70,16 @@ function SummaryGoalCard({
     subscript = targetCount > 0
       ? `${loggedTotal} / ${targetCount}${unit}`
       : `${loggedTotal}${unit}`
+  } else if (goal.type === 'ceiling') {
+    const used = checkIns
+      .filter(c => c.goal_id === goal.id && c.value != null)
+      .reduce((s, c) => s + (c.value ?? 0), 0)
+    const cap = goal.target_count ?? 0
+    const unit = goal.target_unit ? ` ${goal.target_unit}` : ''
+    // Show consumption vs cap, with an explicit over-budget call-out.
+    subscript = cap > 0 && used > cap
+      ? `${parseFloat(used.toFixed(2))} / ${cap}${unit} · ${parseFloat((used - cap).toFixed(2))} over`
+      : `${parseFloat(used.toFixed(2))} / ${cap}${unit} used`
   } else if (goal.type === 'milestone') {
     subscript = complete ? 'Done' : 'Pending'
   }

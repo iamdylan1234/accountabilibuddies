@@ -3,6 +3,7 @@
 import type { Goal, CheckIn } from '@/types/database'
 import GoalCard from '@/components/dashboard/GoalCard'
 import CumulativeCard from '@/components/dashboard/CumulativeCard'
+import CeilingCard from '@/components/dashboard/CeilingCard'
 import GoalPairGrid from '@/components/shared/GoalPairGrid'
 import { getWeeklyStatChip, getMilestoneCheckIn } from '@/lib/scoring'
 
@@ -47,7 +48,7 @@ export default function DayDetailSection(props: Props) {
   // frequency targets) as well as frequency goals scheduled for OTHER days.
   // `?? false` ensures null/undefined schedule_dates fall through to here.
   const ongoingSection = (gs: Goal[]) => gs.filter(g =>
-    g.type === 'cumulative' ||
+    g.type === 'cumulative' || g.type === 'ceiling' ||
     (g.type === 'frequency' && !(g.schedule_dates?.includes(selectedDate) ?? false))
   )
   const milestoneSection = (gs: Goal[]) => gs.filter(g => g.type === 'milestone')
@@ -71,6 +72,21 @@ export default function DayDetailSection(props: Props) {
       // of whether the goal is mine or my buddy's.
       return (
         <CumulativeCard
+          key={goal.id}
+          goal={goal}
+          checkIns={checkIns}
+          today={today}
+          isMyGoal={false}
+        />
+      )
+    }
+
+    if (goal.type === 'ceiling') {
+      // Same as cumulative: read-only on the Week tab (logging is a Today
+      // action). isMyGoal={false} hides the +1/Log controls; pace props are
+      // omitted (this is a history view, not live pace).
+      return (
+        <CeilingCard
           key={goal.id}
           goal={goal}
           checkIns={checkIns}
