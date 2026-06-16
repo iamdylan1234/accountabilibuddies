@@ -273,9 +273,18 @@ export function getMissedDays(
 
   if (goal.type === 'frequency') {
     if (!goal.schedule_dates || goal.schedule_dates.length === 0) return 0
-    return goal.schedule_dates.filter(
+    const scheduleSet = new Set(goal.schedule_dates)
+    // Missed scheduled slots in the window (no on-date completion).
+    const missedSlots = goal.schedule_dates.filter(
       d => d >= lookbackStart && d <= yesterday && !doneSet.has(d)
     ).length
+    // Extra (non-scheduled) completions in the SAME window form a pool that
+    // offsets misses regardless of order — so banking ahead (an extra done
+    // BEFORE a known miss) counts the same as a retroactive make-up.
+    const extras = [...doneSet].filter(
+      d => d >= lookbackStart && d <= yesterday && !scheduleSet.has(d)
+    ).length
+    return Math.max(0, missedSlots - extras)
   }
 
   // daily: walk every calendar day in [lookbackStart, yesterday]
@@ -316,36 +325,28 @@ export function getCatchUpState(
     checkIns.filter(c => c.goal_id === goal.id && c.completed).map(c => c.date)
   )
 
-  const [sy, sm, sd] = startDate.split('-').map(Number)
-  const cursor = new Date(sy, sm - 1, sd)
-  let pendingMisses = 0
-  let caughtUpToday = 0
+  // Pool model (order-independent): past extra sessions offset past missed
+  // scheduled slots whether they were done BEFORE or AFTER the miss. The earlier
+  // chronological walk only credited a make-up that came AFTER its miss, so
+  // "banking ahead" (doing an extra the day before a known miss) was lost. Both
+  // are now equivalent — what matters is the net count, not the order.
+  const pastMissed = goal.schedule_dates.filter(
+    d => d >= startDate && d < today && !completedSet.has(d)
+  ).length
+  const pastExtras = [...completedSet].filter(
+    d => d >= startDate && d < today && !scheduleSet.has(d)
+  ).length
+  const pendingBeforeToday = Math.max(0, pastMissed - pastExtras)
 
-  while (true) {
-    const ds = formatDate(cursor)
-    if (ds > today) break
+  // A non-scheduled completion TODAY is a real make-up if it draws down what's
+  // still pending. (Today's scheduled-but-not-done slot is NOT a miss — the day
+  // isn't over.) A today extra with nothing pending just banks toward a future
+  // miss via the pool above and shows no "caught up" state.
+  const todayMakeUp = completedSet.has(today) && !scheduleSet.has(today)
+  const caughtUpToday = todayMakeUp && pendingBeforeToday > 0 ? 1 : 0
+  const netPending = Math.max(0, pendingBeforeToday - caughtUpToday)
 
-    const scheduled = scheduleSet.has(ds)
-    const completed = completedSet.has(ds)
-
-    if (ds === today) {
-      // Today is special: don't count as missed even if scheduled+not-completed
-      // (the day's still ongoing). Only consume a pending miss if today is a
-      // non-scheduled completion (a real make-up).
-      if (!scheduled && completed && pendingMisses > 0) {
-        pendingMisses--
-        caughtUpToday = 1
-      }
-    } else {
-      // Past day
-      if (scheduled && !completed) pendingMisses++
-      else if (!scheduled && completed && pendingMisses > 0) pendingMisses--
-    }
-
-    cursor.setDate(cursor.getDate() + 1)
-  }
-
-  return { caughtUpToday, netPending: pendingMisses }
+  return { caughtUpToday, netPending }
 }
 
 /**

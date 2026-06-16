@@ -2,7 +2,7 @@ import {
   scoreGoal, scoreChallenge, getWeekStart,
   isGoalActiveToday, isGoalCatchUp, getCurrentStreak,
   getBestStreak, getMissedDays, dayCompletionStatus,
-  getWeeklyStatChip,
+  getWeeklyStatChip, getCatchUpState,
 } from '../scoring'
 import type { Goal, CheckIn } from '@/types/database'
 import type { GoalStreakContext } from '../scoring'
@@ -431,6 +431,20 @@ describe('getMissedDays', () => {
     expect(getMissedDays(baseGoal('frequency'), [], '2026-05-07', '2026-05-01')).toBe(0)
   })
 
+  it('frequency: a pre-emptive extra offsets a miss (bank-ahead pool)', () => {
+    // Scheduled May 1 + May 3. Did May 1, plus an extra non-scheduled May 2,
+    // then missed May 3. The May 2 extra cancels the May 3 miss → 0, even though
+    // it came BEFORE the miss.
+    const goal = freq(['2026-05-01', '2026-05-03'])
+    expect(getMissedDays(goal, [ci('2026-05-01'), ci('2026-05-02')], '2026-05-07', '2026-05-01')).toBe(0)
+  })
+
+  it('frequency: one extra offsets only one of several misses', () => {
+    // Scheduled May 1, 3, 5 — all missed. One extra (May 2). 3 − 1 = 2.
+    const goal = freq(['2026-05-01', '2026-05-03', '2026-05-05'])
+    expect(getMissedDays(goal, [ci('2026-05-02')], '2026-05-07', '2026-05-01')).toBe(2)
+  })
+
   it('daily: endOffset=2 excludes yesterday from the count', () => {
     // Today May 7, challenge May 1, no check-ins. With endOffset=2, we count May 1–5 (5 days).
     expect(getMissedDays(daily(), [], '2026-05-07', '2026-05-01', 7, 2)).toBe(5)
@@ -446,6 +460,43 @@ describe('getMissedDays', () => {
     // With endOffset=2, only May 5 counts → 1.
     const goal = freq(['2026-05-05', '2026-05-06'])
     expect(getMissedDays(goal, [], '2026-05-07', '2026-05-01', 7, 2)).toBe(1)
+  })
+})
+
+describe('getCatchUpState', () => {
+  const freq = (dates: string[]): Goal => ({ ...baseGoal('frequency'), schedule_dates: dates })
+
+  it('non-frequency goals return zeros', () => {
+    expect(getCatchUpState(baseGoal('daily'), [], '2026-05-07', '2026-05-01'))
+      .toEqual({ caughtUpToday: 0, netPending: 0 })
+  })
+
+  it('bank-ahead: an extra done BEFORE a known miss clears the pending', () => {
+    // Scheduled May 5, missed. Extra session May 4 (the day before, non-scheduled).
+    // Today May 7 (not scheduled). The old chronological walk did NOT credit the
+    // May 4 extra (it precedes the miss) → 1 pending. Pool model: 1 − 1 → 0.
+    const goal = freq(['2026-05-05'])
+    expect(getCatchUpState(goal, [ci('2026-05-04')], '2026-05-07', '2026-05-01'))
+      .toEqual({ caughtUpToday: 0, netPending: 0 })
+  })
+
+  it('retroactive make-up done TODAY shows caughtUpToday', () => {
+    // Scheduled May 5 missed; today May 7 (non-scheduled) is the make-up.
+    const goal = freq(['2026-05-05'])
+    expect(getCatchUpState(goal, [ci('2026-05-07')], '2026-05-07', '2026-05-01'))
+      .toEqual({ caughtUpToday: 1, netPending: 0 })
+  })
+
+  it('two misses, one extra → one still pending', () => {
+    const goal = freq(['2026-05-03', '2026-05-05'])
+    expect(getCatchUpState(goal, [ci('2026-05-04')], '2026-05-07', '2026-05-01'))
+      .toEqual({ caughtUpToday: 0, netPending: 1 })
+  })
+
+  it('today scheduled but not done is not a miss (day not over)', () => {
+    const goal = freq(['2026-05-05', '2026-05-07'])
+    expect(getCatchUpState(goal, [ci('2026-05-05')], '2026-05-07', '2026-05-01'))
+      .toEqual({ caughtUpToday: 0, netPending: 0 })
   })
 })
 
